@@ -34,7 +34,7 @@ const corsOptions = {
     'https://opticapp-frontend.vercel.app',
     'https://opticapp-frontend-nag6pkke5-daniel-oliveras-projects.vercel.app',
     'https://opticapp-frontend-lr5sczh6z-daniel-oliveras-projects.vercel.app',
-    'https://*.vercel.app'
+    /^https:\/\/.*\.vercel\.app$/
   ],
   credentials: true,
   methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
