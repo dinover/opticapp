@@ -1,4 +1,4 @@
-# 🎯 Guía de Demostración - AppDelStream
+# 🎯 Guía de Demostración - OpticApp
 
 ## 📋 Preparación para la Demostración
 
@@ -186,4 +186,4 @@ Para soporte técnico o consultas:
 
 ---
 
-**¡AppDelStream está listo para revolucionar la gestión de tu óptica! 🕶️✨** 
+**¡OpticApp está listo para revolucionar la gestión de tu óptica! 🕶️✨** 

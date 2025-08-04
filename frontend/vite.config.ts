@@ -13,4 +13,24 @@ export default defineConfig({
       },
     },
   },
+  build: {
+    outDir: 'dist',
+    sourcemap: false,
+    minify: 'terser',
+    rollupOptions: {
+      output: {
+        manualChunks: {
+          vendor: ['react', 'react-dom'],
+          router: ['react-router-dom'],
+          ui: ['lucide-react', 'clsx', 'tailwind-merge'],
+          forms: ['react-hook-form', '@hookform/resolvers', 'zod'],
+          utils: ['axios', 'date-fns', 'react-hot-toast'],
+          charts: ['recharts']
+        }
+      }
+    }
+  },
+  define: {
+    __APP_VERSION__: JSON.stringify(process.env.npm_package_version),
+  }
 }) 

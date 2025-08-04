@@ -1,7 +1,7 @@
 {
-  "name": "appdelstream",
+  "name": "opticapp",
   "version": "1.0.0",
-  "description": "Sistema de control de stock de gafas para ópticas",
+  "description": "Sistema de gestión óptica completo",
   "private": true,
   "workspaces": [
     "frontend",

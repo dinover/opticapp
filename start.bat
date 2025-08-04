@@ -1,5 +1,5 @@
 @echo off
-echo 🚀 Iniciando AppDelStream...
+echo 🚀 Iniciando OpticApp...
 echo.
 
 REM Check if Node.js is installed

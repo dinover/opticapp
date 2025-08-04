@@ -1,4 +1,4 @@
-# AppDelStream - Control de Stock Óptico
+# OpticApp - Sistema de Gestión Óptica
 
 Sistema web completo para gestión de stock, clientes y ventas de ópticas. Desarrollado con React, TypeScript, Node.js y SQLite.
 
@@ -35,7 +35,7 @@ start.bat
 ```bash
 # 1. Clonar el repositorio
 git clone [URL_DEL_REPO]
-cd AppDelStream
+cd opticapp
 
 # 2. Instalar dependencias
 npm install
@@ -106,7 +106,7 @@ Una vez iniciada, accede a:
 
 ### **Estructura del Proyecto**
 ```
-AppDelStream/
+opticapp/
 ├── frontend/          # React + TypeScript
 ├── backend/           # Node.js + Express
 ├── package.json       # Scripts principales
@@ -146,4 +146,4 @@ Este proyecto es propiedad de [Tu Empresa] y está destinado para uso interno.
 
 ---
 
-**AppDelStream v1.0** - Sistema completo de gestión óptica 🕶️ 
+**OpticApp v1.0** - Sistema completo de gestión óptica 🕶️ 

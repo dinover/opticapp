@@ -156,7 +156,7 @@ router.delete('/:id', authenticateToken, (req: Request, res: Response) => {
   db.get(
     'SELECT COUNT(*) as count FROM sales WHERE client_id = ?',
     [clientId],
-    (err, result) => {
+    (err, result: any) => {
       if (err) {
         return res.status(500).json({ error: 'Database error' });
       }

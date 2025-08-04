@@ -1,4 +1,4 @@
-# 🚀 Configuración para Producción - AppDelStream
+# 🚀 Configuración para Producción - OpticApp
 
 ## 📋 Opciones de Despliegue
 
@@ -83,7 +83,7 @@ sudo apt install nginx -y
 
 # 5. Clonar repositorio
 git clone [URL_REPO]
-cd AppDelStream
+cd opticapp
 
 # 6. Configurar backend
 cd backend
@@ -97,7 +97,7 @@ npm run build
 
 # 8. Configurar PM2
 sudo npm install -g pm2
-pm2 start backend/dist/index.js --name "appdelstream-backend"
+pm2 start backend/dist/index.js --name "opticapp-backend"
 pm2 startup
 pm2 save
 ```
@@ -118,9 +118,9 @@ sudo yum install postgresql postgresql-server
 #### **2. Crear base de datos**
 ```bash
 sudo -u postgres psql
-CREATE DATABASE appdelstream;
-CREATE USER appdelstream_user WITH PASSWORD 'tu_password';
-GRANT ALL PRIVILEGES ON DATABASE appdelstream TO appdelstream_user;
+CREATE DATABASE opticapp;
+CREATE USER opticapp_user WITH PASSWORD 'tu_password';
+GRANT ALL PRIVILEGES ON DATABASE opticapp TO opticapp_user;
 \q
 ```
 
@@ -130,13 +130,13 @@ GRANT ALL PRIVILEGES ON DATABASE appdelstream TO appdelstream_user;
 npm install -g sqlite3-to-postgres
 
 # Migrar datos
-sqlite3-to-postgres backend/database.sqlite postgresql://user:pass@localhost/appdelstream
+sqlite3-to-postgres backend/database.sqlite postgresql://user:pass@localhost/opticapp
 ```
 
 #### **4. Actualizar configuración**
 ```env
 # backend/.env
-DATABASE_URL=postgresql://appdelstream_user:tu_password@localhost/appdelstream
+DATABASE_URL=postgresql://opticapp_user:tu_password@localhost/opticapp
 ```
 
 ## 🔧 Configuración de Dominio
@@ -158,7 +158,7 @@ sudo certbot --nginx -d tu-dominio.com -d www.tu-dominio.com
 
 ### **Configurar Nginx**
 ```nginx
-# /etc/nginx/sites-available/appdelstream
+# /etc/nginx/sites-available/opticapp
 server {
     listen 80;
     server_name tu-dominio.com www.tu-dominio.com;
@@ -174,7 +174,7 @@ server {
 
     # Frontend
     location / {
-        root /var/www/appdelstream/frontend/dist;
+        root /var/www/opticapp/frontend/dist;
         try_files $uri $uri/ /index.html;
     }
 
@@ -233,7 +233,7 @@ app.use(cors({
 ### **Configurar Logs**
 ```bash
 # PM2 logs
-pm2 logs appdelstream-backend
+pm2 logs opticapp-backend
 
 # Nginx logs
 sudo tail -f /var/log/nginx/access.log
@@ -257,19 +257,19 @@ free -h
 ### **Backup Automático**
 ```bash
 #!/bin/bash
-# /usr/local/bin/backup-appdelstream.sh
+# /usr/local/bin/backup-opticapp.sh
 
 DATE=$(date +%Y%m%d_%H%M%S)
-BACKUP_DIR="/backups/appdelstream"
+BACKUP_DIR="/backups/opticapp"
 
 # Crear directorio de backup
 mkdir -p $BACKUP_DIR
 
 # Backup de base de datos
-pg_dump appdelstream > $BACKUP_DIR/db_$DATE.sql
+pg_dump opticapp > $BACKUP_DIR/db_$DATE.sql
 
 # Backup de archivos
-tar -czf $BACKUP_DIR/files_$DATE.tar.gz /var/www/appdelstream
+tar -czf $BACKUP_DIR/files_$DATE.tar.gz /var/www/opticapp
 
 # Eliminar backups antiguos (más de 30 días)
 find $BACKUP_DIR -name "*.sql" -mtime +30 -delete
@@ -279,7 +279,7 @@ find $BACKUP_DIR -name "*.tar.gz" -mtime +30 -delete
 ### **Cron Job para Backup**
 ```bash
 # Agregar a crontab
-0 2 * * * /usr/local/bin/backup-appdelstream.sh
+0 2 * * * /usr/local/bin/backup-opticapp.sh
 ```
 
 ## 🚀 Checklist de Producción
@@ -311,4 +311,4 @@ find $BACKUP_DIR -name "*.tar.gz" -mtime +30 -delete
 
 ---
 
-**¡AppDelStream está listo para producción! 🕶️✨** 
+**¡OpticApp está listo para producción! 🕶️✨** 

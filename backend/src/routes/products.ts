@@ -64,7 +64,7 @@ router.get('/:id', authenticateToken, (req: Request, res: Response) => {
   db.get(
     'SELECT * FROM products WHERE id = ? AND optic_id = ?',
     [productId, authReq.user.optic_id],
-    (err, product) => {
+    (err, product: any) => {
       if (err) {
         return res.status(500).json({ error: 'Database error' });
       }
@@ -108,13 +108,13 @@ router.post('/', [
   db.run(
     `INSERT INTO products (optic_id, name, description, brand, model, color, size, price, stock_quantity, image_url) 
      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
-    [authReq.user.optic_id, name, description || '', cleanBrand, cleanModel, cleanColor, cleanSize, cleanPrice, cleanStockQuantity, imageUrl],
+    [authReq.user.optic_id, name, description, cleanBrand, cleanModel, cleanColor, cleanSize, cleanPrice, cleanStockQuantity, imageUrl],
     function(err) {
       if (err) {
         return res.status(500).json({ error: 'Failed to create product' });
       }
 
-      db.get('SELECT * FROM products WHERE id = ?', [this.lastID], (err, product) => {
+      db.get('SELECT * FROM products WHERE id = ?', [this.lastID], (err, product: any) => {
         if (err) {
           return res.status(500).json({ error: 'Database error' });
         }
@@ -129,12 +129,12 @@ router.put('/:id', [
   authenticateToken,
   upload.single('image'),
   body('name').notEmpty().withMessage('Product name is required'),
-  body('brand').notEmpty().withMessage('Brand is required'),
-  body('model').notEmpty().withMessage('Model is required'),
-  body('color').notEmpty().withMessage('Color is required'),
-  body('size').notEmpty().withMessage('Size is required'),
-  body('price').isFloat({ min: 0 }).withMessage('Valid price is required'),
-  body('stock_quantity').isInt({ min: 0 }).withMessage('Valid stock quantity is required')
+  body('brand').optional(),
+  body('model').optional(),
+  body('color').optional(),
+  body('size').optional(),
+  body('price').optional().isFloat({ min: 0 }).withMessage('Price must be a valid number'),
+  body('stock_quantity').optional().isInt({ min: 0 }).withMessage('Stock quantity must be a valid number')
 ], (req: Request, res: Response) => {
   const errors = validationResult(req);
   if (!errors.isEmpty()) {
@@ -144,13 +144,21 @@ router.put('/:id', [
   const authReq = req as any;
   const productId = parseInt(req.params.id);
   const { name, description, brand, model, color, size, price, stock_quantity } = req.body;
-  const imageUrl = req.file ? `/uploads/${req.file.filename}` : undefined;
+  const imageUrl = req.file ? `/uploads/${req.file.filename}` : null;
+
+  // Handle optional fields with defaults
+  const cleanBrand = brand || '';
+  const cleanModel = model || '';
+  const cleanColor = color || '';
+  const cleanSize = size || '';
+  const cleanPrice = price ? parseFloat(price) : 0;
+  const cleanStockQuantity = stock_quantity ? parseInt(stock_quantity) : 0;
 
   // First check if product exists and belongs to user's optic
   db.get(
     'SELECT * FROM products WHERE id = ? AND optic_id = ?',
     [productId, authReq.user.optic_id],
-    (err, existingProduct) => {
+    (err, existingProduct: any) => {
       if (err) {
         return res.status(500).json({ error: 'Database error' });
       }
@@ -172,13 +180,13 @@ router.put('/:id', [
         `UPDATE products SET name = ?, description = ?, brand = ?, model = ?, color = ?, size = ?, 
          price = ?, stock_quantity = ?, image_url = ?, updated_at = CURRENT_TIMESTAMP 
          WHERE id = ? AND optic_id = ?`,
-        [name, description, brand, model, color, size, price, stock_quantity, updateImageUrl, productId, authReq.user.optic_id],
+        [name, description, cleanBrand, cleanModel, cleanColor, cleanSize, cleanPrice, cleanStockQuantity, updateImageUrl, productId, authReq.user.optic_id],
         function(err) {
           if (err) {
             return res.status(500).json({ error: 'Failed to update product' });
           }
 
-          db.get('SELECT * FROM products WHERE id = ?', [productId], (err, product) => {
+          db.get('SELECT * FROM products WHERE id = ?', [productId], (err, product: any) => {
             if (err) {
               return res.status(500).json({ error: 'Database error' });
             }
@@ -199,7 +207,7 @@ router.delete('/:id', authenticateToken, (req: Request, res: Response) => {
   db.get(
     'SELECT * FROM products WHERE id = ? AND optic_id = ?',
     [productId, authReq.user.optic_id],
-    (err, product) => {
+    (err, product: any) => {
       if (err) {
         return res.status(500).json({ error: 'Database error' });
       }

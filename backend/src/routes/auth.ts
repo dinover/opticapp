@@ -8,15 +8,15 @@ import { LoginRequest, RegisterRequest, AuthResponse } from '../types';
 
 const router = Router();
 
-// Register new optic and admin user
+// Register new user and optic
 router.post('/register', [
-  body('username').isLength({ min: 3 }).withMessage('Username must be at least 3 characters'),
-  body('email').isEmail().withMessage('Valid email required'),
+  body('username').notEmpty().withMessage('Username is required'),
+  body('email').isEmail().withMessage('Valid email is required'),
   body('password').isLength({ min: 6 }).withMessage('Password must be at least 6 characters'),
   body('optic_name').notEmpty().withMessage('Optic name is required'),
   body('optic_address').notEmpty().withMessage('Optic address is required'),
   body('optic_phone').notEmpty().withMessage('Optic phone is required'),
-  body('optic_email').isEmail().withMessage('Valid optic email required')
+  body('optic_email').isEmail().withMessage('Valid optic email is required')
 ], async (req: Request, res: Response) => {
   const errors = validationResult(req);
   if (!errors.isEmpty()) {
@@ -26,15 +26,10 @@ router.post('/register', [
   const { username, email, password, optic_name, optic_address, optic_phone, optic_email }: RegisterRequest = req.body;
 
   try {
-    // Check if user already exists
-    db.get('SELECT id FROM users WHERE username = ? OR email = ?', [username, email], async (err, user) => {
-      if (err) {
-        return res.status(500).json({ error: 'Database error' });
-      }
-      if (user) {
-        return res.status(400).json({ error: 'Username or email already exists' });
-      }
+    // Hash password
+    const hashedPassword = await bcrypt.hash(password, 10);
 
+    db.serialize(() => {
       // Create optic first
       db.run(
         'INSERT INTO optics (name, address, phone, email) VALUES (?, ?, ?, ?)',
@@ -46,56 +41,48 @@ router.post('/register', [
 
           const opticId = this.lastID;
 
-          // Hash password and create user
-          bcrypt.hash(password, 10, (err, hashedPassword) => {
-            if (err) {
-              return res.status(500).json({ error: 'Password hashing failed' });
-            }
-
-            db.run(
-              'INSERT INTO users (username, email, password, optic_id, role) VALUES (?, ?, ?, ?, ?)',
-              [username, email, hashedPassword, opticId, 'admin'],
-              function(err) {
-                if (err) {
-                  return res.status(500).json({ error: 'Failed to create user' });
-                }
-
-                const userId = this.lastID;
-
-                // Generate JWT token
-                const token = jwt.sign(
-                  { userId },
-                  process.env.JWT_SECRET || 'your-secret-key',
-                  { expiresIn: '24h' }
-                );
-
-                // Get created user and optic
-                db.get(
-                  'SELECT id, username, email, optic_id, role, created_at, updated_at FROM users WHERE id = ?',
-                  [userId],
-                  (err, user) => {
-                    if (err) {
-                      return res.status(500).json({ error: 'Database error' });
-                    }
-
-                    db.get('SELECT * FROM optics WHERE id = ?', [opticId], (err, optic) => {
-                      if (err) {
-                        return res.status(500).json({ error: 'Database error' });
-                      }
-
-                      const response: AuthResponse = {
-                        token,
-                        user: user!,
-                        optic: optic!
-                      };
-
-                      res.status(201).json(response);
-                    });
-                  }
-                );
+          // Create user
+          db.run(
+            'INSERT INTO users (username, email, password, optic_id, role) VALUES (?, ?, ?, ?, ?)',
+            [username, email, hashedPassword, opticId, 'admin'],
+            function(err) {
+              if (err) {
+                return res.status(500).json({ error: 'Failed to create user' });
               }
-            );
-          });
+
+              const userId = this.lastID;
+
+              // Generate JWT token
+              const token = jwt.sign(
+                { userId },
+                process.env.JWT_SECRET || 'your-secret-key',
+                { expiresIn: '24h' }
+              );
+
+              const user = {
+                id: userId,
+                username,
+                email,
+                optic_id: opticId,
+                role: 'admin' as const,
+                created_at: new Date().toISOString(),
+                updated_at: new Date().toISOString()
+              };
+
+              const optic = {
+                id: opticId,
+                name: optic_name,
+                address: optic_address,
+                phone: optic_phone,
+                email: optic_email,
+                created_at: new Date().toISOString(),
+                updated_at: new Date().toISOString()
+              };
+
+              const response: AuthResponse = { token, user, optic };
+              res.status(201).json(response);
+            }
+          );
         }
       );
     });
@@ -104,7 +91,7 @@ router.post('/register', [
   }
 });
 
-// Login
+// Login user
 router.post('/login', [
   body('username').notEmpty().withMessage('Username is required'),
   body('password').notEmpty().withMessage('Password is required')
@@ -119,7 +106,7 @@ router.post('/login', [
   db.get(
     'SELECT u.*, o.* FROM users u JOIN optics o ON u.optic_id = o.id WHERE u.username = ?',
     [username],
-    async (err, result) => {
+    async (err, result: any) => {
       if (err) {
         return res.status(500).json({ error: 'Database error' });
       }
@@ -172,7 +159,7 @@ router.get('/profile', authenticateToken, (req: Request, res: Response) => {
   db.get(
     'SELECT u.*, o.* FROM users u JOIN optics o ON u.optic_id = o.id WHERE u.id = ?',
     [authReq.user.id],
-    (err, result) => {
+    (err, result: any) => {
       if (err) {
         return res.status(500).json({ error: 'Database error' });
       }
