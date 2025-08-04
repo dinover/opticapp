@@ -4,8 +4,12 @@ import { Pool } from 'pg';
 console.log('DATABASE_URL:', process.env.DATABASE_URL);
 console.log('NODE_ENV:', process.env.NODE_ENV);
 
+// Fallback for debugging
+const databaseUrl = process.env.DATABASE_URL || 'postgresql://postgres:QczfCveNywkQQgsQhoDQsGSJpYGIesOA@postgres.railway.internal:5432/railway';
+console.log('Using DATABASE_URL:', databaseUrl);
+
 export const pool = new Pool({
-  connectionString: process.env.DATABASE_URL,
+  connectionString: databaseUrl,
   ssl: process.env.NODE_ENV === 'production' ? { rejectUnauthorized: false } : false
 });
 
