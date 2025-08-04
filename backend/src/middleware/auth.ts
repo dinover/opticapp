@@ -25,7 +25,7 @@ export const authenticateToken = (req: AuthRequest, res: Response, next: NextFun
     db.get(
       'SELECT id, username, email, optic_id, role, created_at, updated_at FROM users WHERE id = ?',
       [decoded.userId],
-      (err, user) => {
+      (err, user: any) => {
         if (err) {
           return res.status(500).json({ error: 'Database error' });
         }
@@ -33,8 +33,19 @@ export const authenticateToken = (req: AuthRequest, res: Response, next: NextFun
           return res.status(404).json({ error: 'User not found' });
         }
 
-        req.user = user;
-        req.opticId = user.optic_id;
+        // Type the user object properly
+        const typedUser: Omit<User, 'password'> = {
+          id: user.id,
+          username: user.username,
+          email: user.email,
+          optic_id: user.optic_id,
+          role: user.role,
+          created_at: user.created_at,
+          updated_at: user.updated_at
+        };
+
+        req.user = typedUser;
+        req.opticId = typedUser.optic_id;
         next();
       }
     );
