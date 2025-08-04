@@ -1,15 +1,13 @@
 import { Pool } from 'pg';
+import { connectionString } from '../config/database';
 
 // Debug logging
-console.log('DATABASE_URL:', process.env.DATABASE_URL);
+console.log('DATABASE_URL from env:', process.env.DATABASE_URL);
 console.log('NODE_ENV:', process.env.NODE_ENV);
-
-// Fallback for Railway environment variables issue
-const databaseUrl = process.env.DATABASE_URL || 'postgresql://postgres:QczfCveNywkQQgsQhoDQsGSJpYGIesOA@postgres.railway.internal:5432/railway';
-console.log('Using DATABASE_URL:', databaseUrl);
+console.log('Using connection string:', connectionString);
 
 export const pool = new Pool({
-  connectionString: databaseUrl,
+  connectionString: connectionString,
   ssl: process.env.NODE_ENV === 'production' ? { rejectUnauthorized: false } : false
 });
 
