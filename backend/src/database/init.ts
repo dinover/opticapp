@@ -1,6 +1,9 @@
 import { Pool } from 'pg';
 
-// PostgreSQL connection pool
+// Debug logging
+console.log('DATABASE_URL:', process.env.DATABASE_URL);
+console.log('NODE_ENV:', process.env.NODE_ENV);
+
 export const pool = new Pool({
   connectionString: process.env.DATABASE_URL,
   ssl: process.env.NODE_ENV === 'production' ? { rejectUnauthorized: false } : false
@@ -10,111 +13,96 @@ export async function initializeDatabase(): Promise<void> {
   const client = await pool.connect();
   
   try {
-    // Create optics table
+    console.log('Connected to PostgreSQL successfully');
+    
+    // Create tables
     await client.query(`
       CREATE TABLE IF NOT EXISTS optics (
         id SERIAL PRIMARY KEY,
-        name TEXT NOT NULL,
-        address TEXT NOT NULL,
-        phone TEXT NOT NULL,
-        email TEXT NOT NULL,
+        name VARCHAR(255) NOT NULL,
+        address TEXT,
+        phone VARCHAR(50),
+        email VARCHAR(255),
         created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
         updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
       )
     `);
 
-    // Create users table
     await client.query(`
       CREATE TABLE IF NOT EXISTS users (
         id SERIAL PRIMARY KEY,
-        username TEXT UNIQUE NOT NULL,
-        email TEXT UNIQUE NOT NULL,
-        password TEXT NOT NULL,
-        optic_id INTEGER NOT NULL,
-        role TEXT DEFAULT 'user' CHECK (role IN ('admin', 'user')),
+        username VARCHAR(255) UNIQUE NOT NULL,
+        email VARCHAR(255) UNIQUE NOT NULL,
+        password VARCHAR(255) NOT NULL,
+        optic_id INTEGER NOT NULL REFERENCES optics(id),
+        role VARCHAR(50) DEFAULT 'user',
         created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-        updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-        FOREIGN KEY (optic_id) REFERENCES optics (id)
+        updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
       )
     `);
 
-    // Create products table
-    await client.query(`
-      CREATE TABLE IF NOT EXISTS products (
-        id SERIAL PRIMARY KEY,
-        optic_id INTEGER NOT NULL,
-        name TEXT NOT NULL,
-        description TEXT,
-        brand TEXT NOT NULL,
-        model TEXT NOT NULL,
-        color TEXT NOT NULL,
-        size TEXT NOT NULL,
-        price DECIMAL(10,2) NOT NULL,
-        stock_quantity INTEGER DEFAULT 0,
-        image_url TEXT,
-        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-        updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-        FOREIGN KEY (optic_id) REFERENCES optics (id)
-      )
-    `);
-
-    // Create clients table
     await client.query(`
       CREATE TABLE IF NOT EXISTS clients (
         id SERIAL PRIMARY KEY,
-        optic_id INTEGER NOT NULL,
-        dni TEXT NOT NULL,
-        first_name TEXT NOT NULL,
-        last_name TEXT NOT NULL,
-        phone TEXT,
-        email TEXT,
+        optic_id INTEGER NOT NULL REFERENCES optics(id),
+        dni VARCHAR(50) NOT NULL,
+        first_name VARCHAR(255) NOT NULL,
+        last_name VARCHAR(255) NOT NULL,
+        phone VARCHAR(50),
+        email VARCHAR(255),
         notes TEXT,
         created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
         updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-        FOREIGN KEY (optic_id) REFERENCES optics (id),
         UNIQUE(optic_id, dni)
       )
     `);
 
-    // Create sales table
+    await client.query(`
+      CREATE TABLE IF NOT EXISTS products (
+        id SERIAL PRIMARY KEY,
+        optic_id INTEGER NOT NULL REFERENCES optics(id),
+        name VARCHAR(255) NOT NULL,
+        description TEXT,
+        brand VARCHAR(255),
+        model VARCHAR(255),
+        color VARCHAR(100),
+        size VARCHAR(100),
+        price DECIMAL(10,2) DEFAULT 0,
+        stock_quantity INTEGER DEFAULT 0,
+        image_url VARCHAR(500),
+        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+        updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+      )
+    `);
+
     await client.query(`
       CREATE TABLE IF NOT EXISTS sales (
         id SERIAL PRIMARY KEY,
-        optic_id INTEGER NOT NULL,
-        client_id INTEGER,
-        product_id INTEGER,
+        optic_id INTEGER NOT NULL REFERENCES optics(id),
+        client_id INTEGER REFERENCES clients(id),
+        product_id INTEGER REFERENCES products(id),
         quantity INTEGER NOT NULL,
         total_price DECIMAL(10,2) NOT NULL,
         sale_date DATE NOT NULL,
         notes TEXT,
-        unregistered_client_name TEXT,
-        unregistered_product_name TEXT,
-        od_esf TEXT,
-        od_cil TEXT,
-        od_eje TEXT,
-        od_add TEXT,
-        oi_esf TEXT,
-        oi_cil TEXT,
-        oi_eje TEXT,
-        oi_add TEXT,
+        unregistered_client_name VARCHAR(255),
+        unregistered_product_name VARCHAR(255),
+        od_esf VARCHAR(50),
+        od_cil VARCHAR(50),
+        od_eje VARCHAR(50),
+        od_add VARCHAR(50),
+        oi_esf VARCHAR(50),
+        oi_cil VARCHAR(50),
+        oi_eje VARCHAR(50),
+        oi_add VARCHAR(50),
         created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-        updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-        FOREIGN KEY (optic_id) REFERENCES optics (id),
-        FOREIGN KEY (client_id) REFERENCES clients (id),
-        FOREIGN KEY (product_id) REFERENCES products (id)
+        updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
       )
     `);
 
-    // Create indexes for better performance
-    await client.query('CREATE INDEX IF NOT EXISTS idx_products_optic_id ON products(optic_id)');
-    await client.query('CREATE INDEX IF NOT EXISTS idx_clients_optic_id ON clients(optic_id)');
-    await client.query('CREATE INDEX IF NOT EXISTS idx_sales_optic_id ON sales(optic_id)');
-    await client.query('CREATE INDEX IF NOT EXISTS idx_users_optic_id ON users(optic_id)');
-    await client.query('CREATE INDEX IF NOT EXISTS idx_clients_dni ON clients(dni)');
-
     console.log('Database tables created successfully');
   } catch (error) {
-    console.error('Error creating database tables:', error);
+    console.error('Error initializing database:', error);
     throw error;
   } finally {
     client.release();
