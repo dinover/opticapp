@@ -1,58 +1,71 @@
 import { Router, Request, Response } from 'express';
 import { body, validationResult } from 'express-validator';
-import { db } from '../database/init';
+import { pool } from '../database/init';
 import { authenticateToken } from '../middleware/auth';
 import { Sale, SaleWithDetails } from '../types';
 
 const router = Router();
 
 // Get all sales for the authenticated user's optic
-router.get('/', authenticateToken, (req: Request, res: Response) => {
-  const authReq = req as any;
-  
-  db.all(
-    `SELECT s.*, c.dni, c.first_name, c.last_name, c.phone, c.email,
-            p.name as product_name, p.brand, p.model, p.color, p.size, p.price,
-            s.unregistered_client_name, s.unregistered_product_name
-     FROM sales s
-     LEFT JOIN clients c ON s.client_id = c.id
-     LEFT JOIN products p ON s.product_id = p.id
-     WHERE s.optic_id = ?
-     ORDER BY s.sale_date DESC, s.created_at DESC`,
-    [authReq.user.optic_id],
-    (err, sales) => {
-      if (err) {
-        return res.status(500).json({ error: 'Database error' });
-      }
-      res.json(sales);
+router.get('/', authenticateToken, async (req: Request, res: Response) => {
+  try {
+    const client = await pool.connect();
+    const authReq = req as any;
+    
+    try {
+      const result = await client.query(
+        `SELECT s.*, c.dni, c.first_name, c.last_name, c.phone, c.email,
+                p.name as product_name, p.brand, p.model, p.color, p.size, p.price,
+                s.unregistered_client_name, s.unregistered_product_name
+         FROM sales s
+         LEFT JOIN clients c ON s.client_id = c.id
+         LEFT JOIN products p ON s.product_id = p.id
+         WHERE s.optic_id = $1
+         ORDER BY s.sale_date DESC, s.created_at DESC`,
+        [authReq.user.optic_id]
+      );
+      
+      res.json(result.rows);
+    } finally {
+      client.release();
     }
-  );
+  } catch (error) {
+    console.error('Error fetching sales:', error);
+    res.status(500).json({ error: 'Database error' });
+  }
 });
 
 // Get single sale with details
-router.get('/:id', authenticateToken, (req: Request, res: Response) => {
-  const authReq = req as any;
-  const saleId = parseInt(req.params.id);
-  
-  db.get(
-    `SELECT s.*, c.dni, c.first_name, c.last_name, c.phone, c.email,
-            p.name as product_name, p.brand, p.model, p.color, p.size, p.price,
-            s.unregistered_client_name, s.unregistered_product_name
-     FROM sales s
-     LEFT JOIN clients c ON s.client_id = c.id
-     LEFT JOIN products p ON s.product_id = p.id
-     WHERE s.id = ? AND s.optic_id = ?`,
-    [saleId, authReq.user.optic_id],
-    (err, sale) => {
-      if (err) {
-        return res.status(500).json({ error: 'Database error' });
-      }
-      if (!sale) {
+router.get('/:id', authenticateToken, async (req: Request, res: Response) => {
+  try {
+    const client = await pool.connect();
+    const authReq = req as any;
+    const saleId = parseInt(req.params.id);
+    
+    try {
+      const result = await client.query(
+        `SELECT s.*, c.dni, c.first_name, c.last_name, c.phone, c.email,
+                p.name as product_name, p.brand, p.model, p.color, p.size, p.price,
+                s.unregistered_client_name, s.unregistered_product_name
+         FROM sales s
+         LEFT JOIN clients c ON s.client_id = c.id
+         LEFT JOIN products p ON s.product_id = p.id
+         WHERE s.id = $1 AND s.optic_id = $2`,
+        [saleId, authReq.user.optic_id]
+      );
+      
+      if (result.rows.length === 0) {
         return res.status(404).json({ error: 'Sale not found' });
       }
-      res.json(sale);
+      
+      res.json(result.rows[0]);
+    } finally {
+      client.release();
     }
-  );
+  } catch (error) {
+    console.error('Error fetching sale:', error);
+    res.status(500).json({ error: 'Database error' });
+  }
 });
 
 // Create new sale
@@ -72,228 +85,226 @@ router.post('/', [
   body('oi_cil').optional().isString().withMessage('OI Cil must be a string'),
   body('oi_eje').optional().isString().withMessage('OI Eje must be a string'),
   body('oi_add').optional().isString().withMessage('OI Add must be a string')
-], (req: Request, res: Response) => {
+], async (req: Request, res: Response) => {
   const errors = validationResult(req);
   if (!errors.isEmpty()) {
     return res.status(400).json({ errors: errors.array() });
   }
 
-  const authReq = req as any;
-  const { 
-    client_id, 
-    product_id, 
-    quantity, 
-    total_price,
-    sale_date, 
-    notes,
-    unregistered_client_name,
-    unregistered_product_name,
-    od_esf,
-    od_cil,
-    od_eje,
-    od_add,
-    oi_esf,
-    oi_cil,
-    oi_eje,
-    oi_add
-  } = req.body;
+  try {
+    const client = await pool.connect();
+    const authReq = req as any;
+    const { 
+      client_id, 
+      product_id, 
+      quantity, 
+      total_price,
+      sale_date, 
+      notes,
+      unregistered_client_name,
+      unregistered_product_name,
+      od_esf,
+      od_cil,
+      od_eje,
+      od_add,
+      oi_esf,
+      oi_cil,
+      oi_eje,
+      oi_add
+    } = req.body;
 
-  // Start transaction
-  db.serialize(() => {
-    // Check if client exists and belongs to user's optic (if provided)
-    if (client_id) {
-      db.get(
-        'SELECT id FROM clients WHERE id = ? AND optic_id = ?',
-        [client_id, authReq.user.optic_id],
-        (err, client) => {
-          if (err) {
-            return res.status(500).json({ error: 'Database error' });
-          }
-          if (!client) {
-            return res.status(404).json({ error: 'Client not found' });
-          }
-          createSale();
-        }
-      );
-    } else {
-      createSale();
-    }
-  });
-
-  function createSale() {
-    // Check if product exists and has enough stock (if provided)
-    if (product_id) {
-      db.get(
-        'SELECT id, price, stock_quantity FROM products WHERE id = ? AND optic_id = ?',
-        [product_id, authReq.user.optic_id],
-        (err, product: any) => {
-          if (err) {
-            return res.status(500).json({ error: 'Database error' });
-          }
-          if (!product) {
-            return res.status(404).json({ error: 'Product not found' });
-          }
-          if (product.stock_quantity < quantity) {
-            return res.status(400).json({ 
-              error: `Insufficient stock. Available: ${product.stock_quantity}, Requested: ${quantity}` 
-            });
-          }
-          insertSale();
-        }
-      );
-    } else {
-      insertSale();
-    }
-  }
-
-  function insertSale() {
-    // Create sale record
-    db.run(
-      `INSERT INTO sales (optic_id, client_id, product_id, quantity, total_price, sale_date, notes, 
-                         unregistered_client_name, unregistered_product_name,
-                         od_esf, od_cil, od_eje, od_add, oi_esf, oi_cil, oi_eje, oi_add) 
-       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
-      [authReq.user.optic_id, client_id || null, product_id || null, quantity, total_price, sale_date, notes,
-       unregistered_client_name, unregistered_product_name,
-       od_esf, od_cil, od_eje, od_add, oi_esf, oi_cil, oi_eje, oi_add],
-      function(err) {
-        if (err) {
-          return res.status(500).json({ error: 'Failed to create sale' });
-        }
-
-        const saleId = this.lastID;
-
-        // Update product stock if product was selected
-        if (product_id) {
-          db.run(
-            'UPDATE products SET stock_quantity = stock_quantity - ?, updated_at = CURRENT_TIMESTAMP WHERE id = ?',
-            [quantity, product_id],
-            function(err) {
-              if (err) {
-                return res.status(500).json({ error: 'Failed to update stock' });
-              }
-              returnSaleWithDetails(saleId);
-            }
-          );
-        } else {
-          returnSaleWithDetails(saleId);
+    try {
+      // Validate client if provided
+      if (client_id) {
+        const clientResult = await client.query(
+          'SELECT id FROM clients WHERE id = $1 AND optic_id = $2',
+          [client_id, authReq.user.optic_id]
+        );
+        
+        if (clientResult.rows.length === 0) {
+          return res.status(400).json({ error: 'Invalid client ID' });
         }
       }
-    );
-  }
 
-  function returnSaleWithDetails(saleId: number) {
-    // Get the created sale with details
-    db.get(
-      `SELECT s.*, c.dni, c.first_name, c.last_name, c.phone, c.email,
-              p.name as product_name, p.brand, p.model, p.color, p.size, p.price,
-              s.unregistered_client_name, s.unregistered_product_name
-       FROM sales s
-       LEFT JOIN clients c ON s.client_id = c.id
-       LEFT JOIN products p ON s.product_id = p.id
-       WHERE s.id = ?`,
-      [saleId],
-      (err, sale) => {
-        if (err) {
-          return res.status(500).json({ error: 'Database error' });
+      // Validate product if provided
+      if (product_id) {
+        const productResult = await client.query(
+          'SELECT id, stock_quantity FROM products WHERE id = $1 AND optic_id = $2',
+          [product_id, authReq.user.optic_id]
+        );
+        
+        if (productResult.rows.length === 0) {
+          return res.status(400).json({ error: 'Invalid product ID' });
         }
-        res.status(201).json(sale);
+
+        // Check stock availability
+        const product = productResult.rows[0];
+        if (product.stock_quantity < quantity) {
+          return res.status(400).json({ error: 'Insufficient stock' });
+        }
+
+        // Update stock
+        await client.query(
+          'UPDATE products SET stock_quantity = stock_quantity - $1, updated_at = CURRENT_TIMESTAMP WHERE id = $2',
+          [quantity, product_id]
+        );
       }
-    );
+
+      // Create sale
+      const saleResult = await client.query(
+        `INSERT INTO sales (optic_id, client_id, product_id, quantity, total_price, sale_date, notes,
+                          unregistered_client_name, unregistered_product_name,
+                          od_esf, od_cil, od_eje, od_add, oi_esf, oi_cil, oi_eje, oi_add)
+         VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17) RETURNING *`,
+        [authReq.user.optic_id, client_id || null, product_id || null, quantity, total_price, sale_date, notes,
+         unregistered_client_name, unregistered_product_name,
+         od_esf, od_cil, od_eje, od_add, oi_esf, oi_cil, oi_eje, oi_add]
+      );
+
+      const sale = saleResult.rows[0];
+
+      // Get sale with details
+      const detailsResult = await client.query(
+        `SELECT s.*, c.dni, c.first_name, c.last_name, c.phone, c.email,
+                p.name as product_name, p.brand, p.model, p.color, p.size, p.price,
+                s.unregistered_client_name, s.unregistered_product_name
+         FROM sales s
+         LEFT JOIN clients c ON s.client_id = c.id
+         LEFT JOIN products p ON s.product_id = p.id
+         WHERE s.id = $1`,
+        [sale.id]
+      );
+
+      res.status(201).json(detailsResult.rows[0]);
+    } finally {
+      client.release();
+    }
+  } catch (error) {
+    console.error('Error creating sale:', error);
+    res.status(500).json({ error: 'Database error' });
   }
 });
 
 // Get sales by client
-router.get('/client/:clientId', authenticateToken, (req: Request, res: Response) => {
-  const authReq = req as any;
-  const clientId = parseInt(req.params.clientId);
-  
-  db.all(
-    `SELECT s.*, p.name as product_name, p.brand, p.model, p.color, p.size, p.price
-     FROM sales s
-     JOIN products p ON s.product_id = p.id
-     WHERE s.optic_id = ? AND s.client_id = ?
-     ORDER BY s.sale_date DESC`,
-    [authReq.user.optic_id, clientId],
-    (err, sales) => {
-      if (err) {
-        return res.status(500).json({ error: 'Database error' });
-      }
-      res.json(sales);
+router.get('/client/:clientId', authenticateToken, async (req: Request, res: Response) => {
+  try {
+    const client = await pool.connect();
+    const authReq = req as any;
+    const clientId = parseInt(req.params.clientId);
+    
+    try {
+      const result = await client.query(
+        `SELECT s.*, c.dni, c.first_name, c.last_name, c.phone, c.email,
+                p.name as product_name, p.brand, p.model, p.color, p.size, p.price,
+                s.unregistered_client_name, s.unregistered_product_name
+         FROM sales s
+         LEFT JOIN clients c ON s.client_id = c.id
+         LEFT JOIN products p ON s.product_id = p.id
+         WHERE s.optic_id = $1 AND s.client_id = $2
+         ORDER BY s.sale_date DESC`,
+        [authReq.user.optic_id, clientId]
+      );
+      
+      res.json(result.rows);
+    } finally {
+      client.release();
     }
-  );
+  } catch (error) {
+    console.error('Error fetching client sales:', error);
+    res.status(500).json({ error: 'Database error' });
+  }
 });
 
 // Get sales by date range
-router.get('/date-range/:startDate/:endDate', authenticateToken, (req: Request, res: Response) => {
-  const authReq = req as any;
-  const { startDate, endDate } = req.params;
-  
-  db.all(
-    `SELECT s.*, c.dni, c.first_name, c.last_name,
-            p.name as product_name, p.brand, p.model
-     FROM sales s
-     JOIN clients c ON s.client_id = c.id
-     JOIN products p ON s.product_id = p.id
-     WHERE s.optic_id = ? AND s.sale_date BETWEEN ? AND ?
-     ORDER BY s.sale_date DESC`,
-    [authReq.user.optic_id, startDate, endDate],
-    (err, sales) => {
-      if (err) {
-        return res.status(500).json({ error: 'Database error' });
-      }
-      res.json(sales);
+router.get('/date-range/:startDate/:endDate', authenticateToken, async (req: Request, res: Response) => {
+  try {
+    const client = await pool.connect();
+    const authReq = req as any;
+    const { startDate, endDate } = req.params;
+    
+    try {
+      const result = await client.query(
+        `SELECT s.*, c.dni, c.first_name, c.last_name, c.phone, c.email,
+                p.name as product_name, p.brand, p.model, p.color, p.size, p.price,
+                s.unregistered_client_name, s.unregistered_product_name
+         FROM sales s
+         LEFT JOIN clients c ON s.client_id = c.id
+         LEFT JOIN products p ON s.product_id = p.id
+         WHERE s.optic_id = $1 AND s.sale_date BETWEEN $2 AND $3
+         ORDER BY s.sale_date DESC`,
+        [authReq.user.optic_id, startDate, endDate]
+      );
+      
+      res.json(result.rows);
+    } finally {
+      client.release();
     }
-  );
+  } catch (error) {
+    console.error('Error fetching sales by date range:', error);
+    res.status(500).json({ error: 'Database error' });
+  }
 });
 
 // Get sales statistics
-router.get('/stats/summary', authenticateToken, (req: Request, res: Response) => {
-  const authReq = req as any;
-  
-  db.get(
-    `SELECT 
-       COUNT(*) as total_sales,
-       SUM(total_price) as total_revenue,
-       AVG(total_price) as avg_sale_value,
-       MIN(sale_date) as first_sale_date,
-       MAX(sale_date) as last_sale_date
-     FROM sales 
-     WHERE optic_id = ?`,
-    [authReq.user.optic_id],
-    (err, stats) => {
-      if (err) {
-        return res.status(500).json({ error: 'Database error' });
-      }
-      res.json(stats);
+router.get('/stats/summary', authenticateToken, async (req: Request, res: Response) => {
+  try {
+    const client = await pool.connect();
+    const authReq = req as any;
+    
+    try {
+      const result = await client.query(
+        `SELECT 
+           COUNT(*) as total_sales,
+           SUM(total_price) as total_revenue,
+           AVG(total_price) as average_sale,
+           COUNT(DISTINCT client_id) as unique_clients
+         FROM sales 
+         WHERE optic_id = $1`,
+        [authReq.user.optic_id]
+      );
+      
+      res.json(result.rows[0]);
+    } finally {
+      client.release();
     }
-  );
+  } catch (error) {
+    console.error('Error fetching sales stats:', error);
+    res.status(500).json({ error: 'Database error' });
+  }
 });
 
 // Get top selling products
-router.get('/stats/top-products', authenticateToken, (req: Request, res: Response) => {
-  const authReq = req as any;
-  
-  db.all(
-    `SELECT 
-       p.name, p.brand, p.model,
-       SUM(s.quantity) as total_sold,
-       SUM(s.total_price) as total_revenue,
-       COUNT(s.id) as sale_count
-     FROM sales s
-     JOIN products p ON s.product_id = p.id
-     WHERE s.optic_id = ?
-     GROUP BY s.product_id
-     ORDER BY total_sold DESC
-     LIMIT 10`,
-    [authReq.user.optic_id],
-    (err, products) => {
-      if (err) {
-        return res.status(500).json({ error: 'Database error' });
-      }
-      res.json(products);
+router.get('/stats/top-products', authenticateToken, async (req: Request, res: Response) => {
+  try {
+    const client = await pool.connect();
+    const authReq = req as any;
+    
+    try {
+      const result = await client.query(
+        `SELECT 
+           p.name,
+           p.brand,
+           p.model,
+           COUNT(s.id) as sales_count,
+           SUM(s.quantity) as total_quantity,
+           SUM(s.total_price) as total_revenue
+         FROM sales s
+         JOIN products p ON s.product_id = p.id
+         WHERE s.optic_id = $1
+         GROUP BY p.id, p.name, p.brand, p.model
+         ORDER BY total_revenue DESC
+         LIMIT 10`,
+        [authReq.user.optic_id]
+      );
+      
+      res.json(result.rows);
+    } finally {
+      client.release();
     }
-  );
+  } catch (error) {
+    console.error('Error fetching top products:', error);
+    res.status(500).json({ error: 'Database error' });
+  }
 });
 
 export default router; 

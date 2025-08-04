@@ -3,77 +3,92 @@ import multer from 'multer';
 import path from 'path';
 import fs from 'fs';
 import { body, validationResult } from 'express-validator';
-import { db } from '../database/init';
+import { pool } from '../database/init';
 import { authenticateToken } from '../middleware/auth';
 import { Product } from '../types';
 
 const router = Router();
 
-// Configure multer for image uploads
+// Configure multer for file uploads
 const storage = multer.diskStorage({
   destination: (req, file, cb) => {
-    const uploadDir = path.join(__dirname, '../../uploads');
-    if (!fs.existsSync(uploadDir)) {
-      fs.mkdirSync(uploadDir, { recursive: true });
+    const uploadPath = path.join(__dirname, '../../uploads');
+    if (!fs.existsSync(uploadPath)) {
+      fs.mkdirSync(uploadPath, { recursive: true });
     }
-    cb(null, uploadDir);
+    cb(null, uploadPath);
   },
   filename: (req, file, cb) => {
     const uniqueSuffix = Date.now() + '-' + Math.round(Math.random() * 1E9);
-    cb(null, 'product-' + uniqueSuffix + path.extname(file.originalname));
+    cb(null, file.fieldname + '-' + uniqueSuffix + path.extname(file.originalname));
   }
 });
 
 const upload = multer({
-  storage,
-  limits: { fileSize: 5 * 1024 * 1024 }, // 5MB limit
+  storage: storage,
+  limits: {
+    fileSize: parseInt(process.env.MAX_FILE_SIZE || '5242880') // 5MB default
+  },
   fileFilter: (req, file, cb) => {
     const allowedTypes = /jpeg|jpg|png|gif/;
     const extname = allowedTypes.test(path.extname(file.originalname).toLowerCase());
     const mimetype = allowedTypes.test(file.mimetype);
-    
+
     if (mimetype && extname) {
       return cb(null, true);
     } else {
-      cb(new Error('Only image files are allowed'));
+      cb(new Error('Only image files are allowed!'));
     }
   }
 });
 
 // Get all products for the authenticated user's optic
-router.get('/', authenticateToken, (req: Request, res: Response) => {
-  const authReq = req as any;
-  
-  db.all(
-    'SELECT * FROM products WHERE optic_id = ? ORDER BY created_at DESC',
-    [authReq.user.optic_id],
-    (err, products) => {
-      if (err) {
-        return res.status(500).json({ error: 'Database error' });
-      }
-      res.json(products);
+router.get('/', authenticateToken, async (req: Request, res: Response) => {
+  try {
+    const client = await pool.connect();
+    const authReq = req as any;
+    
+    try {
+      const result = await client.query(
+        'SELECT * FROM products WHERE optic_id = $1 ORDER BY created_at DESC',
+        [authReq.user.optic_id]
+      );
+      
+      res.json(result.rows);
+    } finally {
+      client.release();
     }
-  );
+  } catch (error) {
+    console.error('Error fetching products:', error);
+    res.status(500).json({ error: 'Database error' });
+  }
 });
 
 // Get single product
-router.get('/:id', authenticateToken, (req: Request, res: Response) => {
-  const authReq = req as any;
-  const productId = parseInt(req.params.id);
-  
-  db.get(
-    'SELECT * FROM products WHERE id = ? AND optic_id = ?',
-    [productId, authReq.user.optic_id],
-    (err, product: any) => {
-      if (err) {
-        return res.status(500).json({ error: 'Database error' });
-      }
-      if (!product) {
+router.get('/:id', authenticateToken, async (req: Request, res: Response) => {
+  try {
+    const client = await pool.connect();
+    const authReq = req as any;
+    const productId = parseInt(req.params.id);
+    
+    try {
+      const result = await client.query(
+        'SELECT * FROM products WHERE id = $1 AND optic_id = $2',
+        [productId, authReq.user.optic_id]
+      );
+      
+      if (result.rows.length === 0) {
         return res.status(404).json({ error: 'Product not found' });
       }
-      res.json(product);
+      
+      res.json(result.rows[0]);
+    } finally {
+      client.release();
     }
-  );
+  } catch (error) {
+    console.error('Error fetching product:', error);
+    res.status(500).json({ error: 'Database error' });
+  }
 });
 
 // Create new product
@@ -87,41 +102,41 @@ router.post('/', [
   body('size').optional(),
   body('price').optional().isFloat({ min: 0 }).withMessage('Price must be a valid number'),
   body('stock_quantity').optional().isInt({ min: 0 }).withMessage('Stock quantity must be a valid number')
-], (req: Request, res: Response) => {
+], async (req: Request, res: Response) => {
   const errors = validationResult(req);
   if (!errors.isEmpty()) {
     return res.status(400).json({ errors: errors.array() });
   }
 
-  const authReq = req as any;
-  const { name, description, brand, model, color, size, price, stock_quantity } = req.body;
-  const imageUrl = req.file ? `/uploads/${req.file.filename}` : null;
+  try {
+    const client = await pool.connect();
+    const authReq = req as any;
+    const { name, description, brand, model, color, size, price, stock_quantity } = req.body;
+    const imageUrl = req.file ? `/uploads/${req.file.filename}` : null;
 
-  // Handle optional fields with defaults
-  const cleanBrand = brand || '';
-  const cleanModel = model || '';
-  const cleanColor = color || '';
-  const cleanSize = size || '';
-  const cleanPrice = price ? parseFloat(price) : 0;
-  const cleanStockQuantity = stock_quantity ? parseInt(stock_quantity) : 0;
+    // Handle optional fields with defaults
+    const cleanBrand = brand || '';
+    const cleanModel = model || '';
+    const cleanColor = color || '';
+    const cleanSize = size || '';
+    const cleanPrice = price ? parseFloat(price) : 0;
+    const cleanStockQuantity = stock_quantity ? parseInt(stock_quantity) : 0;
 
-  db.run(
-    `INSERT INTO products (optic_id, name, description, brand, model, color, size, price, stock_quantity, image_url) 
-     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
-    [authReq.user.optic_id, name, description, cleanBrand, cleanModel, cleanColor, cleanSize, cleanPrice, cleanStockQuantity, imageUrl],
-    function(err) {
-      if (err) {
-        return res.status(500).json({ error: 'Failed to create product' });
-      }
-
-      db.get('SELECT * FROM products WHERE id = ?', [this.lastID], (err, product: any) => {
-        if (err) {
-          return res.status(500).json({ error: 'Database error' });
-        }
-        res.status(201).json(product);
-      });
+    try {
+      const result = await client.query(
+        `INSERT INTO products (optic_id, name, description, brand, model, color, size, price, stock_quantity, image_url) 
+         VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10) RETURNING *`,
+        [authReq.user.optic_id, name, description, cleanBrand, cleanModel, cleanColor, cleanSize, cleanPrice, cleanStockQuantity, imageUrl]
+      );
+      
+      res.status(201).json(result.rows[0]);
+    } finally {
+      client.release();
     }
-  );
+  } catch (error) {
+    console.error('Error creating product:', error);
+    res.status(500).json({ error: 'Database error' });
+  }
 });
 
 // Update product
@@ -135,125 +150,98 @@ router.put('/:id', [
   body('size').optional(),
   body('price').optional().isFloat({ min: 0 }).withMessage('Price must be a valid number'),
   body('stock_quantity').optional().isInt({ min: 0 }).withMessage('Stock quantity must be a valid number')
-], (req: Request, res: Response) => {
+], async (req: Request, res: Response) => {
   const errors = validationResult(req);
   if (!errors.isEmpty()) {
     return res.status(400).json({ errors: errors.array() });
   }
 
-  const authReq = req as any;
-  const productId = parseInt(req.params.id);
-  const { name, description, brand, model, color, size, price, stock_quantity } = req.body;
-  const imageUrl = req.file ? `/uploads/${req.file.filename}` : null;
+  try {
+    const client = await pool.connect();
+    const authReq = req as any;
+    const productId = parseInt(req.params.id);
+    const { name, description, brand, model, color, size, price, stock_quantity } = req.body;
+    const imageUrl = req.file ? `/uploads/${req.file.filename}` : null;
 
-  // Handle optional fields with defaults
-  const cleanBrand = brand || '';
-  const cleanModel = model || '';
-  const cleanColor = color || '';
-  const cleanSize = size || '';
-  const cleanPrice = price ? parseFloat(price) : 0;
-  const cleanStockQuantity = stock_quantity ? parseInt(stock_quantity) : 0;
+    // Handle optional fields with defaults
+    const cleanBrand = brand || '';
+    const cleanModel = model || '';
+    const cleanColor = color || '';
+    const cleanSize = size || '';
+    const cleanPrice = price ? parseFloat(price) : 0;
+    const cleanStockQuantity = stock_quantity ? parseInt(stock_quantity) : 0;
+    const updateImageUrl = imageUrl || req.body.image_url;
 
-  // First check if product exists and belongs to user's optic
-  db.get(
-    'SELECT * FROM products WHERE id = ? AND optic_id = ?',
-    [productId, authReq.user.optic_id],
-    (err, existingProduct: any) => {
-      if (err) {
-        return res.status(500).json({ error: 'Database error' });
-      }
-      if (!existingProduct) {
+    try {
+      const result = await client.query(
+        `UPDATE products SET name = $1, description = $2, brand = $3, model = $4, color = $5, size = $6, 
+         price = $7, stock_quantity = $8, image_url = $9, updated_at = CURRENT_TIMESTAMP 
+         WHERE id = $10 AND optic_id = $11 RETURNING *`,
+        [name, description, cleanBrand, cleanModel, cleanColor, cleanSize, cleanPrice, cleanStockQuantity, updateImageUrl, productId, authReq.user.optic_id]
+      );
+      
+      if (result.rows.length === 0) {
         return res.status(404).json({ error: 'Product not found' });
       }
-
-      // If new image uploaded, delete old image
-      if (req.file && existingProduct.image_url) {
-        const oldImagePath = path.join(__dirname, '../..', existingProduct.image_url);
-        if (fs.existsSync(oldImagePath)) {
-          fs.unlinkSync(oldImagePath);
-        }
-      }
-
-      const updateImageUrl = imageUrl || existingProduct.image_url;
-
-      db.run(
-        `UPDATE products SET name = ?, description = ?, brand = ?, model = ?, color = ?, size = ?, 
-         price = ?, stock_quantity = ?, image_url = ?, updated_at = CURRENT_TIMESTAMP 
-         WHERE id = ? AND optic_id = ?`,
-        [name, description, cleanBrand, cleanModel, cleanColor, cleanSize, cleanPrice, cleanStockQuantity, updateImageUrl, productId, authReq.user.optic_id],
-        function(err) {
-          if (err) {
-            return res.status(500).json({ error: 'Failed to update product' });
-          }
-
-          db.get('SELECT * FROM products WHERE id = ?', [productId], (err, product: any) => {
-            if (err) {
-              return res.status(500).json({ error: 'Database error' });
-            }
-            res.json(product);
-          });
-        }
-      );
+      
+      res.json(result.rows[0]);
+    } finally {
+      client.release();
     }
-  );
+  } catch (error) {
+    console.error('Error updating product:', error);
+    res.status(500).json({ error: 'Database error' });
+  }
 });
 
 // Delete product
-router.delete('/:id', authenticateToken, (req: Request, res: Response) => {
-  const authReq = req as any;
-  const productId = parseInt(req.params.id);
-
-  // First check if product exists and belongs to user's optic
-  db.get(
-    'SELECT * FROM products WHERE id = ? AND optic_id = ?',
-    [productId, authReq.user.optic_id],
-    (err, product: any) => {
-      if (err) {
-        return res.status(500).json({ error: 'Database error' });
-      }
-      if (!product) {
+router.delete('/:id', authenticateToken, async (req: Request, res: Response) => {
+  try {
+    const client = await pool.connect();
+    const authReq = req as any;
+    const productId = parseInt(req.params.id);
+    
+    try {
+      const result = await client.query(
+        'DELETE FROM products WHERE id = $1 AND optic_id = $2 RETURNING *',
+        [productId, authReq.user.optic_id]
+      );
+      
+      if (result.rows.length === 0) {
         return res.status(404).json({ error: 'Product not found' });
       }
-
-      // Delete image file if exists
-      if (product.image_url) {
-        const imagePath = path.join(__dirname, '../..', product.image_url);
-        if (fs.existsSync(imagePath)) {
-          fs.unlinkSync(imagePath);
-        }
-      }
-
-      db.run(
-        'DELETE FROM products WHERE id = ? AND optic_id = ?',
-        [productId, authReq.user.optic_id],
-        function(err) {
-          if (err) {
-            return res.status(500).json({ error: 'Failed to delete product' });
-          }
-          res.json({ message: 'Product deleted successfully' });
-        }
-      );
+      
+      res.json({ message: 'Product deleted successfully' });
+    } finally {
+      client.release();
     }
-  );
+  } catch (error) {
+    console.error('Error deleting product:', error);
+    res.status(500).json({ error: 'Database error' });
+  }
 });
 
 // Search products
-router.get('/search/:query', authenticateToken, (req: Request, res: Response) => {
-  const authReq = req as any;
-  const query = `%${req.params.query}%`;
-
-  db.all(
-    `SELECT * FROM products WHERE optic_id = ? AND 
-     (name LIKE ? OR brand LIKE ? OR model LIKE ? OR color LIKE ?) 
-     ORDER BY created_at DESC`,
-    [authReq.user.optic_id, query, query, query, query],
-    (err, products) => {
-      if (err) {
-        return res.status(500).json({ error: 'Database error' });
-      }
-      res.json(products);
+router.get('/search/:query', authenticateToken, async (req: Request, res: Response) => {
+  try {
+    const client = await pool.connect();
+    const authReq = req as any;
+    const query = req.params.query;
+    
+    try {
+      const result = await client.query(
+        'SELECT * FROM products WHERE optic_id = $1 AND (name ILIKE $2 OR brand ILIKE $2 OR model ILIKE $2 OR description ILIKE $2) ORDER BY created_at DESC',
+        [authReq.user.optic_id, `%${query}%`]
+      );
+      
+      res.json(result.rows);
+    } finally {
+      client.release();
     }
-  );
+  } catch (error) {
+    console.error('Error searching products:', error);
+    res.status(500).json({ error: 'Database error' });
+  }
 });
 
 export default router; 

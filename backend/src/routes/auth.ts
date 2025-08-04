@@ -2,7 +2,7 @@ import { Router, Request, Response } from 'express';
 import bcrypt from 'bcryptjs';
 import jwt from 'jsonwebtoken';
 import { body, validationResult } from 'express-validator';
-import { db } from '../database/init';
+import { pool } from '../database/init';
 import { authenticateToken } from '../middleware/auth';
 import { LoginRequest, RegisterRequest, AuthResponse } from '../types';
 
@@ -26,67 +26,55 @@ router.post('/register', [
   const { username, email, password, optic_name, optic_address, optic_phone, optic_email }: RegisterRequest = req.body;
 
   try {
-    // Hash password
-    const hashedPassword = await bcrypt.hash(password, 10);
+    const client = await pool.connect();
+    
+    try {
+      // Hash password
+      const hashedPassword = await bcrypt.hash(password, 10);
 
-    db.serialize(() => {
       // Create optic first
-      db.run(
-        'INSERT INTO optics (name, address, phone, email) VALUES (?, ?, ?, ?)',
-        [optic_name, optic_address, optic_phone, optic_email],
-        function(err) {
-          if (err) {
-            return res.status(500).json({ error: 'Failed to create optic' });
-          }
-
-          const opticId = this.lastID;
-
-          // Create user
-          db.run(
-            'INSERT INTO users (username, email, password, optic_id, role) VALUES (?, ?, ?, ?, ?)',
-            [username, email, hashedPassword, opticId, 'admin'],
-            function(err) {
-              if (err) {
-                return res.status(500).json({ error: 'Failed to create user' });
-              }
-
-              const userId = this.lastID;
-
-              // Generate JWT token
-              const token = jwt.sign(
-                { userId },
-                process.env.JWT_SECRET || 'your-secret-key',
-                { expiresIn: '24h' }
-              );
-
-              const user = {
-                id: userId,
-                username,
-                email,
-                optic_id: opticId,
-                role: 'admin' as const,
-                created_at: new Date().toISOString(),
-                updated_at: new Date().toISOString()
-              };
-
-              const optic = {
-                id: opticId,
-                name: optic_name,
-                address: optic_address,
-                phone: optic_phone,
-                email: optic_email,
-                created_at: new Date().toISOString(),
-                updated_at: new Date().toISOString()
-              };
-
-              const response: AuthResponse = { token, user, optic };
-              res.status(201).json(response);
-            }
-          );
-        }
+      const opticResult = await client.query(
+        'INSERT INTO optics (name, address, phone, email) VALUES ($1, $2, $3, $4) RETURNING *',
+        [optic_name, optic_address, optic_phone, optic_email]
       );
-    });
+
+      const optic = opticResult.rows[0];
+
+      // Create user
+      const userResult = await client.query(
+        'INSERT INTO users (username, email, password, optic_id, role) VALUES ($1, $2, $3, $4, $5) RETURNING *',
+        [username, email, hashedPassword, optic.id, 'admin']
+      );
+
+      const user = userResult.rows[0];
+
+      // Generate JWT token
+      const token = jwt.sign(
+        { userId: user.id },
+        process.env.JWT_SECRET || 'your-secret-key',
+        { expiresIn: '24h' }
+      );
+
+      const response: AuthResponse = { 
+        token, 
+        user: {
+          id: user.id,
+          username: user.username,
+          email: user.email,
+          optic_id: user.optic_id,
+          role: user.role,
+          created_at: user.created_at,
+          updated_at: user.updated_at
+        }, 
+        optic 
+      };
+      
+      res.status(201).json(response);
+    } finally {
+      client.release();
+    }
   } catch (error) {
+    console.error('Registration error:', error);
     res.status(500).json({ error: 'Registration failed' });
   }
 });
@@ -95,7 +83,7 @@ router.post('/register', [
 router.post('/login', [
   body('username').notEmpty().withMessage('Username is required'),
   body('password').notEmpty().withMessage('Password is required')
-], (req: Request, res: Response) => {
+], async (req: Request, res: Response) => {
   const errors = validationResult(req);
   if (!errors.isEmpty()) {
     return res.status(400).json({ errors: errors.array() });
@@ -103,93 +91,110 @@ router.post('/login', [
 
   const { username, password }: LoginRequest = req.body;
 
-  db.get(
-    'SELECT u.*, o.* FROM users u JOIN optics o ON u.optic_id = o.id WHERE u.username = ?',
-    [username],
-    async (err, result: any) => {
-      if (err) {
-        return res.status(500).json({ error: 'Database error' });
-      }
-      if (!result) {
+  try {
+    const client = await pool.connect();
+    
+    try {
+      // Find user
+      const userResult = await client.query(
+        'SELECT * FROM users WHERE username = $1',
+        [username]
+      );
+
+      if (userResult.rows.length === 0) {
         return res.status(401).json({ error: 'Invalid credentials' });
       }
 
-      const isValidPassword = await bcrypt.compare(password, result.password);
+      const user = userResult.rows[0];
+
+      // Check password
+      const isValidPassword = await bcrypt.compare(password, user.password);
       if (!isValidPassword) {
         return res.status(401).json({ error: 'Invalid credentials' });
       }
 
+      // Get optic info
+      const opticResult = await client.query(
+        'SELECT * FROM optics WHERE id = $1',
+        [user.optic_id]
+      );
+
+      if (opticResult.rows.length === 0) {
+        return res.status(500).json({ error: 'Optic not found' });
+      }
+
+      const optic = opticResult.rows[0];
+
       // Generate JWT token
       const token = jwt.sign(
-        { userId: result.id },
+        { userId: user.id },
         process.env.JWT_SECRET || 'your-secret-key',
         { expiresIn: '24h' }
       );
 
-      const user = {
-        id: result.id,
-        username: result.username,
-        email: result.email,
-        optic_id: result.optic_id,
-        role: result.role,
-        created_at: result.created_at,
-        updated_at: result.updated_at
+      const response: AuthResponse = { 
+        token, 
+        user: {
+          id: user.id,
+          username: user.username,
+          email: user.email,
+          optic_id: user.optic_id,
+          role: user.role,
+          created_at: user.created_at,
+          updated_at: user.updated_at
+        }, 
+        optic 
       };
-
-      const optic = {
-        id: result.optic_id,
-        name: result.name,
-        address: result.address,
-        phone: result.phone,
-        email: result.email,
-        created_at: result.created_at,
-        updated_at: result.updated_at
-      };
-
-      const response: AuthResponse = { token, user, optic };
+      
       res.json(response);
+    } finally {
+      client.release();
     }
-  );
+  } catch (error) {
+    console.error('Login error:', error);
+    res.status(500).json({ error: 'Login failed' });
+  }
 });
 
-// Get current user profile
-router.get('/profile', authenticateToken, (req: Request, res: Response) => {
-  const authReq = req as any;
-  
-  db.get(
-    'SELECT u.*, o.* FROM users u JOIN optics o ON u.optic_id = o.id WHERE u.id = ?',
-    [authReq.user.id],
-    (err, result: any) => {
-      if (err) {
-        return res.status(500).json({ error: 'Database error' });
-      }
-      if (!result) {
+// Get user profile
+router.get('/profile', authenticateToken, async (req: Request, res: Response) => {
+  try {
+    const client = await pool.connect();
+    
+    try {
+      const authReq = req as any;
+      
+      const userResult = await client.query(
+        'SELECT id, username, email, optic_id, role, created_at, updated_at FROM users WHERE id = $1',
+        [authReq.user.id]
+      );
+
+      if (userResult.rows.length === 0) {
         return res.status(404).json({ error: 'User not found' });
       }
 
-      const user = {
-        id: result.id,
-        username: result.username,
-        email: result.email,
-        optic_id: result.optic_id,
-        role: result.role,
-        created_at: result.created_at,
-        updated_at: result.updated_at
-      };
+      const user = userResult.rows[0];
 
-      const optic = {
-        id: result.optic_id,
-        name: result.name,
-        address: result.address,
-        phone: result.phone,
-        email: result.email,
-        created_at: result.created_at,
-        updated_at: result.updated_at
-      };
+      // Get optic info
+      const opticResult = await client.query(
+        'SELECT * FROM optics WHERE id = $1',
+        [user.optic_id]
+      );
+
+      if (opticResult.rows.length === 0) {
+        return res.status(500).json({ error: 'Optic not found' });
+      }
+
+      const optic = opticResult.rows[0];
 
       res.json({ user, optic });
+    } finally {
+      client.release();
     }
-  );
+  } catch (error) {
+    console.error('Profile error:', error);
+    res.status(500).json({ error: 'Failed to get profile' });
+  }
 });
 
 export default router; 
