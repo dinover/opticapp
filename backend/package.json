@@ -5,7 +5,7 @@
   "main": "dist/index.js",
   "scripts": {
     "dev": "tsx watch src/index.ts",
-    "build": "tsc && node -e \"require('fs').mkdirSync('dist/uploads', { recursive: true })\"",
+    "build": "tsc && node -e \"require('fs').mkdirSync('dist/uploads', { recursive: true })\" && node -e \"require('fs').mkdirSync('uploads', { recursive: true })\"",
     "start": "node dist/index.js",
     "db:migrate": "tsx src/database/migrate.ts"
   },
@@ -15,7 +15,7 @@
     "helmet": "^7.1.0",
     "bcryptjs": "^2.4.3",
     "jsonwebtoken": "^9.0.2",
-    "sqlite3": "^5.1.6",
+    "pg": "^8.11.3",
     "multer": "^1.4.5-lts.1",
     "express-validator": "^7.0.1",
     "dotenv": "^16.3.1"
@@ -25,7 +25,7 @@
     "@types/cors": "^2.8.17",
     "@types/bcryptjs": "^2.4.6",
     "@types/jsonwebtoken": "^9.0.5",
-    "@types/sqlite3": "^3.1.11",
+    "@types/pg": "^8.10.9",
     "@types/multer": "^1.4.11",
     "@types/node": "^20.10.0",
     "typescript": "^5.3.2",

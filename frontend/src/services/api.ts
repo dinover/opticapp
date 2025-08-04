@@ -1,17 +1,21 @@
 import axios from 'axios';
-import { 
-  LoginRequest, 
-  RegisterRequest, 
-  AuthResponse, 
-  Product, 
-  Client, 
+import {
+  LoginRequest,
+  RegisterRequest,
+  AuthResponse,
+  Product,
+  Client,
   SaleWithDetails,
-  OpticStats,
   ActivityItem,
   TopProduct
 } from '../types';
 
-const API_BASE_URL = import.meta.env.VITE_API_URL || '/api';
+// Temporary hardcoded URL while debugging environment variable
+const API_BASE_URL = 'https://opticapp-production.up.railway.app/api';
+
+// Debug: Log the API URL to see what's being used
+console.log('API_BASE_URL:', API_BASE_URL);
+console.log('VITE_API_URL env var:', import.meta.env.VITE_API_URL);
 
 const api = axios.create({
   baseURL: API_BASE_URL,
@@ -213,7 +217,7 @@ export const opticAPI = {
     return response.data;
   },
 
-  getStats: async (): Promise<OpticStats> => {
+  getStats: async (): Promise<any> => {
     const response = await api.get('/optics/stats');
     return response.data;
   },

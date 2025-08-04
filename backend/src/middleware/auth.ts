@@ -1,6 +1,6 @@
 import { Request, Response, NextFunction } from 'express';
 import jwt from 'jsonwebtoken';
-import { db } from '../database/init';
+import { pool } from '../database/init';
 import { User } from '../types';
 
 interface AuthRequest extends Request {
@@ -16,39 +16,44 @@ export const authenticateToken = (req: AuthRequest, res: Response, next: NextFun
     return res.status(401).json({ error: 'Access token required' });
   }
 
-  jwt.verify(token, process.env.JWT_SECRET || 'your-secret-key', (err: any, decoded: any) => {
+  jwt.verify(token, process.env.JWT_SECRET || 'your-secret-key', async (err: any, decoded: any) => {
     if (err) {
       return res.status(403).json({ error: 'Invalid or expired token' });
     }
 
-    // Get user from database
-    db.get(
-      'SELECT id, username, email, optic_id, role, created_at, updated_at FROM users WHERE id = ?',
-      [decoded.userId],
-      (err, user: any) => {
-        if (err) {
-          return res.status(500).json({ error: 'Database error' });
-        }
-        if (!user) {
-          return res.status(404).json({ error: 'User not found' });
-        }
+    try {
+      // Get user from database
+      const client = await pool.connect();
+      const result = await client.query(
+        'SELECT id, username, email, optic_id, role, created_at, updated_at FROM users WHERE id = $1',
+        [decoded.userId]
+      );
+      client.release();
 
-        // Type the user object properly
-        const typedUser: Omit<User, 'password'> = {
-          id: user.id,
-          username: user.username,
-          email: user.email,
-          optic_id: user.optic_id,
-          role: user.role,
-          created_at: user.created_at,
-          updated_at: user.updated_at
-        };
-
-        req.user = typedUser;
-        req.opticId = typedUser.optic_id;
-        next();
+      if (result.rows.length === 0) {
+        return res.status(404).json({ error: 'User not found' });
       }
-    );
+
+      const user = result.rows[0];
+
+      // Type the user object properly
+      const typedUser: Omit<User, 'password'> = {
+        id: user.id,
+        username: user.username,
+        email: user.email,
+        optic_id: user.optic_id,
+        role: user.role,
+        created_at: user.created_at,
+        updated_at: user.updated_at
+      };
+
+      req.user = typedUser;
+      req.opticId = typedUser.optic_id;
+      next();
+    } catch (error) {
+      console.error('Database error:', error);
+      return res.status(500).json({ error: 'Database error' });
+    }
   });
 };
 
