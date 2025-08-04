@@ -20,6 +20,11 @@ dotenv.config();
 const app = express();
 const PORT = process.env.PORT || 3001;
 
+console.log('Starting server with configuration:');
+console.log('PORT:', PORT);
+console.log('NODE_ENV:', process.env.NODE_ENV);
+console.log('FRONTEND_URL:', process.env.FRONTEND_URL);
+
 // Middleware
 app.use(helmet());
 app.use(cors({
@@ -41,6 +46,7 @@ app.use('/api/sales', saleRoutes);
 
 // Health check endpoint
 app.get('/api/health', (req, res) => {
+  console.log('Health check requested');
   res.json({ status: 'OK', message: 'AppDelStream API is running' });
 });
 
@@ -55,6 +61,7 @@ app.use((err: any, req: express.Request, res: express.Response, next: express.Ne
 
 // 404 handler
 app.use('*', (req, res) => {
+  console.log('404 - Route not found:', req.originalUrl);
   res.status(404).json({ error: 'Route not found' });
 });
 
@@ -67,9 +74,10 @@ async function startServer() {
     await migrateDatabase();
     console.log('Database migrations completed');
     
-    app.listen(PORT, () => {
+    app.listen(PORT, '0.0.0.0', () => {
       console.log(`🚀 Server running on port ${PORT}`);
       console.log(`📊 Health check: http://localhost:${PORT}/api/health`);
+      console.log(`🌐 Server is ready to accept connections`);
     });
   } catch (error) {
     console.error('Failed to start server:', error);
