@@ -13,9 +13,11 @@ import {
 // Temporary hardcoded URL while debugging environment variable
 const API_BASE_URL = import.meta.env.VITE_API_URL || 'https://opticapp-production.up.railway.app/api';
 
-// Debug: Log the API URL to see what's being used
-console.log('API_BASE_URL:', API_BASE_URL);
+console.log('=== API Configuration Debug ===');
 console.log('VITE_API_URL from env:', import.meta.env.VITE_API_URL);
+console.log('API_BASE_URL being used:', API_BASE_URL);
+console.log('Current window.location:', window.location.href);
+console.log('================================');
 
 const api = axios.create({
   baseURL: API_BASE_URL,
