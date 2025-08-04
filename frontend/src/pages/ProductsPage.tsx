@@ -6,7 +6,6 @@ import {
   Edit, 
   Trash2, 
   Eye,
-  Filter,
   SortAsc,
   SortDesc
 } from 'lucide-react';

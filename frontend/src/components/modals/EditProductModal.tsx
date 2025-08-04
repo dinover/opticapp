@@ -116,13 +116,6 @@ const EditProductModal: React.FC<EditProductModalProps> = ({ isOpen, onClose, on
     onClose();
   };
 
-  const formatCurrency = (amount: number) => {
-    return new Intl.NumberFormat('es-AR', {
-      style: 'currency',
-      currency: 'ARS',
-    }).format(amount);
-  };
-
   if (!isOpen || !product) return null;
 
   return (

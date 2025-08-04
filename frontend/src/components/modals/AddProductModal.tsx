@@ -2,7 +2,7 @@ import React, { useState } from 'react';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
-import { X, Upload, Package, Eye } from 'lucide-react';
+import { X, Upload, Package } from 'lucide-react';
 import { productsAPI } from '../../services/api';
 import toast from 'react-hot-toast';
 

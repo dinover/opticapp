@@ -7,9 +7,7 @@ import {
   TrendingUp,
   DollarSign,
   Calendar,
-  Users,
-  Package,
-  Filter
+  Users
 } from 'lucide-react';
 import { salesAPI } from '../services/api';
 import { SaleWithDetails } from '../types';

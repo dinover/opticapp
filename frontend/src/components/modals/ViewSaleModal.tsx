@@ -1,6 +1,6 @@
 import React from 'react';
 import { X, ShoppingCart, Users, Package, DollarSign, Calendar, FileText } from 'lucide-react';
-import { Sale, SaleWithDetails } from '../../types';
+import { SaleWithDetails } from '../../types';
 
 interface ViewSaleModalProps {
   isOpen: boolean;
