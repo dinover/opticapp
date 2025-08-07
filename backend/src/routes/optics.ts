@@ -44,7 +44,7 @@ router.get('/stats', authenticateToken, async (req: AuthenticatedRequest, res) =
     const salesResult = await executeQuery(`
       SELECT 
         COUNT(*) as total_sales,
-        COALESCE(SUM(total_amount), 0) as total_revenue
+        COALESCE(SUM(total_price), 0) as total_revenue
       FROM sales WHERE optic_id = $1
     `, [req.user.optic_id]);
     console.log('Sales result:', salesResult);
@@ -80,7 +80,7 @@ router.get('/activity', authenticateToken, async (req: AuthenticatedRequest, res
         s.id,
         COALESCE(c.first_name || ' ' || c.last_name, s.unregistered_client_name) as client_name,
         s.sale_date,
-        s.total_amount as total_price,
+        s.total_price,
         s.created_at
       FROM sales s
       LEFT JOIN clients c ON s.client_id = c.id
