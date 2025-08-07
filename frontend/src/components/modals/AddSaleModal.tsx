@@ -93,7 +93,7 @@ const AddSaleModal: React.FC<AddSaleModalProps> = ({
     setIsSubmitting(true);
 
     try {
-      const response = await salesAPI.create({
+      await salesAPI.create({
         client_id: selectedClient !== 'unregistered' ? parseInt(selectedClient) : undefined,
         unregistered_client_name: selectedClient === 'unregistered' ? unregisteredClientName : undefined,
         items: saleItems.map(item => ({
