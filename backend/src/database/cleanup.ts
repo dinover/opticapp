@@ -45,7 +45,7 @@ export async function cleanupDatabase(): Promise<void> {
       console.log(`Found ${adminCount.rows[0].count} admin users`);
       
       if (parseInt(adminCount.rows[0].count) === 0) {
-        // Create default admin user
+        // Create default admin user only if none exists
         const hashedPassword = await bcrypt.hash('admin2995', 10);
         
         // First create a default optic if none exists
@@ -60,11 +60,19 @@ export async function cleanupDatabase(): Promise<void> {
         const opticResult = await client.query('SELECT id FROM optics LIMIT 1');
         const opticId = opticResult.rows[0].id;
         
-        await client.query(
-          'INSERT INTO users (username, email, password, optic_id, role, is_approved) VALUES ($1, $2, $3, $4, $5, $6)',
-          ['admin', 'admin@opticapp.com', hashedPassword, opticId, 'admin', true]
-        );
-        console.log('Created default admin user');
+        // Check if admin user already exists before creating
+        const existingAdmin = await client.query('SELECT COUNT(*) FROM users WHERE username = $1', ['admin']);
+        if (parseInt(existingAdmin.rows[0].count) === 0) {
+          await client.query(
+            'INSERT INTO users (username, email, password, optic_id, role, is_approved) VALUES ($1, $2, $3, $4, $5, $6)',
+            ['admin', 'admin@opticapp.com', hashedPassword, opticId, 'admin', true]
+          );
+          console.log('Created default admin user');
+        } else {
+          console.log('Admin user already exists, skipping creation');
+        }
+      } else {
+        console.log('Admin user already exists, no need to create');
       }
       
       console.log('Database cleanup completed successfully');
