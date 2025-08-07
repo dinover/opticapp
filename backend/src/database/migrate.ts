@@ -31,7 +31,7 @@ export async function migrateDatabase(): Promise<void> {
     // Update existing sales to have total_amount
     sqliteDb.run(`
       UPDATE sales 
-      SET total_amount = COALESCE(quantity * unit_price, 0) 
+      SET total_amount = 0 
       WHERE total_amount IS NULL OR total_amount = 0
     `, (err) => {
       if (err) {
@@ -160,10 +160,10 @@ export async function migrateDatabase(): Promise<void> {
         END $$;
       `);
       
-      // Update existing sales to have total_amount
+      // Update existing sales to have total_amount (set to 0 for now since we don't have the old columns)
       await client.query(`
         UPDATE sales 
-        SET total_amount = COALESCE(quantity * unit_price, 0) 
+        SET total_amount = 0 
         WHERE total_amount IS NULL OR total_amount = 0
       `);
       
