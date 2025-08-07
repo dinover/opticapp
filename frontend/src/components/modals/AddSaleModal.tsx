@@ -101,8 +101,8 @@ const AddSaleModal: React.FC<AddSaleModalProps> = ({
         unregistered_client_name: selectedClient === 'unregistered' ? unregisteredClientName : undefined,
         items: saleItems.map(item => ({
           ...item,
-          product_id: typeof item.product_id === 'number' ? item.product_id : undefined,
-          unregistered_product_name: typeof item.product_id === 'string' && item.product_id !== '' ? item.unregistered_product_name : undefined
+          product_id: item.product_id && item.product_id !== 'unregistered' ? parseInt(item.product_id) : undefined,
+          unregistered_product_name: item.product_id === 'unregistered' ? item.unregistered_product_name : undefined
         })),
         notes
       });
