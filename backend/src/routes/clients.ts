@@ -1,26 +1,23 @@
 import { Router, Request, Response } from 'express';
 import { body, validationResult } from 'express-validator';
-import { pool } from '../database/init';
+import { executeQuery, executeQuerySingle, executeInsert, executeUpdate } from '../database/query';
 import { authenticateToken } from '../middleware/auth';
+
+interface AuthenticatedRequest extends Request {
+  user?: any;
+}
 
 const router = Router();
 
 // Get all clients for the authenticated user's optic
-router.get('/', authenticateToken, async (req: Request, res: Response) => {
+router.get('/', authenticateToken, async (req: AuthenticatedRequest, res: Response) => {
   try {
-    const client = await pool.connect();
-    const authReq = req as any;
+    const result = await executeQuery(
+      'SELECT * FROM clients WHERE optic_id = ? ORDER BY created_at DESC',
+      [req.user?.optic_id]
+    );
     
-    try {
-      const result = await client.query(
-        'SELECT * FROM clients WHERE optic_id = $1 ORDER BY created_at DESC',
-        [authReq.user.optic_id]
-      );
-      
-      res.json(result.rows);
-    } finally {
-      client.release();
-    }
+    res.json(result.rows);
   } catch (error) {
     console.error('Error fetching clients:', error);
     res.status(500).json({ error: 'Database error' });
@@ -28,26 +25,20 @@ router.get('/', authenticateToken, async (req: Request, res: Response) => {
 });
 
 // Get single client
-router.get('/:id', authenticateToken, async (req: Request, res: Response) => {
+router.get('/:id', authenticateToken, async (req: AuthenticatedRequest, res: Response) => {
   try {
-    const client = await pool.connect();
-    const authReq = req as any;
     const clientId = parseInt(req.params.id);
     
-    try {
-      const result = await client.query(
-        'SELECT * FROM clients WHERE id = $1 AND optic_id = $2',
-        [clientId, authReq.user.optic_id]
-      );
-      
-      if (result.rows.length === 0) {
-        return res.status(404).json({ error: 'Client not found' });
-      }
-      
-      res.json(result.rows[0]);
-    } finally {
-      client.release();
+    const result = await executeQuerySingle(
+      'SELECT * FROM clients WHERE id = ? AND optic_id = ?',
+      [clientId, req.user?.optic_id]
+    );
+    
+    if (!result) {
+      return res.status(404).json({ error: 'Client not found' });
     }
+    
+    res.json(result);
   } catch (error) {
     console.error('Error fetching client:', error);
     res.status(500).json({ error: 'Database error' });
@@ -63,37 +54,31 @@ router.post('/', [
   body('phone').optional().isString().withMessage('Phone must be a string'),
   body('email').optional().isEmail().withMessage('Valid email is required'),
   body('notes').optional().isString().withMessage('Notes must be a string')
-], async (req: Request, res: Response) => {
+], async (req: AuthenticatedRequest, res: Response) => {
   const errors = validationResult(req);
   if (!errors.isEmpty()) {
     return res.status(400).json({ errors: errors.array() });
   }
 
   try {
-    const client = await pool.connect();
-    const authReq = req as any;
     const { dni, first_name, last_name, phone, email, notes } = req.body;
     
-    try {
-      // Check if DNI already exists
-      const existingResult = await client.query(
-        'SELECT id FROM clients WHERE optic_id = $1 AND dni = $2',
-        [authReq.user.optic_id, dni]
-      );
-      
-      if (existingResult.rows.length > 0) {
-        return res.status(400).json({ error: 'Client with this DNI already exists' });
-      }
-
-      const result = await client.query(
-        'INSERT INTO clients (optic_id, dni, first_name, last_name, phone, email, notes) VALUES ($1, $2, $3, $4, $5, $6, $7) RETURNING *',
-        [authReq.user.optic_id, dni, first_name, last_name, phone, email, notes]
-      );
-      
-      res.status(201).json(result.rows[0]);
-    } finally {
-      client.release();
+    // Check if DNI already exists
+    const existingResult = await executeQuerySingle(
+      'SELECT id FROM clients WHERE optic_id = ? AND dni = ?',
+      [req.user?.optic_id, dni]
+    );
+    
+    if (existingResult) {
+      return res.status(400).json({ error: 'Client with this DNI already exists' });
     }
+
+    const result = await executeInsert(
+      'INSERT INTO clients (optic_id, dni, first_name, last_name, phone, email, notes) VALUES (?, ?, ?, ?, ?, ?, ?)',
+      [req.user?.optic_id, dni, first_name, last_name, phone, email, notes]
+    );
+    
+    res.status(201).json(result);
   } catch (error) {
     console.error('Error creating client:', error);
     res.status(500).json({ error: 'Database error' });
@@ -103,48 +88,102 @@ router.post('/', [
 // Update client
 router.put('/:id', [
   authenticateToken,
-  body('dni').notEmpty().withMessage('DNI is required'),
-  body('first_name').notEmpty().withMessage('First name is required'),
-  body('last_name').notEmpty().withMessage('Last name is required'),
+  body('dni').optional().notEmpty().withMessage('DNI cannot be empty'),
+  body('first_name').optional().notEmpty().withMessage('First name cannot be empty'),
+  body('last_name').optional().notEmpty().withMessage('Last name cannot be empty'),
   body('phone').optional().isString().withMessage('Phone must be a string'),
   body('email').optional().isEmail().withMessage('Valid email is required'),
   body('notes').optional().isString().withMessage('Notes must be a string')
-], async (req: Request, res: Response) => {
+], async (req: AuthenticatedRequest, res: Response) => {
   const errors = validationResult(req);
   if (!errors.isEmpty()) {
     return res.status(400).json({ errors: errors.array() });
   }
 
   try {
-    const client = await pool.connect();
-    const authReq = req as any;
     const clientId = parseInt(req.params.id);
     const { dni, first_name, last_name, phone, email, notes } = req.body;
     
-    try {
-      // Check if DNI already exists for another client
-      const existingResult = await client.query(
-        'SELECT id FROM clients WHERE optic_id = $1 AND dni = $2 AND id != $3',
-        [authReq.user.optic_id, dni, clientId]
+    // Check if client exists and belongs to user's optic
+    const existingClient = await executeQuerySingle(
+      'SELECT id FROM clients WHERE id = ? AND optic_id = ?',
+      [clientId, req.user?.optic_id]
+    );
+    
+    if (!existingClient) {
+      return res.status(404).json({ error: 'Client not found' });
+    }
+
+    // If DNI is being updated, check for duplicates
+    if (dni) {
+      const duplicateResult = await executeQuerySingle(
+        'SELECT id FROM clients WHERE optic_id = ? AND dni = ? AND id != ?',
+        [req.user?.optic_id, dni, clientId]
       );
       
-      if (existingResult.rows.length > 0) {
+      if (duplicateResult) {
         return res.status(400).json({ error: 'Client with this DNI already exists' });
       }
-
-      const result = await client.query(
-        'UPDATE clients SET dni = $1, first_name = $2, last_name = $3, phone = $4, email = $5, notes = $6, updated_at = CURRENT_TIMESTAMP WHERE id = $7 AND optic_id = $8 RETURNING *',
-        [dni, first_name, last_name, phone, email, notes, clientId, authReq.user.optic_id]
-      );
-      
-      if (result.rows.length === 0) {
-        return res.status(404).json({ error: 'Client not found' });
-      }
-      
-      res.json(result.rows[0]);
-    } finally {
-      client.release();
     }
+
+    // Build update query dynamically
+    const updateFields = [];
+    const updateValues = [];
+    let paramIndex = 1;
+
+    if (dni !== undefined) {
+      updateFields.push('dni = ?');
+      updateValues.push(dni);
+      paramIndex++;
+    }
+    if (first_name !== undefined) {
+      updateFields.push('first_name = ?');
+      updateValues.push(first_name);
+      paramIndex++;
+    }
+    if (last_name !== undefined) {
+      updateFields.push('last_name = ?');
+      updateValues.push(last_name);
+      paramIndex++;
+    }
+    if (phone !== undefined) {
+      updateFields.push('phone = ?');
+      updateValues.push(phone);
+      paramIndex++;
+    }
+    if (email !== undefined) {
+      updateFields.push('email = ?');
+      updateValues.push(email);
+      paramIndex++;
+    }
+    if (notes !== undefined) {
+      updateFields.push('notes = ?');
+      updateValues.push(notes);
+      paramIndex++;
+    }
+
+    if (updateFields.length === 0) {
+      return res.status(400).json({ error: 'No fields to update' });
+    }
+
+    updateValues.push(clientId, req.user?.optic_id);
+
+    const result = await executeUpdate(
+      `UPDATE clients SET ${updateFields.join(', ')}, updated_at = CURRENT_TIMESTAMP WHERE id = ? AND optic_id = ?`,
+      updateValues
+    );
+
+    if (result.rowCount === 0) {
+      return res.status(404).json({ error: 'Client not found' });
+    }
+
+    // Get updated client
+    const updatedClient = await executeQuerySingle(
+      'SELECT * FROM clients WHERE id = ? AND optic_id = ?',
+      [clientId, req.user?.optic_id]
+    );
+
+    res.json(updatedClient);
   } catch (error) {
     console.error('Error updating client:', error);
     res.status(500).json({ error: 'Database error' });
@@ -152,26 +191,20 @@ router.put('/:id', [
 });
 
 // Delete client
-router.delete('/:id', authenticateToken, async (req: Request, res: Response) => {
+router.delete('/:id', authenticateToken, async (req: AuthenticatedRequest, res: Response) => {
   try {
-    const client = await pool.connect();
-    const authReq = req as any;
     const clientId = parseInt(req.params.id);
     
-    try {
-      const result = await client.query(
-        'DELETE FROM clients WHERE id = $1 AND optic_id = $2 RETURNING *',
-        [clientId, authReq.user.optic_id]
-      );
-      
-      if (result.rows.length === 0) {
-        return res.status(404).json({ error: 'Client not found' });
-      }
-      
-      res.json({ message: 'Client deleted successfully' });
-    } finally {
-      client.release();
+    const result = await executeUpdate(
+      'DELETE FROM clients WHERE id = ? AND optic_id = ?',
+      [clientId, req.user?.optic_id]
+    );
+
+    if (result.rowCount === 0) {
+      return res.status(404).json({ error: 'Client not found' });
     }
+
+    res.json({ message: 'Client deleted successfully' });
   } catch (error) {
     console.error('Error deleting client:', error);
     res.status(500).json({ error: 'Database error' });
@@ -179,51 +212,19 @@ router.delete('/:id', authenticateToken, async (req: Request, res: Response) => 
 });
 
 // Search clients
-router.get('/search/:query', authenticateToken, async (req: Request, res: Response) => {
+router.get('/search/:query', authenticateToken, async (req: AuthenticatedRequest, res: Response) => {
   try {
-    const client = await pool.connect();
-    const authReq = req as any;
     const query = req.params.query;
+    const searchTerm = `%${query}%`;
     
-    try {
-      const result = await client.query(
-        'SELECT * FROM clients WHERE optic_id = $1 AND (first_name ILIKE $2 OR last_name ILIKE $2 OR dni ILIKE $2 OR email ILIKE $2) ORDER BY created_at DESC',
-        [authReq.user.optic_id, `%${query}%`]
-      );
-      
-      res.json(result.rows);
-    } finally {
-      client.release();
-    }
+    const result = await executeQuery(
+      'SELECT * FROM clients WHERE optic_id = ? AND (first_name LIKE ? OR last_name LIKE ? OR dni LIKE ? OR email LIKE ?) ORDER BY created_at DESC',
+      [req.user?.optic_id, searchTerm, searchTerm, searchTerm, searchTerm]
+    );
+    
+    res.json(result.rows);
   } catch (error) {
     console.error('Error searching clients:', error);
-    res.status(500).json({ error: 'Database error' });
-  }
-});
-
-// Get client by DNI
-router.get('/dni/:dni', authenticateToken, async (req: Request, res: Response) => {
-  try {
-    const client = await pool.connect();
-    const authReq = req as any;
-    const dni = req.params.dni;
-    
-    try {
-      const result = await client.query(
-        'SELECT * FROM clients WHERE optic_id = $1 AND dni = $2',
-        [authReq.user.optic_id, dni]
-      );
-      
-      if (result.rows.length === 0) {
-        return res.status(404).json({ error: 'Client not found' });
-      }
-      
-      res.json(result.rows[0]);
-    } finally {
-      client.release();
-    }
-  } catch (error) {
-    console.error('Error fetching client by DNI:', error);
     res.status(500).json({ error: 'Database error' });
   }
 });

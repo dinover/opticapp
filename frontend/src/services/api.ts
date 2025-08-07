@@ -215,6 +215,10 @@ export const salesAPI = {
     return response.data;
   },
 
+  delete: async (id: number): Promise<void> => {
+    await api.delete(`/sales/${id}`);
+  },
+
   getByClient: async (clientId: number): Promise<SaleWithDetails[]> => {
     const response = await api.get(`/sales/client/${clientId}`);
     return response.data;

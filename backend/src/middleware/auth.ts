@@ -1,6 +1,6 @@
 import { Request, Response, NextFunction } from 'express';
 import jwt from 'jsonwebtoken';
-import { pool } from '../database/init';
+import { executeQuerySingle } from '../database/query';
 import { User } from '../types';
 
 interface AuthRequest extends Request {
@@ -22,19 +22,15 @@ export const authenticateToken = (req: AuthRequest, res: Response, next: NextFun
     }
 
     try {
-      // Get user from database
-      const client = await pool.connect();
-      const result = await client.query(
-        'SELECT id, username, email, optic_id, role, created_at, updated_at FROM users WHERE id = $1',
+      // Get user from database using our query helper
+      const user = await executeQuerySingle(
+        'SELECT id, username, email, optic_id, role, is_approved, created_at, updated_at FROM users WHERE id = ?',
         [decoded.userId]
       );
-      client.release();
 
-      if (result.rows.length === 0) {
+      if (!user) {
         return res.status(404).json({ error: 'User not found' });
       }
-
-      const user = result.rows[0];
 
       // Type the user object properly
       const typedUser: Omit<User, 'password'> = {

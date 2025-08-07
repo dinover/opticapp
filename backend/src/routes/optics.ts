@@ -1,189 +1,84 @@
-import { Router, Request, Response } from 'express';
-import { pool } from '../database/init';
+import express from 'express';
 import { authenticateToken } from '../middleware/auth';
+import { executeQuery } from '../database/query';
 
-const router = Router();
+const router = express.Router();
 
-// Get optic info
-router.get('/', authenticateToken, async (req: Request, res: Response) => {
+// Interfaz para requests autenticados
+interface AuthenticatedRequest extends express.Request {
+  user: {
+    id: number;
+    optic_id: number;
+    role: string;
+  };
+}
+
+// GET /stats - Obtener estadísticas del óptico
+router.get('/stats', authenticateToken, async (req: AuthenticatedRequest, res) => {
   try {
-    const client = await pool.connect();
-    const authReq = req as any;
-    
-    try {
-      const result = await client.query(
-        'SELECT * FROM optics WHERE id = $1',
-        [authReq.user.optic_id]
-      );
-      
-      if (result.rows.length === 0) {
-        return res.status(404).json({ error: 'Optic not found' });
-      }
-      
-      res.json(result.rows[0]);
-    } finally {
-      client.release();
-    }
+    // Obtener estadísticas de productos
+    const productsResult = await executeQuery(`
+      SELECT COUNT(*) as total_products FROM products WHERE optic_id = $1
+    `, [req.user.optic_id]);
+
+    // Obtener estadísticas de clientes
+    const clientsResult = await executeQuery(`
+      SELECT COUNT(*) as total_clients FROM clients WHERE optic_id = $1
+    `, [req.user.optic_id]);
+
+    // Obtener estadísticas de ventas
+    const salesResult = await executeQuery(`
+      SELECT 
+        COUNT(*) as total_sales,
+        COALESCE(SUM(total_amount), 0) as total_revenue
+      FROM sales WHERE optic_id = $1
+    `, [req.user.optic_id]);
+
+    const stats = {
+      total_products: parseInt(productsResult.rows[0].total_products),
+      total_clients: parseInt(clientsResult.rows[0].total_clients),
+      total_sales: parseInt(salesResult.rows[0].total_sales),
+      total_revenue: salesResult.rows[0].total_revenue ? parseFloat(salesResult.rows[0].total_revenue) : 0
+    };
+
+    res.json(stats);
   } catch (error) {
-    console.error('Error fetching optic:', error);
-    res.status(500).json({ error: 'Database error' });
+    console.error('Error fetching stats:', error);
+    res.status(500).json({ error: 'Error interno del servidor' });
   }
 });
 
-// Update optic info
-router.put('/', authenticateToken, async (req: Request, res: Response) => {
+// GET /activity - Obtener actividad reciente
+router.get('/activity', authenticateToken, async (req: AuthenticatedRequest, res) => {
   try {
-    const client = await pool.connect();
-    const authReq = req as any;
-    const { name, address, phone, email } = req.body;
-    
-    try {
-      const result = await client.query(
-        'UPDATE optics SET name = $1, address = $2, phone = $3, email = $4, updated_at = CURRENT_TIMESTAMP WHERE id = $5 RETURNING *',
-        [name, address, phone, email, authReq.user.optic_id]
-      );
-      
-      if (result.rows.length === 0) {
-        return res.status(404).json({ error: 'Optic not found' });
-      }
-      
-      res.json(result.rows[0]);
-    } finally {
-      client.release();
-    }
-  } catch (error) {
-    console.error('Error updating optic:', error);
-    res.status(500).json({ error: 'Database error' });
-  }
-});
+    const result = await executeQuery(`
+      SELECT 
+        s.id,
+        COALESCE(c.first_name || ' ' || c.last_name, s.unregistered_client_name) as client_name,
+        COALESCE(p.name, si.unregistered_product_name) as product_name,
+        s.sale_date,
+        s.total_amount as total_price
+      FROM sales s
+      LEFT JOIN clients c ON s.client_id = c.id
+      LEFT JOIN sale_items si ON s.id = si.sale_id
+      LEFT JOIN products p ON si.product_id = p.id
+      WHERE s.optic_id = $1
+      ORDER BY s.created_at DESC
+      LIMIT 10
+    `, [req.user.optic_id]);
 
-// Get optic stats
-router.get('/stats', authenticateToken, async (req: Request, res: Response) => {
-  try {
-    const client = await pool.connect();
-    const authReq = req as any;
-    
-    try {
-      // Get total products
-      const productsResult = await client.query(
-        'SELECT COUNT(*) as total_products, SUM(stock_quantity) as total_stock FROM products WHERE optic_id = $1',
-        [authReq.user.optic_id]
-      );
-      
-      // Get total clients
-      const clientsResult = await client.query(
-        'SELECT COUNT(*) as total_clients FROM clients WHERE optic_id = $1',
-        [authReq.user.optic_id]
-      );
-      
-      // Get total sales
-      const salesResult = await client.query(
-        'SELECT COUNT(*) as total_sales, SUM(total_price) as total_revenue FROM sales WHERE optic_id = $1',
-        [authReq.user.optic_id]
-      );
-      
-      // Get low stock products
-      const lowStockResult = await client.query(
-        'SELECT COUNT(*) as low_stock_count FROM products WHERE optic_id = $1 AND stock_quantity <= 5 AND stock_quantity > 0',
-        [authReq.user.optic_id]
-      );
-      
-      // Get out of stock products
-      const outOfStockResult = await client.query(
-        'SELECT COUNT(*) as out_of_stock_count FROM products WHERE optic_id = $1 AND stock_quantity = 0',
-        [authReq.user.optic_id]
-      );
-      
-      const stats = {
-        total_products: parseInt(productsResult.rows[0].total_products) || 0,
-        total_stock: parseInt(productsResult.rows[0].total_stock) || 0,
-        total_clients: parseInt(clientsResult.rows[0].total_clients) || 0,
-        total_sales: parseInt(salesResult.rows[0].total_sales) || 0,
-        total_revenue: salesResult.rows[0].total_revenue ? parseFloat(salesResult.rows[0].total_revenue) : 0,
-        low_stock_count: parseInt(lowStockResult.rows[0].low_stock_count) || 0,
-        out_of_stock_count: parseInt(outOfStockResult.rows[0].out_of_stock_count) || 0
-      };
-      
-      res.json(stats);
-    } finally {
-      client.release();
-    }
-  } catch (error) {
-    console.error('Error fetching optic stats:', error);
-    res.status(500).json({ error: 'Database error' });
-  }
-});
+    const activity = result.rows.map(row => ({
+      id: row.id,
+      client_name: row.client_name,
+      product_name: row.product_name,
+      sale_date: row.sale_date,
+      total_price: parseFloat(row.total_price || '0')
+    }));
 
-// Get low stock products
-router.get('/low-stock', authenticateToken, async (req: Request, res: Response) => {
-  try {
-    const client = await pool.connect();
-    const authReq = req as any;
-    
-    try {
-      const result = await client.query(
-        'SELECT * FROM products WHERE optic_id = $1 AND stock_quantity <= 5 AND stock_quantity > 0 ORDER BY stock_quantity ASC',
-        [authReq.user.optic_id]
-      );
-      
-      res.json(result.rows);
-    } finally {
-      client.release();
-    }
-  } catch (error) {
-    console.error('Error fetching low stock products:', error);
-    res.status(500).json({ error: 'Database error' });
-  }
-});
-
-// Get out of stock products
-router.get('/out-of-stock', authenticateToken, async (req: Request, res: Response) => {
-  try {
-    const client = await pool.connect();
-    const authReq = req as any;
-    
-    try {
-      const result = await client.query(
-        'SELECT * FROM products WHERE optic_id = $1 AND stock_quantity = 0 ORDER BY name ASC',
-        [authReq.user.optic_id]
-      );
-      
-      res.json(result.rows);
-    } finally {
-      client.release();
-    }
-  } catch (error) {
-    console.error('Error fetching out of stock products:', error);
-    res.status(500).json({ error: 'Database error' });
-  }
-});
-
-// Get recent activity
-router.get('/activity', authenticateToken, async (req: Request, res: Response) => {
-  try {
-    const client = await pool.connect();
-    const authReq = req as any;
-    
-    try {
-      const result = await client.query(
-        `SELECT 'sale' as type, s.id, s.total_price as amount, s.created_at, 
-                c.first_name, c.last_name, p.name as product_name
-         FROM sales s
-         LEFT JOIN clients c ON s.client_id = c.id
-         LEFT JOIN products p ON s.product_id = p.id
-         WHERE s.optic_id = $1
-         ORDER BY s.created_at DESC
-         LIMIT 10`,
-        [authReq.user.optic_id]
-      );
-      
-      res.json(result.rows);
-    } finally {
-      client.release();
-    }
+    res.json(activity);
   } catch (error) {
     console.error('Error fetching activity:', error);
-    res.status(500).json({ error: 'Database error' });
+    res.status(500).json({ error: 'Error interno del servidor' });
   }
 });
 

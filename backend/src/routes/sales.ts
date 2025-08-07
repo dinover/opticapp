@@ -1,67 +1,55 @@
 import { Router, Request, Response } from 'express';
 import { body, validationResult } from 'express-validator';
-import { pool } from '../database/init';
+import { executeQuery, executeQuerySingle, executeInsert, executeUpdate } from '../database/query';
 import { authenticateToken } from '../middleware/auth';
-import { Sale, SaleWithDetails } from '../types';
+
+interface AuthenticatedRequest extends Request {
+  user?: any;
+}
 
 const router = Router();
 
 // Get all sales for the authenticated user's optic
-router.get('/', authenticateToken, async (req: Request, res: Response) => {
+router.get('/', authenticateToken, async (req: AuthenticatedRequest, res: Response) => {
   try {
-    const client = await pool.connect();
-    const authReq = req as any;
+    const result = await executeQuery(`
+      SELECT s.*, 
+             c.first_name as client_first_name, 
+             c.last_name as client_last_name,
+             c.dni as client_dni
+      FROM sales s
+      LEFT JOIN clients c ON s.client_id = c.id
+      WHERE s.optic_id = ?
+      ORDER BY s.sale_date DESC
+    `, [req.user?.optic_id]);
     
-    try {
-      const result = await client.query(
-        `SELECT s.*, c.dni, c.first_name, c.last_name, c.phone, c.email,
-                p.name as product_name, p.brand, p.model, p.color, p.size, p.price,
-                s.unregistered_client_name, s.unregistered_product_name
-         FROM sales s
-         LEFT JOIN clients c ON s.client_id = c.id
-         LEFT JOIN products p ON s.product_id = p.id
-         WHERE s.optic_id = $1
-         ORDER BY s.sale_date DESC, s.created_at DESC`,
-        [authReq.user.optic_id]
-      );
-      
-      res.json(result.rows);
-    } finally {
-      client.release();
-    }
+    res.json(result.rows);
   } catch (error) {
     console.error('Error fetching sales:', error);
     res.status(500).json({ error: 'Database error' });
   }
 });
 
-// Get single sale with details
-router.get('/:id', authenticateToken, async (req: Request, res: Response) => {
+// Get single sale
+router.get('/:id', authenticateToken, async (req: AuthenticatedRequest, res: Response) => {
   try {
-    const client = await pool.connect();
-    const authReq = req as any;
     const saleId = parseInt(req.params.id);
     
-    try {
-      const result = await client.query(
-        `SELECT s.*, c.dni, c.first_name, c.last_name, c.phone, c.email,
-                p.name as product_name, p.brand, p.model, p.color, p.size, p.price,
-                s.unregistered_client_name, s.unregistered_product_name
-         FROM sales s
-         LEFT JOIN clients c ON s.client_id = c.id
-         LEFT JOIN products p ON s.product_id = p.id
-         WHERE s.id = $1 AND s.optic_id = $2`,
-        [saleId, authReq.user.optic_id]
-      );
-      
-      if (result.rows.length === 0) {
-        return res.status(404).json({ error: 'Sale not found' });
-      }
-      
-      res.json(result.rows[0]);
-    } finally {
-      client.release();
+    const result = await executeQuerySingle(`
+      SELECT s.*, 
+             c.first_name as client_first_name, 
+             c.last_name as client_last_name,
+             c.dni as client_dni
+      FROM sales s
+      LEFT JOIN clients c ON s.client_id = c.id
+      WHERE s.id = ? AND s.optic_id = ?
+    `, [saleId, req.user?.optic_id]);
+    
+    if (!result) {
+      return res.status(404).json({ error: 'Sale not found' });
     }
+    
+    res.json(result);
   } catch (error) {
     console.error('Error fetching sale:', error);
     res.status(500).json({ error: 'Database error' });
@@ -71,238 +59,154 @@ router.get('/:id', authenticateToken, async (req: Request, res: Response) => {
 // Create new sale
 router.post('/', [
   authenticateToken,
-  body('client_id').optional().isInt({ min: 1 }).withMessage('Client ID must be a valid integer'),
-  body('product_id').optional().isInt({ min: 1 }).withMessage('Product ID must be a valid integer'),
-  body('quantity').isInt({ min: 1 }).withMessage('Valid quantity is required'),
-  body('total_price').isFloat({ min: 0 }).withMessage('Valid total price is required'),
-  body('sale_date').isISO8601().withMessage('Valid sale date is required'),
-  body('notes').optional().isString().withMessage('Notes must be a string'),
-  body('od_esf').optional().isString().withMessage('OD Esf must be a string'),
-  body('od_cil').optional().isString().withMessage('OD Cil must be a string'),
-  body('od_eje').optional().isString().withMessage('OD Eje must be a string'),
-  body('od_add').optional().isString().withMessage('OD Add must be a string'),
-  body('oi_esf').optional().isString().withMessage('OI Esf must be a string'),
-  body('oi_cil').optional().isString().withMessage('OI Cil must be a string'),
-  body('oi_eje').optional().isString().withMessage('OI Eje must be a string'),
-  body('oi_add').optional().isString().withMessage('OI Add must be a string')
-], async (req: Request, res: Response) => {
+  body('client_id').optional().isInt().withMessage('Client ID must be an integer'),
+  body('unregistered_client_name').optional().isString().withMessage('Unregistered client name must be a string'),
+  body('items').isArray().withMessage('Items must be an array'),
+  body('items.*.product_id').optional().isInt().withMessage('Product ID must be an integer'),
+  body('items.*.unregistered_product_name').optional().isString().withMessage('Unregistered product name must be a string'),
+  body('items.*.quantity').isInt({ min: 1 }).withMessage('Quantity must be at least 1'),
+  body('items.*.unit_price').isFloat({ min: 0 }).withMessage('Unit price must be positive'),
+  body('items.*.od_esf').optional().isFloat().withMessage('OD Esfera must be a number'),
+  body('items.*.od_cil').optional().isFloat().withMessage('OD Cilindro must be a number'),
+  body('items.*.od_eje').optional().isInt({ min: 0, max: 180 }).withMessage('OD Eje must be between 0 and 180'),
+  body('items.*.od_add').optional().isFloat().withMessage('OD Adición must be a number'),
+  body('items.*.oi_esf').optional().isFloat().withMessage('OI Esfera must be a number'),
+  body('items.*.oi_cil').optional().isFloat().withMessage('OI Cilindro must be a number'),
+  body('items.*.oi_eje').optional().isInt({ min: 0, max: 180 }).withMessage('OI Eje must be between 0 and 180'),
+  body('items.*.oi_add').optional().isFloat().withMessage('OI Adición must be a number'),
+  body('items.*.notes').optional().isString().withMessage('Notes must be a string'),
+  body('notes').optional().isString().withMessage('Sale notes must be a string')
+], async (req: AuthenticatedRequest, res: Response) => {
   const errors = validationResult(req);
   if (!errors.isEmpty()) {
     return res.status(400).json({ errors: errors.array() });
   }
 
   try {
-    const client = await pool.connect();
-    const authReq = req as any;
-    const { 
-      client_id, 
-      product_id, 
-      quantity, 
-      total_price,
-      sale_date, 
-      notes,
-      unregistered_client_name,
-      unregistered_product_name,
-      od_esf,
-      od_cil,
-      od_eje,
-      od_add,
-      oi_esf,
-      oi_cil,
-      oi_eje,
-      oi_add
-    } = req.body;
-
-    try {
-      // Validate client if provided
-      if (client_id) {
-        const clientResult = await client.query(
-          'SELECT id FROM clients WHERE id = $1 AND optic_id = $2',
-          [client_id, authReq.user.optic_id]
-        );
-        
-        if (clientResult.rows.length === 0) {
-          return res.status(400).json({ error: 'Invalid client ID' });
-        }
-      }
-
-      // Validate product if provided
-      if (product_id) {
-        const productResult = await client.query(
-          'SELECT id, stock_quantity FROM products WHERE id = $1 AND optic_id = $2',
-          [product_id, authReq.user.optic_id]
-        );
-        
-        if (productResult.rows.length === 0) {
-          return res.status(400).json({ error: 'Invalid product ID' });
-        }
-
-        // Check stock availability
-        const product = productResult.rows[0];
-        if (product.stock_quantity < quantity) {
-          return res.status(400).json({ error: 'Insufficient stock' });
-        }
-
-        // Update stock
-        await client.query(
-          'UPDATE products SET stock_quantity = stock_quantity - $1, updated_at = CURRENT_TIMESTAMP WHERE id = $2',
-          [quantity, product_id]
-        );
-      }
-
-      // Create sale
-      const saleResult = await client.query(
-        `INSERT INTO sales (optic_id, client_id, product_id, quantity, total_price, sale_date, notes,
-                          unregistered_client_name, unregistered_product_name,
-                          od_esf, od_cil, od_eje, od_add, oi_esf, oi_cil, oi_eje, oi_add)
-         VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17) RETURNING *`,
-        [authReq.user.optic_id, client_id || null, product_id || null, quantity, total_price, sale_date, notes,
-         unregistered_client_name, unregistered_product_name,
-         od_esf, od_cil, od_eje, od_add, oi_esf, oi_cil, oi_eje, oi_add]
-      );
-
-      const sale = saleResult.rows[0];
-
-      // Get sale with details
-      const detailsResult = await client.query(
-        `SELECT s.*, c.dni, c.first_name, c.last_name, c.phone, c.email,
-                p.name as product_name, p.brand, p.model, p.color, p.size, p.price,
-                s.unregistered_client_name, s.unregistered_product_name
-         FROM sales s
-         LEFT JOIN clients c ON s.client_id = c.id
-         LEFT JOIN products p ON s.product_id = p.id
-         WHERE s.id = $1`,
-        [sale.id]
-      );
-
-      res.status(201).json(detailsResult.rows[0]);
-    } finally {
-      client.release();
+    const { client_id, unregistered_client_name, items, notes } = req.body;
+    
+    // Validate that either client_id or unregistered_client_name is provided
+    if (!client_id && !unregistered_client_name) {
+      return res.status(400).json({ error: 'Either client_id or unregistered_client_name is required' });
     }
+
+    // Validate that each item has either product_id or unregistered_product_name
+    for (const item of items) {
+      if (!item.product_id && !item.unregistered_product_name) {
+        return res.status(400).json({ error: 'Each item must have either product_id or unregistered_product_name' });
+      }
+    }
+
+    // Calculate total amount
+    const totalAmount = items.reduce((sum: number, item: any) => {
+      return sum + (item.quantity * item.unit_price);
+    }, 0);
+
+    // Create the sale
+    const sale = await executeInsert(`
+      INSERT INTO sales (optic_id, client_id, unregistered_client_name, total_amount, notes, sale_date)
+      VALUES (?, ?, ?, ?, ?, CURRENT_TIMESTAMP)
+    `, [req.user?.optic_id, client_id || null, unregistered_client_name || null, totalAmount, notes || null]);
+
+    // Create sale items
+    for (const item of items) {
+      await executeInsert(`
+        INSERT INTO sale_items (
+          sale_id, product_id, unregistered_product_name, quantity, unit_price, total_price,
+          od_esf, od_cil, od_eje, od_add, oi_esf, oi_cil, oi_eje, oi_add, notes
+        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+      `, [
+        sale.id,
+        item.product_id || null,
+        item.unregistered_product_name || null,
+        item.quantity,
+        item.unit_price,
+        item.quantity * item.unit_price,
+        item.od_esf || null,
+        item.od_cil || null,
+        item.od_eje || null,
+        item.od_add || null,
+        item.oi_esf || null,
+        item.oi_cil || null,
+        item.oi_eje || null,
+        item.oi_add || null,
+        item.notes || null
+      ]);
+
+      // Update product stock if it's a registered product
+      if (item.product_id) {
+        await executeUpdate(`
+          UPDATE products 
+          SET stock_quantity = stock_quantity - ? 
+          WHERE id = ? AND optic_id = ?
+        `, [item.quantity, item.product_id, req.user?.optic_id]);
+      }
+    }
+
+    // Get the complete sale with items
+    const completeSale = await executeQuerySingle(`
+      SELECT s.*, 
+             c.first_name as client_first_name, 
+             c.last_name as client_last_name,
+             c.dni as client_dni
+      FROM sales s
+      LEFT JOIN clients c ON s.client_id = c.id
+      WHERE s.id = ?
+    `, [sale.id]);
+
+    const saleItems = await executeQuery(`
+      SELECT si.*, p.name as product_name, p.brand, p.model, p.color
+      FROM sale_items si
+      LEFT JOIN products p ON si.product_id = p.id
+      WHERE si.sale_id = ?
+    `, [sale.id]);
+
+    res.status(201).json({
+      ...completeSale,
+      items: saleItems.rows
+    });
   } catch (error) {
     console.error('Error creating sale:', error);
     res.status(500).json({ error: 'Database error' });
   }
 });
 
-// Get sales by client
-router.get('/client/:clientId', authenticateToken, async (req: Request, res: Response) => {
+// Delete sale
+router.delete('/:id', authenticateToken, async (req: AuthenticatedRequest, res: Response) => {
   try {
-    const client = await pool.connect();
-    const authReq = req as any;
-    const clientId = parseInt(req.params.clientId);
+    const saleId = parseInt(req.params.id);
     
-    try {
-      const result = await client.query(
-        `SELECT s.*, c.dni, c.first_name, c.last_name, c.phone, c.email,
-                p.name as product_name, p.brand, p.model, p.color, p.size, p.price,
-                s.unregistered_client_name, s.unregistered_product_name
-         FROM sales s
-         LEFT JOIN clients c ON s.client_id = c.id
-         LEFT JOIN products p ON s.product_id = p.id
-         WHERE s.optic_id = $1 AND s.client_id = $2
-         ORDER BY s.sale_date DESC`,
-        [authReq.user.optic_id, clientId]
-      );
-      
-      res.json(result.rows);
-    } finally {
-      client.release();
+    // Get sale items to restore stock
+    const items = await executeQuery(`
+      SELECT product_id, quantity FROM sale_items WHERE sale_id = ?
+    `, [saleId]);
+    
+    // Restore product stock
+    for (const item of items.rows) {
+      if (item.product_id) {
+        await executeUpdate(`
+          UPDATE products 
+          SET stock_quantity = stock_quantity + ? 
+          WHERE id = ? AND optic_id = ?
+        `, [item.quantity, item.product_id, req.user?.optic_id]);
+      }
     }
-  } catch (error) {
-    console.error('Error fetching client sales:', error);
-    res.status(500).json({ error: 'Database error' });
-  }
-});
+    
+    // Delete sale items (cascade)
+    await executeUpdate('DELETE FROM sale_items WHERE sale_id = ?', [saleId]);
+    
+    // Delete sale
+    const result = await executeUpdate(`
+      DELETE FROM sales WHERE id = ? AND optic_id = ?
+    `, [saleId, req.user?.optic_id]);
 
-// Get sales by date range
-router.get('/date-range/:startDate/:endDate', authenticateToken, async (req: Request, res: Response) => {
-  try {
-    const client = await pool.connect();
-    const authReq = req as any;
-    const { startDate, endDate } = req.params;
-    
-    try {
-      const result = await client.query(
-        `SELECT s.*, c.dni, c.first_name, c.last_name, c.phone, c.email,
-                p.name as product_name, p.brand, p.model, p.color, p.size, p.price,
-                s.unregistered_client_name, s.unregistered_product_name
-         FROM sales s
-         LEFT JOIN clients c ON s.client_id = c.id
-         LEFT JOIN products p ON s.product_id = p.id
-         WHERE s.optic_id = $1 AND s.sale_date BETWEEN $2 AND $3
-         ORDER BY s.sale_date DESC`,
-        [authReq.user.optic_id, startDate, endDate]
-      );
-      
-      res.json(result.rows);
-    } finally {
-      client.release();
+    if (result.rowCount === 0) {
+      return res.status(404).json({ error: 'Sale not found' });
     }
-  } catch (error) {
-    console.error('Error fetching sales by date range:', error);
-    res.status(500).json({ error: 'Database error' });
-  }
-});
 
-// Get sales statistics
-router.get('/stats/summary', authenticateToken, async (req: Request, res: Response) => {
-  try {
-    const client = await pool.connect();
-    const authReq = req as any;
-    
-    try {
-      const result = await client.query(
-        `SELECT 
-           COUNT(*) as total_sales,
-           SUM(total_price) as total_revenue,
-           AVG(total_price) as average_sale,
-           COUNT(DISTINCT client_id) as unique_clients
-         FROM sales 
-         WHERE optic_id = $1`,
-        [authReq.user.optic_id]
-      );
-      
-      res.json(result.rows[0]);
-    } finally {
-      client.release();
-    }
+    res.json({ message: 'Sale deleted successfully' });
   } catch (error) {
-    console.error('Error fetching sales stats:', error);
-    res.status(500).json({ error: 'Database error' });
-  }
-});
-
-// Get top selling products
-router.get('/stats/top-products', authenticateToken, async (req: Request, res: Response) => {
-  try {
-    const client = await pool.connect();
-    const authReq = req as any;
-    
-    try {
-      const result = await client.query(
-        `SELECT 
-           p.name,
-           p.brand,
-           p.model,
-           COUNT(s.id) as sales_count,
-           SUM(s.quantity) as total_quantity,
-           SUM(s.total_price) as total_revenue
-         FROM sales s
-         JOIN products p ON s.product_id = p.id
-         WHERE s.optic_id = $1
-         GROUP BY p.id, p.name, p.brand, p.model
-         ORDER BY total_revenue DESC
-         LIMIT 10`,
-        [authReq.user.optic_id]
-      );
-      
-      res.json(result.rows);
-    } finally {
-      client.release();
-    }
-  } catch (error) {
-    console.error('Error fetching top products:', error);
+    console.error('Error deleting sale:', error);
     res.status(500).json({ error: 'Database error' });
   }
 });
