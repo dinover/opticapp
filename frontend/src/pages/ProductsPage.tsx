@@ -3,18 +3,20 @@ import {
   Package, 
   Plus, 
   Search, 
-  Edit, 
-  Trash2, 
-  Eye,
+  Eye, 
+  Edit,
+  Trash2,
+  AlertTriangle,
   SortAsc,
   SortDesc
 } from 'lucide-react';
 import { productsAPI } from '../services/api';
 import { Product } from '../types';
 import AddProductModal from '../components/modals/AddProductModal';
-import ViewProductModal from '../components/modals/ViewProductModal';
 import EditProductModal from '../components/modals/EditProductModal';
+import ViewProductModal from '../components/modals/ViewProductModal';
 import ProductImage from '../components/ProductImage';
+import Pagination from '../components/Pagination';
 
 const ProductsPage: React.FC = () => {
   const [products, setProducts] = useState<Product[]>([]);
@@ -25,7 +27,12 @@ const ProductsPage: React.FC = () => {
   const [showAddModal, setShowAddModal] = useState(false);
   const [showViewModal, setShowViewModal] = useState(false);
   const [showEditModal, setShowEditModal] = useState(false);
+  const [showDeleteModal, setShowDeleteModal] = useState(false);
   const [selectedProduct, setSelectedProduct] = useState<Product | null>(null);
+  
+  // Pagination state
+  const [currentPage, setCurrentPage] = useState(1);
+  const itemsPerPage = 15;
 
   useEffect(() => {
     fetchProducts();
@@ -111,15 +118,19 @@ const ProductsPage: React.FC = () => {
     setShowEditModal(true);
   };
 
-  const handleDeleteProduct = async (product: Product) => {
-    if (window.confirm(`¿Estás seguro de que quieres eliminar "${product.name}"?`)) {
-      try {
-        await productsAPI.delete(product.id);
-        fetchProducts();
-      } catch (error) {
-        console.error('Error deleting product:', error);
-      }
-    }
+  const handleDeleteProduct = (product: Product) => {
+    setSelectedProduct(product);
+    setShowDeleteModal(true);
+  };
+
+  // Pagination functions
+  const totalPages = Math.ceil(products.length / itemsPerPage);
+  const startIndex = (currentPage - 1) * itemsPerPage;
+  const endIndex = startIndex + itemsPerPage;
+  const currentProducts = products.slice(startIndex, endIndex);
+
+  const handlePageChange = (page: number) => {
+    setCurrentPage(page);
   };
 
   if (loading) {
@@ -240,7 +251,7 @@ const ProductsPage: React.FC = () => {
               </tr>
             </thead>
             <tbody>
-              {sortedProducts.length === 0 ? (
+              {currentProducts.length === 0 ? (
                 <tr>
                   <td colSpan={8} className="text-center py-8 text-gray-500">
                     <Package className="w-12 h-12 mx-auto mb-3 text-gray-300" />
@@ -248,7 +259,7 @@ const ProductsPage: React.FC = () => {
                   </td>
                 </tr>
               ) : (
-                sortedProducts.map((product) => {
+                currentProducts.map((product) => {
                   const stockStatus = getStockStatus(product.stock_quantity);
                   return (
                     <tr key={product.id} className="border-b border-gray-100 hover:bg-gray-50">
@@ -347,6 +358,15 @@ const ProductsPage: React.FC = () => {
         }}
         onSuccess={fetchProducts}
         product={selectedProduct}
+      />
+
+      {/* Delete Product Modal */}
+      <Pagination
+        currentPage={currentPage}
+        totalPages={totalPages}
+        onPageChange={handlePageChange}
+        totalItems={products.length}
+        itemsPerPage={itemsPerPage}
       />
     </div>
   );

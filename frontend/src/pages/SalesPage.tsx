@@ -13,6 +13,7 @@ import { salesAPI } from '../services/api';
 import { SaleWithDetails } from '../types';
 import AddSaleModal from '../components/modals/AddSaleModal';
 import ViewSaleModal from '../components/modals/ViewSaleModal';
+import Pagination from '../components/Pagination';
 
 const SalesPage: React.FC = () => {
   const [sales, setSales] = useState<SaleWithDetails[]>([]);
@@ -22,6 +23,10 @@ const SalesPage: React.FC = () => {
   const [showAddModal, setShowAddModal] = useState(false);
   const [showViewModal, setShowViewModal] = useState(false);
   const [selectedSale, setSelectedSale] = useState<SaleWithDetails | null>(null);
+  
+  // Pagination state
+  const [currentPage, setCurrentPage] = useState(1);
+  const itemsPerPage = 15;
 
   useEffect(() => {
     fetchSales();
@@ -31,8 +36,6 @@ const SalesPage: React.FC = () => {
     try {
       setLoading(true);
       const data = await salesAPI.getAll();
-      console.log('Sales data received:', data);
-      console.log('Sample sale:', data[0]);
       setSales(data);
     } catch (error) {
       console.error('Error fetching sales:', error);
@@ -83,54 +86,55 @@ const SalesPage: React.FC = () => {
   const getTotalRevenue = () => {
     const total = sales.reduce((total, sale) => {
       const price = sale.total_price;
-      console.log('Sale ID:', sale.id, 'Price:', price, 'Type:', typeof price);
       
       // Handle null, undefined, NaN, and invalid numbers
       if (price === null || price === undefined || isNaN(price) || !isFinite(price)) {
-        console.log('Invalid price for sale:', sale.id, 'skipping...');
         return total;
       }
       
       // Convert string to number if needed
       const numericPrice = typeof price === 'string' ? parseFloat(price) : price;
-      console.log('Converted price:', numericPrice);
       
       // Validate the converted number
       if (isNaN(numericPrice) || !isFinite(numericPrice)) {
-        console.log('Invalid converted price for sale:', sale.id, 'skipping...');
         return total;
       }
       
       return total + numericPrice;
     }, 0);
-    console.log('Total revenue calculated:', total);
     return total;
   };
 
   const getAverageSale = () => {
     if (sales.length === 0) return 0;
     const totalRevenue = getTotalRevenue();
-    console.log('Total revenue for average:', totalRevenue, 'Sales count:', sales.length);
     
     // Handle division by zero and invalid results
     if (totalRevenue === 0) {
-      console.log('Total revenue is 0, returning 0');
       return 0;
     }
     
     if (isNaN(totalRevenue) || !isFinite(totalRevenue)) {
-      console.log('Invalid total revenue, returning 0');
       return 0;
     }
     
     const average = totalRevenue / sales.length;
-    console.log('Average calculated:', average);
     return average;
   };
 
   const getUniqueClients = () => {
     const uniqueClientIds = new Set(sales.map(sale => sale.client_id));
     return uniqueClientIds.size;
+  };
+
+  // Pagination functions
+  const totalPages = Math.ceil(sales.length / itemsPerPage);
+  const startIndex = (currentPage - 1) * itemsPerPage;
+  const endIndex = startIndex + itemsPerPage;
+  const currentSales = sales.slice(startIndex, endIndex);
+
+  const handlePageChange = (page: number) => {
+    setCurrentPage(page);
   };
 
   const handleViewSale = (sale: SaleWithDetails) => {
@@ -281,7 +285,7 @@ const SalesPage: React.FC = () => {
                </tr>
              </thead>
             <tbody>
-                             {sales.length === 0 ? (
+                             {currentSales.length === 0 ? (
                  <tr>
                    <td colSpan={7} className="text-center py-8 text-gray-500">
                      <ShoppingCart className="w-12 h-12 mx-auto mb-3 text-gray-300" />
@@ -289,7 +293,7 @@ const SalesPage: React.FC = () => {
                    </td>
                  </tr>
               ) : (
-                sales.map((sale) => (
+                currentSales.map((sale) => (
                   <tr key={sale.id} className="border-b border-gray-100 hover:bg-gray-50">
                     <td className="py-4 px-4">
                       <span className="font-mono text-gray-900">#{sale.id}</span>
@@ -362,6 +366,15 @@ const SalesPage: React.FC = () => {
           </table>
         </div>
       </div>
+
+      {/* Pagination */}
+      <Pagination
+        currentPage={currentPage}
+        totalPages={totalPages}
+        onPageChange={handlePageChange}
+        totalItems={sales.length}
+        itemsPerPage={itemsPerPage}
+      />
 
       {/* Summary */}
       <div className="flex items-center justify-between text-sm text-gray-600">

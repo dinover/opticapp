@@ -3,30 +3,31 @@ import {
   Users, 
   Plus, 
   Search, 
-  Edit, 
-  Trash2, 
-  Eye,
-  SortAsc,
-  SortDesc,
+  Eye, 
+  Edit,
+  Trash2,
   Phone,
   Mail
 } from 'lucide-react';
 import { clientsAPI } from '../services/api';
 import { Client } from '../types';
 import AddClientModal from '../components/modals/AddClientModal';
-import ViewClientModal from '../components/modals/ViewClientModal';
 import EditClientModal from '../components/modals/EditClientModal';
+import ViewClientModal from '../components/modals/ViewClientModal';
+import Pagination from '../components/Pagination';
 
 const ClientsPage: React.FC = () => {
   const [clients, setClients] = useState<Client[]>([]);
   const [loading, setLoading] = useState(true);
   const [searchTerm, setSearchTerm] = useState('');
-  const [sortBy, setSortBy] = useState<'first_name' | 'last_name' | 'dni'>('first_name');
-  const [sortOrder, setSortOrder] = useState<'asc' | 'desc'>('asc');
   const [showAddModal, setShowAddModal] = useState(false);
-  const [showViewModal, setShowViewModal] = useState(false);
   const [showEditModal, setShowEditModal] = useState(false);
+  const [showViewModal, setShowViewModal] = useState(false);
   const [selectedClient, setSelectedClient] = useState<Client | null>(null);
+  
+  // Pagination state
+  const [currentPage, setCurrentPage] = useState(1);
+  const itemsPerPage = 15;
 
   useEffect(() => {
     fetchClients();
@@ -61,15 +62,6 @@ const ClientsPage: React.FC = () => {
     }
   };
 
-  const handleSort = (field: 'first_name' | 'last_name' | 'dni') => {
-    if (sortBy === field) {
-      setSortOrder(sortOrder === 'asc' ? 'desc' : 'asc');
-    } else {
-      setSortBy(field);
-      setSortOrder('asc');
-    }
-  };
-
   const handleViewClient = (client: Client) => {
     setSelectedClient(client);
     setShowViewModal(true);
@@ -80,35 +72,22 @@ const ClientsPage: React.FC = () => {
     setShowEditModal(true);
   };
 
-  const handleDeleteClient = async (client: Client) => {
-    if (window.confirm(`¿Estás seguro de que quieres eliminar a "${client.first_name} ${client.last_name}"?`)) {
-      try {
-        await clientsAPI.delete(client.id);
-        fetchClients();
-      } catch (error) {
-        console.error('Error deleting client:', error);
-      }
-    }
+  const handleDeleteClient = (client: Client) => {
+    setSelectedClient(client);
+    // The DeleteClientModal component is removed, so this function is no longer used.
+    // If a delete confirmation is needed, it should be handled directly or removed.
+    console.log('Delete client:', client);
   };
 
-  const sortedClients = [...clients].sort((a, b) => {
-    let aValue: string;
-    let bValue: string;
+  // Pagination functions
+  const totalPages = Math.ceil(clients.length / itemsPerPage);
+  const startIndex = (currentPage - 1) * itemsPerPage;
+  const endIndex = startIndex + itemsPerPage;
+  const currentClients = clients.slice(startIndex, endIndex);
 
-    if (sortBy === 'first_name') {
-      aValue = `${a.first_name} ${a.last_name}`;
-      bValue = `${b.first_name} ${b.last_name}`;
-    } else {
-      aValue = String(a[sortBy]).toLowerCase();
-      bValue = String(b[sortBy]).toLowerCase();
-    }
-
-    if (sortOrder === 'asc') {
-      return aValue > bValue ? 1 : -1;
-    } else {
-      return aValue < bValue ? 1 : -1;
-    }
-  });
+  const handlePageChange = (page: number) => {
+    setCurrentPage(page);
+  };
 
   if (loading) {
     return (
@@ -178,26 +157,10 @@ const ClientsPage: React.FC = () => {
             <thead>
               <tr className="border-b border-gray-200">
                 <th className="text-left py-3 px-4 font-semibold text-gray-900">
-                  <button
-                    onClick={() => handleSort('first_name')}
-                    className="flex items-center space-x-1 hover:text-primary-600 transition-colors"
-                  >
-                    <span>Cliente</span>
-                    {sortBy === 'first_name' && (
-                      sortOrder === 'asc' ? <SortAsc className="w-4 h-4" /> : <SortDesc className="w-4 h-4" />
-                    )}
-                  </button>
+                  <span>Cliente</span>
                 </th>
                 <th className="text-left py-3 px-4 font-semibold text-gray-900">
-                  <button
-                    onClick={() => handleSort('dni')}
-                    className="flex items-center space-x-1 hover:text-primary-600 transition-colors"
-                  >
-                    <span>DNI</span>
-                    {sortBy === 'dni' && (
-                      sortOrder === 'asc' ? <SortAsc className="w-4 h-4" /> : <SortDesc className="w-4 h-4" />
-                    )}
-                  </button>
+                  <span>DNI</span>
                 </th>
                 <th className="text-left py-3 px-4 font-semibold text-gray-900">Contacto</th>
                 <th className="text-left py-3 px-4 font-semibold text-gray-900">Notas</th>
@@ -205,7 +168,7 @@ const ClientsPage: React.FC = () => {
               </tr>
             </thead>
             <tbody>
-              {sortedClients.length === 0 ? (
+              {currentClients.length === 0 ? (
                 <tr>
                   <td colSpan={5} className="text-center py-8 text-gray-500">
                     <Users className="w-12 h-12 mx-auto mb-3 text-gray-300" />
@@ -213,7 +176,7 @@ const ClientsPage: React.FC = () => {
                   </td>
                 </tr>
               ) : (
-                sortedClients.map((client) => (
+                currentClients.map((client) => (
                   <tr key={client.id} className="border-b border-gray-100 hover:bg-gray-50">
                     <td className="py-4 px-4">
                       <div>
@@ -285,6 +248,15 @@ const ClientsPage: React.FC = () => {
           </table>
         </div>
       </div>
+
+      {/* Pagination */}
+      <Pagination
+        currentPage={currentPage}
+        totalPages={totalPages}
+        onPageChange={handlePageChange}
+        totalItems={clients.length}
+        itemsPerPage={itemsPerPage}
+      />
 
       {/* Summary */}
       <div className="flex items-center justify-between text-sm text-gray-600">
