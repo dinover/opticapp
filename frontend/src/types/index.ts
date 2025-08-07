@@ -4,6 +4,7 @@ export interface User {
   email: string;
   optic_id: number;
   role: 'admin' | 'user';
+  is_approved: boolean;
   created_at: string;
   updated_at: string;
 }
@@ -98,6 +99,30 @@ export interface RegisterRequest {
   optic_address: string;
   optic_phone: string;
   optic_email: string;
+}
+
+export interface RegistrationRequest {
+  id: number;
+  user_id: number;
+  optic_id: number;
+  status: 'pending' | 'approved' | 'rejected';
+  admin_notes?: string;
+  reviewed_by?: number;
+  reviewed_at?: string;
+  created_at: string;
+  updated_at: string;
+  username: string;
+  email: string;
+  optic_name: string;
+  optic_address: string;
+  optic_phone: string;
+  optic_email: string;
+}
+
+export interface ApproveRegistrationRequest {
+  requestId: number;
+  status: 'approved' | 'rejected';
+  admin_notes?: string;
 }
 
 export interface AuthResponse {

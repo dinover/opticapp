@@ -7,6 +7,7 @@ import DashboardPage from './pages/DashboardPage';
 import ProductsPage from './pages/ProductsPage';
 import ClientsPage from './pages/ClientsPage';
 import SalesPage from './pages/SalesPage';
+import AdminRegistrationRequestsPage from './pages/AdminRegistrationRequestsPage';
 import Layout from './components/Layout';
 import LoadingSpinner from './components/LoadingSpinner';
 
@@ -56,6 +57,7 @@ const AppRoutes: React.FC = () => {
         <Route path="products" element={<ProductsPage />} />
         <Route path="clients" element={<ClientsPage />} />
         <Route path="sales" element={<SalesPage />} />
+        <Route path="admin/registration-requests" element={<AdminRegistrationRequestsPage />} />
       </Route>
 
       {/* Catch all */}

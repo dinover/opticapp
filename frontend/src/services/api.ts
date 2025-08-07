@@ -7,7 +7,8 @@ import {
   Client,
   SaleWithDetails,
   ActivityItem,
-  TopProduct
+  TopProduct,
+  RegistrationRequest
 } from '../types';
 
 // Temporary hardcoded URL while debugging environment variable
@@ -61,13 +62,23 @@ export const authAPI = {
     return response.data;
   },
 
-  register: async (data: RegisterRequest): Promise<AuthResponse> => {
+  register: async (data: RegisterRequest): Promise<any> => {
     const response = await api.post('/auth/register', data);
     return response.data;
   },
 
   getProfile: async () => {
     const response = await api.get('/auth/profile');
+    return response.data;
+  },
+
+  getRegistrationRequests: async (): Promise<RegistrationRequest[]> => {
+    const response = await api.get('/auth/registration-requests');
+    return response.data;
+  },
+
+  approveRegistrationRequest: async (requestId: number, data: { status: 'approved' | 'rejected', admin_notes?: string }): Promise<any> => {
+    const response = await api.put(`/auth/registration-requests/${requestId}`, data);
     return response.data;
   },
 };

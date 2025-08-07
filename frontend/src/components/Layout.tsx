@@ -10,7 +10,8 @@ import {
   LogOut, 
   Settings,
   Building,
-  User
+  User,
+  Shield
 } from 'lucide-react';
 import { useAuth } from '../contexts/AuthContext';
 
@@ -26,6 +27,13 @@ const Layout: React.FC = () => {
     { name: 'Clientes', href: '/clients', icon: Users },
     { name: 'Ventas', href: '/sales', icon: ShoppingCart },
   ];
+
+  // Add admin-only navigation items
+  const adminNavigation = user?.role === 'admin' ? [
+    { name: 'Solicitudes de Registro', href: '/admin/registration-requests', icon: Shield },
+  ] : [];
+
+  const allNavigation = [...navigation, ...adminNavigation];
 
   const handleLogout = () => {
     logout();
@@ -89,7 +97,7 @@ const Layout: React.FC = () => {
 
           {/* Navigation */}
           <nav className="flex-1 px-4 py-6 space-y-2">
-            {navigation.map((item) => {
+            {allNavigation.map((item) => {
               const Icon = item.icon;
               return (
                 <Link

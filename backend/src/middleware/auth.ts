@@ -43,6 +43,7 @@ export const authenticateToken = (req: AuthRequest, res: Response, next: NextFun
         email: user.email,
         optic_id: user.optic_id,
         role: user.role,
+        is_approved: user.is_approved,
         created_at: user.created_at,
         updated_at: user.updated_at
       };

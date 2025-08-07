@@ -90,17 +90,13 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
   const register = async (data: any) => {
     try {
       setLoading(true);
-      const response: AuthResponse = await authAPI.register(data);
+      const response = await authAPI.register(data);
       
-      setToken(response.token);
-      setUser(response.user);
-      setOptic(response.optic);
+      // Don't automatically log in the user since they need approval
+      toast.success('¡Registro enviado exitosamente! Tu cuenta será revisada por un administrador antes de poder iniciar sesión.');
       
-      localStorage.setItem('token', response.token);
-      localStorage.setItem('user', JSON.stringify(response.user));
-      localStorage.setItem('optic', JSON.stringify(response.optic));
-      
-      toast.success('¡Registro exitoso! Bienvenido a AppDelStream');
+      // Return the response so the component can handle it
+      return response;
     } catch (error: any) {
       const message = error.response?.data?.error || 'Error al registrar';
       toast.error(message);
