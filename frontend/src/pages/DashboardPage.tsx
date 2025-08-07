@@ -4,9 +4,7 @@ import {
   Users, 
   ShoppingCart, 
   DollarSign, 
-  TrendingUp, 
   AlertTriangle,
-  Eye,
   Activity
 } from 'lucide-react';
 import { opticAPI } from '../services/api';
@@ -110,7 +108,7 @@ const DashboardPage: React.FC = () => {
             </div>
             <div className="ml-4">
               <p className="text-sm font-medium text-gray-600">Productos</p>
-              <p className="text-2xl font-bold text-gray-900">{stats?.totalProducts || 0}</p>
+              <p className="text-2xl font-bold text-gray-900">{stats?.total_products || 0}</p>
             </div>
           </div>
         </div>
@@ -122,7 +120,7 @@ const DashboardPage: React.FC = () => {
             </div>
             <div className="ml-4">
               <p className="text-sm font-medium text-gray-600">Clientes</p>
-              <p className="text-2xl font-bold text-gray-900">{stats?.totalClients || 0}</p>
+              <p className="text-2xl font-bold text-gray-900">{stats?.total_clients || 0}</p>
             </div>
           </div>
         </div>
@@ -134,7 +132,7 @@ const DashboardPage: React.FC = () => {
             </div>
             <div className="ml-4">
               <p className="text-sm font-medium text-gray-600">Ventas</p>
-              <p className="text-2xl font-bold text-gray-900">{stats?.totalSales || 0}</p>
+              <p className="text-2xl font-bold text-gray-900">{stats?.total_sales || 0}</p>
             </div>
           </div>
         </div>
@@ -146,7 +144,7 @@ const DashboardPage: React.FC = () => {
             </div>
             <div className="ml-4">
               <p className="text-sm font-medium text-gray-600">Ingresos</p>
-              <p className="text-2xl font-bold text-gray-900">{formatCurrency(stats?.totalRevenue || 0)}</p>
+              <p className="text-2xl font-bold text-gray-900">{formatCurrency(stats?.total_revenue || 0)}</p>
             </div>
           </div>
         </div>
@@ -170,7 +168,7 @@ const DashboardPage: React.FC = () => {
               <div key={index} className={`flex items-center p-3 rounded-lg border ${getActivityColor(item.type)}`}>
                 {getActivityIcon(item.type)}
                 <div className="ml-3 flex-1">
-                  <p className="text-sm font-medium text-gray-900">{item.description}</p>
+                  <p className="text-sm font-medium text-gray-900">{item.client_name}</p>
                   <p className="text-xs text-gray-600">{formatDate(item.created_at)}</p>
                 </div>
               </div>
@@ -190,7 +188,7 @@ const DashboardPage: React.FC = () => {
                 <Package className="w-4 h-4 text-red-500" />
                 <div className="ml-3 flex-1">
                   <p className="text-sm font-medium text-gray-900">{product.name}</p>
-                  <p className="text-xs text-red-600">Stock: {product.stock} unidades</p>
+                  <p className="text-xs text-red-600">Stock: {product.stock_quantity} unidades</p>
                 </div>
               </div>
             ))}
