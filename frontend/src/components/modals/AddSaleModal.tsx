@@ -237,22 +237,30 @@ const AddSaleModal: React.FC<AddSaleModalProps> = ({
                             console.log('Selected product ID:', productId); // Debug
                             console.log('Current item.product_id:', item.product_id); // Debug
                             
+                            // Crear un objeto actualizado con todos los cambios
+                            let updatedItem = { ...item };
+                            
                             if (productId === 'unregistered') {
-                              updateItem(index, 'product_id', 'unregistered');
-                              updateItem(index, 'unregistered_product_name', '');
-                              updateItem(index, 'unit_price', 0);
+                              updatedItem.product_id = 'unregistered';
+                              updatedItem.unregistered_product_name = '';
+                              updatedItem.unit_price = 0;
                             } else if (productId) {
                               const product = products.find(p => p.id === parseInt(productId));
-                              updateItem(index, 'product_id', productId); // Guardar como string
-                              updateItem(index, 'unregistered_product_name', '');
+                              updatedItem.product_id = productId;
+                              updatedItem.unregistered_product_name = '';
                               if (product) {
-                                updateItem(index, 'unit_price', product.price);
+                                updatedItem.unit_price = product.price;
                               }
                             } else {
-                              updateItem(index, 'product_id', '');
-                              updateItem(index, 'unregistered_product_name', '');
-                              updateItem(index, 'unit_price', 0);
+                              updatedItem.product_id = '';
+                              updatedItem.unregistered_product_name = '';
+                              updatedItem.unit_price = 0;
                             }
+                            
+                            // Actualizar el item completo de una vez
+                            const updatedItems = [...saleItems];
+                            updatedItems[index] = updatedItem;
+                            setSaleItems(updatedItems);
                           }}
                           className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-primary-500"
                         >
