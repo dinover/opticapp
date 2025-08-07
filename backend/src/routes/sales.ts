@@ -89,16 +89,24 @@ router.get('/:id', authenticateToken, async (req: AuthenticatedRequest, res) => 
 // POST / - Crear una nueva venta
 router.post('/', authenticateToken, async (req: AuthenticatedRequest, res) => {
   try {
+    console.log('=== CREATE SALE DEBUG ===');
+    console.log('Request body:', req.body);
+    console.log('User optic_id:', req.user?.optic_id);
+    
     const { client_id, unregistered_client_name, items, notes } = req.body;
 
     if (!items || !Array.isArray(items) || items.length === 0) {
       return res.status(400).json({ error: 'Debe incluir al menos un producto' });
     }
 
+    console.log('Items to process:', items);
+
     // Calcular el total de la venta
     const totalAmount = items.reduce((total: number, item: any) => {
       return total + (item.quantity * item.unit_price);
     }, 0);
+
+    console.log('Total amount calculated:', totalAmount);
 
     // Crear la venta
     const saleResult = await executeInsert(`
@@ -108,16 +116,22 @@ router.post('/', authenticateToken, async (req: AuthenticatedRequest, res) => {
     `, [req.user?.optic_id, client_id || null, unregistered_client_name || null, totalAmount, notes || null]);
 
     const saleId = saleResult.rows[0].id;
+    console.log('Sale created with ID:', saleId);
 
     // Crear los items de la venta
     for (const item of items) {
+      console.log('Processing item:', item);
+      
+      // Convertir product_id a número si es un string numérico
+      const productId = item.product_id && item.product_id !== 'unregistered' ? parseInt(item.product_id) : null;
+      
       await executeInsert(`
         INSERT INTO sale_items (
           sale_id, product_id, unregistered_product_name, quantity, unit_price,
           od_esf, od_cil, od_eje, od_add, oi_esf, oi_cil, oi_eje, oi_add, notes
         ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14)
       `, [
-        saleId, item.product_id || null, item.unregistered_product_name || null,
+        saleId, productId, item.unregistered_product_name || null,
         item.quantity, item.unit_price,
         item.od_esf || null, item.od_cil || null, item.od_eje || null, item.od_add || null,
         item.oi_esf || null, item.oi_cil || null, item.oi_eje || null, item.oi_add || null,
@@ -125,21 +139,24 @@ router.post('/', authenticateToken, async (req: AuthenticatedRequest, res) => {
       ]);
 
       // Actualizar stock si es un producto registrado
-      if (item.product_id) {
+      if (productId) {
         await executeUpdate(`
           UPDATE products 
           SET stock_quantity = stock_quantity - $1
           WHERE id = $2 AND optic_id = $3
-        `, [item.quantity, item.product_id, req.user?.optic_id]);
+        `, [item.quantity, productId, req.user?.optic_id]);
       }
     }
 
+    console.log('=== CREATE SALE SUCCESS ===');
     res.status(201).json({ 
       message: 'Venta creada exitosamente',
       sale_id: saleId 
     });
   } catch (error) {
+    console.error('=== CREATE SALE ERROR ===');
     console.error('Error creating sale:', error);
+    console.error('Error stack:', error.stack);
     res.status(500).json({ error: 'Error interno del servidor' });
   }
 });
