@@ -7,6 +7,7 @@ interface PaginationProps {
   onPageChange: (page: number) => void;
   totalItems: number;
   itemsPerPage: number;
+  onItemsPerPageChange: (itemsPerPage: number) => void;
 }
 
 const Pagination: React.FC<PaginationProps> = ({
@@ -14,7 +15,8 @@ const Pagination: React.FC<PaginationProps> = ({
   totalPages,
   onPageChange,
   totalItems,
-  itemsPerPage
+  itemsPerPage,
+  onItemsPerPageChange
 }) => {
   const startItem = (currentPage - 1) * itemsPerPage + 1;
   const endItem = Math.min(currentPage * itemsPerPage, totalItems);
@@ -54,16 +56,34 @@ const Pagination: React.FC<PaginationProps> = ({
     return pages;
   };
 
+  const handleItemsPerPageChange = (event: React.ChangeEvent<HTMLSelectElement>) => {
+    const newItemsPerPage = parseInt(event.target.value);
+    onItemsPerPageChange(newItemsPerPage);
+  };
+
   if (totalPages <= 1) {
     return null;
   }
 
   return (
     <div className="flex items-center justify-between px-4 py-3 bg-white border-t border-gray-200">
-      <div className="flex items-center text-sm text-gray-700">
+      <div className="flex items-center space-x-4 text-sm text-gray-700">
         <span>
           Mostrando {startItem} a {endItem} de {totalItems} resultados
         </span>
+        <div className="flex items-center space-x-2">
+          <span>Mostrar:</span>
+          <select
+            value={itemsPerPage}
+            onChange={handleItemsPerPageChange}
+            className="px-2 py-1 border border-gray-300 rounded text-sm focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-transparent"
+          >
+            <option value={10}>10</option>
+            <option value={20}>20</option>
+            <option value={50}>50</option>
+          </select>
+          <span>por página</span>
+        </div>
       </div>
       
       <div className="flex items-center space-x-2">

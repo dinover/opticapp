@@ -26,7 +26,7 @@ const SalesPage: React.FC = () => {
   
   // Pagination state
   const [currentPage, setCurrentPage] = useState(1);
-  const itemsPerPage = 15;
+  const [itemsPerPage, setItemsPerPage] = useState(10);
 
   useEffect(() => {
     fetchSales();
@@ -135,6 +135,11 @@ const SalesPage: React.FC = () => {
 
   const handlePageChange = (page: number) => {
     setCurrentPage(page);
+  };
+
+  const handleItemsPerPageChange = (newItemsPerPage: number) => {
+    setItemsPerPage(newItemsPerPage);
+    setCurrentPage(1); // Reset to first page when changing items per page
   };
 
   const handleViewSale = (sale: SaleWithDetails) => {
@@ -372,8 +377,9 @@ const SalesPage: React.FC = () => {
         currentPage={currentPage}
         totalPages={totalPages}
         onPageChange={handlePageChange}
-        totalItems={sales.length}
+        onItemsPerPageChange={handleItemsPerPageChange}
         itemsPerPage={itemsPerPage}
+        totalItems={sales.length}
       />
 
       {/* Summary */}
