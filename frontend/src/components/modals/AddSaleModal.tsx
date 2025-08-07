@@ -178,22 +178,21 @@ const AddSaleModal: React.FC<AddSaleModalProps> = ({
                   </select>
                 </div>
 
-                {/* Cliente no registrado */}
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">
-                    O Cliente No Registrado
-                  </label>
-                  <input
-                    type="text"
-                    value={unregisteredClientName}
-                    onChange={(e) => {
-                      setUnregisteredClientName(e.target.value);
-                      if (e.target.value) setSelectedClient('');
-                    }}
-                    placeholder="Nombre del cliente"
-                    className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-primary-500"
-                  />
-                </div>
+                {/* Cliente no registrado - solo mostrar si no hay cliente seleccionado */}
+                {!selectedClient && (
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-2">
+                      O Cliente No Registrado
+                    </label>
+                    <input
+                      type="text"
+                      value={unregisteredClientName}
+                      onChange={(e) => setUnregisteredClientName(e.target.value)}
+                      placeholder="Nombre del cliente"
+                      className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-primary-500"
+                    />
+                  </div>
+                )}
               </div>
             </div>
 
@@ -253,22 +252,23 @@ const AddSaleModal: React.FC<AddSaleModalProps> = ({
                         </select>
                       </div>
 
-                      {/* Producto no registrado */}
-                      <div>
-                        <label className="block text-sm font-medium text-gray-700 mb-1">
-                          O Producto No Registrado
-                        </label>
-                        <input
-                          type="text"
-                          value={item.unregistered_product_name || ''}
-                          onChange={(e) => {
-                            updateItem(index, 'unregistered_product_name', e.target.value);
-                            updateItem(index, 'product_id', undefined);
-                          }}
-                          placeholder="Nombre del producto"
-                          className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-primary-500"
-                        />
-                      </div>
+                      {/* Producto no registrado - solo mostrar si no hay producto seleccionado */}
+                      {!item.product_id && (
+                        <div>
+                          <label className="block text-sm font-medium text-gray-700 mb-1">
+                            O Producto No Registrado
+                          </label>
+                          <input
+                            type="text"
+                            value={item.unregistered_product_name || ''}
+                            onChange={(e) => {
+                              updateItem(index, 'unregistered_product_name', e.target.value);
+                            }}
+                            placeholder="Nombre del producto"
+                            className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-primary-500"
+                          />
+                        </div>
+                      )}
 
                       {/* Cantidad */}
                       <div>
