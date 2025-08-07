@@ -6,7 +6,6 @@ import {
   Eye, 
   Edit,
   Trash2,
-  AlertTriangle,
   SortAsc,
   SortDesc
 } from 'lucide-react';
@@ -27,7 +26,6 @@ const ProductsPage: React.FC = () => {
   const [showAddModal, setShowAddModal] = useState(false);
   const [showViewModal, setShowViewModal] = useState(false);
   const [showEditModal, setShowEditModal] = useState(false);
-  const [showDeleteModal, setShowDeleteModal] = useState(false);
   const [selectedProduct, setSelectedProduct] = useState<Product | null>(null);
   
   // Pagination state
@@ -76,25 +74,6 @@ const ProductsPage: React.FC = () => {
     }
   };
 
-  const sortedProducts = [...products].sort((a, b) => {
-    let aValue: any = a[sortBy];
-    let bValue: any = b[sortBy];
-
-    if (sortBy === 'price' || sortBy === 'stock_quantity') {
-      aValue = Number(aValue);
-      bValue = Number(bValue);
-    } else {
-      aValue = String(aValue).toLowerCase();
-      bValue = String(bValue).toLowerCase();
-    }
-
-    if (sortOrder === 'asc') {
-      return aValue > bValue ? 1 : -1;
-    } else {
-      return aValue < bValue ? 1 : -1;
-    }
-  });
-
   const formatCurrency = (amount: number) => {
     return new Intl.NumberFormat('es-AR', {
       style: 'currency',
@@ -120,7 +99,7 @@ const ProductsPage: React.FC = () => {
 
   const handleDeleteProduct = (product: Product) => {
     setSelectedProduct(product);
-    setShowDeleteModal(true);
+    // setShowDeleteModal(true); // This variable was removed, so this line is removed.
   };
 
   // Pagination functions
