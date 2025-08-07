@@ -161,23 +161,24 @@ export async function insertUser(username: string, email: string, password: stri
   }
 }
 
-export async function executeUpdate(query: string, params: any[] = []): Promise<void> {
+export async function executeUpdate(query: string, params: any[] = []): Promise<QueryResult> {
   if (isDevelopment && sqliteDb) {
     // SQLite update
     return new Promise((resolve, reject) => {
-      sqliteDb!.run(query, params, (err) => {
+      sqliteDb!.run(query, params, function(err) {
         if (err) {
           reject(err);
           return;
         }
-        resolve();
+        resolve({ rows: [], rowCount: this.changes || 0 });
       });
     });
   } else if (pool) {
     // PostgreSQL update
     const client = await pool.connect();
     try {
-      await client.query(query, params);
+      const result = await client.query(query, params);
+      return { rows: result.rows, rowCount: result.rowCount };
     } finally {
       client.release();
     }
