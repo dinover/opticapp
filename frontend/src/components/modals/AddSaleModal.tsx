@@ -227,7 +227,7 @@ const AddSaleModal: React.FC<AddSaleModalProps> = ({
                           Producto
                         </label>
                         <select
-                          value={item.product_id || ''}
+                          value={item.product_id?.toString() || ''}
                           onChange={(e) => {
                             const productId = e.target.value;
                             console.log('Selected product ID:', productId); // Debug
@@ -262,7 +262,7 @@ const AddSaleModal: React.FC<AddSaleModalProps> = ({
                       </div>
 
                       {/* Producto no registrado - solo mostrar si se selecciona "Producto no registrado" */}
-                      {(item.product_id === 'unregistered' || item.product_id === '') && (
+                      {item.product_id === 'unregistered' && (
                         <div>
                           <label className="block text-sm font-medium text-gray-700 mb-1">
                             Nombre del Producto No Registrado
