@@ -55,13 +55,11 @@ router.get('/activity', authenticateToken, async (req: AuthenticatedRequest, res
       SELECT 
         s.id,
         COALESCE(c.first_name || ' ' || c.last_name, s.unregistered_client_name) as client_name,
-        COALESCE(p.name, si.unregistered_product_name) as product_name,
         s.sale_date,
-        s.total_amount as total_price
+        s.total_amount as total_price,
+        s.created_at
       FROM sales s
       LEFT JOIN clients c ON s.client_id = c.id
-      LEFT JOIN sale_items si ON s.id = si.sale_id
-      LEFT JOIN products p ON si.product_id = p.id
       WHERE s.optic_id = $1
       ORDER BY s.created_at DESC
       LIMIT 10
@@ -69,10 +67,10 @@ router.get('/activity', authenticateToken, async (req: AuthenticatedRequest, res
 
     const activity = result.rows.map(row => ({
       id: row.id,
-      client_name: row.client_name,
-      product_name: row.product_name,
+      client_name: row.client_name || 'Cliente no registrado',
       sale_date: row.sale_date,
-      total_price: parseFloat(row.total_price || '0')
+      total_price: parseFloat(row.total_price || '0'),
+      created_at: row.created_at
     }));
 
     res.json(activity);
