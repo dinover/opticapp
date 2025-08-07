@@ -35,6 +35,10 @@ const Layout: React.FC = () => {
 
   const allNavigation = [...navigation, ...adminNavigation];
 
+  // Debug: Log user role
+  console.log('User role:', user?.role);
+  console.log('Admin navigation items:', adminNavigation.length);
+
   const handleLogout = () => {
     logout();
     navigate('/login');
