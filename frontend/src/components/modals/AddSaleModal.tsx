@@ -4,7 +4,7 @@ import { Client, Product } from '../../types';
 import { salesAPI } from '../../services/api';
 
 interface SaleItem {
-  product_id?: number | string;
+  product_id?: string;
   unregistered_product_name?: string;
   quantity: number;
   unit_price: number;
@@ -231,6 +231,7 @@ const AddSaleModal: React.FC<AddSaleModalProps> = ({
                           onChange={(e) => {
                             const productId = e.target.value;
                             console.log('Selected product ID:', productId); // Debug
+                            console.log('Current item.product_id:', item.product_id); // Debug
                             
                             if (productId === 'unregistered') {
                               updateItem(index, 'product_id', 'unregistered');
@@ -238,7 +239,7 @@ const AddSaleModal: React.FC<AddSaleModalProps> = ({
                               updateItem(index, 'unit_price', 0);
                             } else if (productId) {
                               const product = products.find(p => p.id === parseInt(productId));
-                              updateItem(index, 'product_id', parseInt(productId));
+                              updateItem(index, 'product_id', productId); // Guardar como string
                               updateItem(index, 'unregistered_product_name', '');
                               if (product) {
                                 updateItem(index, 'unit_price', product.price);
@@ -254,7 +255,7 @@ const AddSaleModal: React.FC<AddSaleModalProps> = ({
                           <option value="">Seleccionar producto...</option>
                           <option value="unregistered">Producto no registrado</option>
                           {products.map((product) => (
-                            <option key={product.id} value={product.id}>
+                            <option key={product.id} value={product.id.toString()}>
                               {product.name} - {formatCurrency(product.price)}
                             </option>
                           ))}
