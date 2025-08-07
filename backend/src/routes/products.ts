@@ -1,135 +1,169 @@
 import express from 'express';
-import { upload, deleteImage } from '../config/cloudinary';
+import { authenticateToken, AuthenticatedRequest } from '../middleware/auth';
 import { executeQuery, executeQuerySingle, executeInsert, executeUpdate } from '../database/query';
-import { authenticateToken } from '../middleware/auth';
+import { cloudinary, upload } from '../config/cloudinary';
 
 const router = express.Router();
 
-// Extender el tipo Request para incluir user
-interface AuthenticatedRequest extends express.Request {
-  user: {
-    id: number;
-    username: string;
-    optic_id: number;
-    role: string;
-    is_approved: boolean;
-  };
-}
-
 // GET / - Obtener todos los productos del óptico
 router.get('/', authenticateToken, async (req: AuthenticatedRequest, res) => {
-  console.log('=== PRODUCTS ROUTE HIT ===');
-  console.log('Request URL:', req.url);
-  console.log('Request path:', req.path);
-  console.log('Request method:', req.method);
-  console.log('User object:', req.user);
-  
   try {
-    console.log('User optic_id:', req.user?.optic_id);
-    console.log('User ID:', req.user?.id);
-    
-    const result = await executeQuery('SELECT * FROM products WHERE optic_id = $1 ORDER BY created_at DESC', [req.user.optic_id]);
-    
-    console.log('Query result:', result.rows.length, 'products found');
-    console.log('First product:', result.rows[0]);
-    
+    const result = await executeQuery(`
+      SELECT * FROM products 
+      WHERE optic_id = $1 
+      ORDER BY created_at DESC
+    `, [req.user?.optic_id]);
+
     res.json(result.rows);
   } catch (error) {
     console.error('Error fetching products:', error);
-    res.status(500).json({ error: 'Database error' });
+    res.status(500).json({ error: 'Error interno del servidor' });
   }
 });
 
-// Get single product
-router.get('/:id', authenticateToken, async (req: AuthenticatedRequest, res: express.Response) => {
+// GET /:id - Obtener un producto específico
+router.get('/:id', authenticateToken, async (req: AuthenticatedRequest, res) => {
   try {
-    const result = await executeQuerySingle('SELECT * FROM products WHERE id = $1 AND optic_id = $2', [req.params.id, req.user.optic_id]);
+    const productId = parseInt(req.params.id);
     
+    const result = await executeQuerySingle(`
+      SELECT * FROM products 
+      WHERE id = $1 AND optic_id = $2
+    `, [productId, req.user?.optic_id]);
+
     if (!result) {
-      return res.status(404).json({ error: 'Product not found' });
+      return res.status(404).json({ error: 'Producto no encontrado' });
     }
-    
+
     res.json(result);
   } catch (error) {
     console.error('Error fetching product:', error);
-    res.status(500).json({ error: 'Database error' });
+    res.status(500).json({ error: 'Error interno del servidor' });
   }
 });
 
-// Create product
-router.post('/', authenticateToken, upload.single('image'), async (req: AuthenticatedRequest, res: express.Response) => {
+// POST / - Crear un nuevo producto
+router.post('/', authenticateToken, upload.single('image'), async (req: AuthenticatedRequest, res) => {
   try {
-    const { name, description, brand, model, color, size, price, stock_quantity } = req.body;
+    const { name, description, price, stock_quantity, brand, model, color, size } = req.body;
 
-    if (!name) {
-      return res.status(400).json({ error: 'Name is required' });
+    if (!name || !price) {
+      return res.status(400).json({ error: 'Nombre y precio son requeridos' });
     }
 
-    const result = await executeInsert(
-      `INSERT INTO products (optic_id, name, description, brand, model, color, size, price, stock_quantity, image_url) 
-       VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10) RETURNING *`,
-      [req.user.optic_id, name, description, brand, model, color, size, price, stock_quantity, req.file ? req.file.path : null]
-    );
-    
-    res.status(201).json(result.rows[0]);
+    const imageUrl = req.file ? req.file.path : null;
+
+    const result = await executeInsert(`
+      INSERT INTO products (
+        optic_id, name, description, price, stock_quantity, 
+        brand, model, color, size, image_url, created_at
+      ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, CURRENT_TIMESTAMP)
+      RETURNING id
+    `, [
+      req.user?.optic_id, name, description || null, parseFloat(price), 
+      parseInt(stock_quantity) || 0, brand || null, model || null, 
+      color || null, size || null, imageUrl
+    ]);
+
+    res.status(201).json({ 
+      message: 'Producto creado exitosamente',
+      product_id: result.rows[0].id 
+    });
   } catch (error) {
     console.error('Error creating product:', error);
-    res.status(500).json({ error: 'Database error' });
+    res.status(500).json({ error: 'Error interno del servidor' });
   }
 });
 
-// Update product
-router.put('/:id', authenticateToken, upload.single('image'), async (req: AuthenticatedRequest, res: express.Response) => {
+// PUT /:id - Actualizar un producto
+router.put('/:id', authenticateToken, upload.single('image'), async (req: AuthenticatedRequest, res) => {
   try {
-    const { name, description, brand, model, color, size, price, stock_quantity } = req.body;
+    const productId = parseInt(req.params.id);
+    const { name, description, price, stock_quantity, brand, model, color, size } = req.body;
 
-    if (!name) {
-      return res.status(400).json({ error: 'Name is required' });
+    if (!name || !price) {
+      return res.status(400).json({ error: 'Nombre y precio son requeridos' });
     }
 
-    const result = await executeUpdate(
-      `UPDATE products SET name = $1, description = $2, brand = $3, model = $4, color = $5, size = $6, 
-       price = $7, stock_quantity = $8, image_url = $9, updated_at = CURRENT_TIMESTAMP 
-       WHERE id = $10 AND optic_id = $11`,
-      [name, description, brand, model, color, size, price, stock_quantity, req.file ? req.file.path : req.body.image_url, req.params.id, req.user.optic_id]
-    );
-    
+    // Verificar que el producto existe y pertenece al óptico
+    const existingProduct = await executeQuerySingle(`
+      SELECT image_url FROM products WHERE id = $1 AND optic_id = $2
+    `, [productId, req.user?.optic_id]);
+
+    if (!existingProduct) {
+      return res.status(404).json({ error: 'Producto no encontrado' });
+    }
+
+    // Si hay una nueva imagen, eliminar la anterior de Cloudinary
+    let imageUrl = existingProduct.image_url;
+    if (req.file) {
+      if (existingProduct.image_url) {
+        try {
+          await cloudinary.uploader.destroy(existingProduct.image_url);
+        } catch (error) {
+          console.error('Error deleting old image:', error);
+        }
+      }
+      imageUrl = req.file.path;
+    }
+
+    const result = await executeUpdate(`
+      UPDATE products SET 
+        name = $1, description = $2, price = $3, stock_quantity = $4,
+        brand = $5, model = $6, color = $7, size = $8, image_url = $9, updated_at = CURRENT_TIMESTAMP
+      WHERE id = $10 AND optic_id = $11
+    `, [
+      name, description || null, parseFloat(price), parseInt(stock_quantity) || 0,
+      brand || null, model || null, color || null, size || null, imageUrl,
+      productId, req.user?.optic_id
+    ]);
+
     if (result.rowCount === 0) {
-      return res.status(404).json({ error: 'Product not found' });
+      return res.status(404).json({ error: 'Producto no encontrado' });
     }
-    
-    res.json({ message: 'Product updated successfully' });
+
+    res.json({ message: 'Producto actualizado exitosamente' });
   } catch (error) {
     console.error('Error updating product:', error);
-    res.status(500).json({ error: 'Database error' });
+    res.status(500).json({ error: 'Error interno del servidor' });
   }
 });
 
-// Delete product
-router.delete('/:id', authenticateToken, async (req: AuthenticatedRequest, res: express.Response) => {
+// DELETE /:id - Eliminar un producto
+router.delete('/:id', authenticateToken, async (req: AuthenticatedRequest, res) => {
   try {
-    const result = await executeUpdate('DELETE FROM products WHERE id = $1 AND optic_id = $2', [req.params.id, req.user.optic_id]);
-    
-    if (result.rowCount === 0) {
-      return res.status(404).json({ error: 'Product not found' });
+    const productId = parseInt(req.params.id);
+
+    // Verificar que el producto existe y pertenece al óptico
+    const existingProduct = await executeQuerySingle(`
+      SELECT image_url FROM products WHERE id = $1 AND optic_id = $2
+    `, [productId, req.user?.optic_id]);
+
+    if (!existingProduct) {
+      return res.status(404).json({ error: 'Producto no encontrado' });
     }
-    
-    res.json({ message: 'Product deleted successfully' });
+
+    // Eliminar imagen de Cloudinary si existe
+    if (existingProduct.image_url) {
+      try {
+        await cloudinary.uploader.destroy(existingProduct.image_url);
+      } catch (error) {
+        console.error('Error deleting image from Cloudinary:', error);
+      }
+    }
+
+    const result = await executeUpdate(`
+      DELETE FROM products WHERE id = $1 AND optic_id = $2
+    `, [productId, req.user?.optic_id]);
+
+    if (result.rowCount === 0) {
+      return res.status(404).json({ error: 'Producto no encontrado' });
+    }
+
+    res.json({ message: 'Producto eliminado exitosamente' });
   } catch (error) {
     console.error('Error deleting product:', error);
-    res.status(500).json({ error: 'Database error' });
-  }
-});
-
-// Search products
-router.get('/search/:query', authenticateToken, async (req: AuthenticatedRequest, res: express.Response) => {
-  try {
-    const result = await executeQuery('SELECT * FROM products WHERE optic_id = $1 AND (name ILIKE $2 OR brand ILIKE $2 OR model ILIKE $2 OR description ILIKE $2) ORDER BY created_at DESC', [req.user.optic_id, `%${req.params.query}%`]);
-    
-    res.json(result.rows);
-  } catch (error) {
-    console.error('Error searching products:', error);
-    res.status(500).json({ error: 'Database error' });
+    res.status(500).json({ error: 'Error interno del servidor' });
   }
 });
 

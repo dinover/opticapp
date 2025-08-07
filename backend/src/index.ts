@@ -1,151 +1,87 @@
 import express from 'express';
 import cors from 'cors';
-import helmet from 'helmet';
-import dotenv from 'dotenv';
 import path from 'path';
-import fs from 'fs'; // Added for file existence check
 
-// Import routes
-import authRoutes from './routes/auth';
-import productRoutes from './routes/products';
-import clientRoutes from './routes/clients';
-import saleRoutes from './routes/sales';
-import opticRoutes from './routes/optics';
-
-// Import database initialization
-import { initializeDatabase } from './database/init';
-import { migrateDatabase } from './database/migrate';
-
-dotenv.config();
+import authRoutes from './routes/auth.js';
+import opticsRoutes from './routes/optics.js';
+import productsRoutes from './routes/products.js';
+import clientsRoutes from './routes/clients.js';
+import salesRoutes from './routes/sales.js';
 
 const app = express();
-const PORT = parseInt(process.env.PORT || '3001', 10);
+const PORT = process.env.PORT || 3001;
 
-console.log('=== Server Configuration ===');
-console.log('PORT:', PORT);
-console.log('NODE_ENV:', process.env.NODE_ENV);
-console.log('FRONTEND_URL:', process.env.FRONTEND_URL);
-console.log('Process ID:', process.pid);
-console.log('==========================');
-
-// CORS configuration
+// Configurar CORS
 const corsOptions = {
-  origin: [
-    'http://localhost:5173',
-    'https://opticapp-frontend.vercel.app',
-    'https://opticapp-frontend-nag6pkke5-daniel-oliveras-projects.vercel.app',
-    'https://opticapp-frontend-lr5sczh6z-daniel-oliveras-projects.vercel.app',
-    /^https:\/\/.*\.vercel\.app$/
-  ],
+  origin: process.env.FRONTEND_URL || 'http://localhost:5173',
   credentials: true,
-  methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
-  allowedHeaders: ['Content-Type', 'Authorization']
+  optionsSuccessStatus: 200
 };
 
-console.log('CORS origins:', corsOptions.origin);
-
-// Middleware
-app.use(helmet());
 app.use(cors(corsOptions));
 app.use(express.json({ limit: '10mb' }));
-app.use(express.urlencoded({ extended: true }));
+app.use(express.urlencoded({ extended: true, limit: '10mb' }));
 
-// Request logging middleware
+// Middleware de logging básico
 app.use((req, res, next) => {
   console.log(`${new Date().toISOString()} - ${req.method} ${req.url}`);
-  console.log('Headers:', req.headers);
-  console.log('User-Agent:', req.get('User-Agent'));
-  console.log('Origin:', req.get('Origin'));
   next();
 });
 
-// Image serving route with proper CORS
-app.get('/uploads/:filename', (req, res) => {
-  const filename = req.params.filename;
-  const imagePath = path.join(__dirname, '../uploads', filename);
-  
-  // Set CORS headers
-  res.header('Access-Control-Allow-Origin', '*');
-  res.header('Access-Control-Allow-Methods', 'GET, OPTIONS');
-  res.header('Access-Control-Allow-Headers', 'Origin, X-Requested-With, Content-Type, Accept');
-  res.header('Cross-Origin-Resource-Policy', 'cross-origin');
-  
-  // Check if file exists
-  if (!fs.existsSync(imagePath)) {
-    return res.status(404).json({ error: 'Image not found' });
-  }
-  
-  // Serve the image
-  res.sendFile(imagePath);
-});
-
-// Static files for uploaded images (fallback)
+// Servir archivos estáticos
 app.use('/uploads', express.static(path.join(__dirname, '../uploads')));
 
-// Routes
+// Rutas de la API
 app.use('/api/auth', authRoutes);
-app.use('/api/optics', opticRoutes);
-app.use('/api/products', productRoutes);
-app.use('/api/clients', clientRoutes);
-app.use('/api/sales', saleRoutes);
+app.use('/api/optics', opticsRoutes);
+app.use('/api/products', productsRoutes);
+app.use('/api/clients', clientsRoutes);
+app.use('/api/sales', salesRoutes);
 
-// Log all registered routes
-console.log('=== REGISTERED ROUTES ===');
-console.log('/api/auth/*');
-console.log('/api/optics/*');
-console.log('/api/products/*');
-console.log('/api/clients/*');
-console.log('/api/sales/*');
-console.log('========================');
-
-// Health check endpoint
+// Health check
 app.get('/api/health', (req, res) => {
-  console.log('Health check requested');
   res.json({ 
     status: 'OK', 
-    message: 'OpticApp API is running',
     timestamp: new Date().toISOString(),
-    port: PORT
+    uptime: process.uptime()
   });
 });
 
-// Error handling middleware
-app.use((err: any, req: express.Request, res: express.Response, next: express.NextFunction) => {
-  console.error('Error:', err.stack);
-  res.status(500).json({ 
-    error: 'Something went wrong!',
-    message: process.env.NODE_ENV === 'development' ? err.message : 'Internal server error'
-  });
-});
-
-// 404 handler
+// Manejo de rutas no encontradas
 app.use('*', (req, res) => {
-  console.log('404 - Route not found:', req.originalUrl);
-  res.status(404).json({ error: 'Route not found' });
+  res.status(404).json({ error: 'Ruta no encontrada' });
 });
 
-// Initialize database and start server
-async function startServer() {
+// Manejo de errores no capturados
+process.on('uncaughtException', (error) => {
+  console.error('Uncaught Exception:', error);
+  process.exit(1);
+});
+
+process.on('unhandledRejection', (reason, promise) => {
+  console.error('Unhandled Rejection at:', promise, 'reason:', reason);
+  process.exit(1);
+});
+
+// Inicializar base de datos y servidor
+const initializeServer = async () => {
   try {
-    console.log('Starting database initialization...');
+    // Importar dinámicamente para evitar problemas de ESM
+    const { initializeDatabase } = await import('./database/init.js');
     await initializeDatabase();
-    console.log('Database initialized successfully');
     
-    console.log('Starting database migration...');
+    const { migrateDatabase } = await import('./database/migrate.js');
     await migrateDatabase();
-    console.log('Database migrations completed');
     
-    console.log('Starting HTTP server...');
-    app.listen(PORT, '0.0.0.0', () => {
+    app.listen(PORT, () => {
       console.log(`🚀 Server running on port ${PORT}`);
       console.log(`📊 Health check: http://localhost:${PORT}/api/health`);
       console.log(`🌐 Server is ready to accept connections`);
-      console.log(`🔗 External URL: https://opticapp-production.up.railway.app`);
     });
   } catch (error) {
     console.error('Failed to start server:', error);
     process.exit(1);
   }
-}
+};
 
-startServer(); 
+initializeServer(); 

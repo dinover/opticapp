@@ -1,30 +1,20 @@
 import express from 'express';
-import { authenticateToken } from '../middleware/auth';
+import { authenticateToken, AuthenticatedRequest } from '../middleware/auth';
 import { executeQuery, executeQuerySingle, executeInsert, executeUpdate } from '../database/query';
 
 const router = express.Router();
 
-interface AuthenticatedRequest extends express.Request {
-  user?: any;
-}
-
 // GET / - Obtener todas las ventas del óptico
 router.get('/', authenticateToken, async (req: AuthenticatedRequest, res) => {
-  console.log('=== SALES ROUTE HIT ===');
-  console.log('Request URL:', req.url);
-  console.log('Request path:', req.path);
-  console.log('Request method:', req.method);
-  console.log('User object:', req.user);
-  
   try {
-    console.log('=== SALES DEBUG ===');
-    console.log('User:', req.user);
-    console.log('Optic ID:', req.user?.optic_id);
-    console.log('User ID:', req.user?.id);
-    
     const result = await executeQuery(`
       SELECT 
-        s.*,
+        s.id,
+        s.client_id,
+        s.unregistered_client_name,
+        s.total_amount,
+        s.notes,
+        s.created_at,
         c.first_name,
         c.last_name
       FROM sales s
@@ -33,9 +23,6 @@ router.get('/', authenticateToken, async (req: AuthenticatedRequest, res) => {
       ORDER BY s.created_at DESC
     `, [req.user?.optic_id]);
 
-    console.log('Query result:', result.rows.length, 'sales found');
-    console.log('First sale:', result.rows[0]);
-    
     res.json(result.rows);
   } catch (error) {
     console.error('Error fetching sales:', error);
@@ -48,10 +35,14 @@ router.get('/:id', authenticateToken, async (req: AuthenticatedRequest, res) => 
   try {
     const saleId = parseInt(req.params.id);
 
-    // Obtener la venta
     const saleResult = await executeQuerySingle(`
       SELECT 
-        s.*,
+        s.id,
+        s.client_id,
+        s.unregistered_client_name,
+        s.total_amount,
+        s.notes,
+        s.created_at,
         c.first_name,
         c.last_name
       FROM sales s
@@ -63,10 +54,22 @@ router.get('/:id', authenticateToken, async (req: AuthenticatedRequest, res) => 
       return res.status(404).json({ error: 'Venta no encontrada' });
     }
 
-    // Obtener los items de la venta
     const itemsResult = await executeQuery(`
       SELECT 
-        si.*,
+        si.id,
+        si.product_id,
+        si.unregistered_product_name,
+        si.quantity,
+        si.unit_price,
+        si.od_esf,
+        si.od_cil,
+        si.od_eje,
+        si.od_add,
+        si.oi_esf,
+        si.oi_cil,
+        si.oi_eje,
+        si.oi_add,
+        si.notes,
         p.name as product_name,
         p.price as product_price
       FROM sale_items si
@@ -89,24 +92,16 @@ router.get('/:id', authenticateToken, async (req: AuthenticatedRequest, res) => 
 // POST / - Crear una nueva venta
 router.post('/', authenticateToken, async (req: AuthenticatedRequest, res) => {
   try {
-    console.log('=== CREATE SALE DEBUG ===');
-    console.log('Request body:', req.body);
-    console.log('User optic_id:', req.user?.optic_id);
-    
     const { client_id, unregistered_client_name, items, notes } = req.body;
 
     if (!items || !Array.isArray(items) || items.length === 0) {
       return res.status(400).json({ error: 'Debe incluir al menos un producto' });
     }
 
-    console.log('Items to process:', items);
-
     // Calcular el total de la venta
     const totalAmount = items.reduce((total: number, item: any) => {
       return total + (item.quantity * item.unit_price);
     }, 0);
-
-    console.log('Total amount calculated:', totalAmount);
 
     // Crear la venta
     const saleResult = await executeInsert(`
@@ -116,12 +111,9 @@ router.post('/', authenticateToken, async (req: AuthenticatedRequest, res) => {
     `, [req.user?.optic_id, client_id || null, unregistered_client_name || null, totalAmount, notes || null]);
 
     const saleId = saleResult.rows[0].id;
-    console.log('Sale created with ID:', saleId);
 
     // Crear los items de la venta
     for (const item of items) {
-      console.log('Processing item:', item);
-      
       // Convertir product_id a número si es un string numérico
       const productId = item.product_id && item.product_id !== 'unregistered' ? parseInt(item.product_id) : null;
       
@@ -148,15 +140,12 @@ router.post('/', authenticateToken, async (req: AuthenticatedRequest, res) => {
       }
     }
 
-    console.log('=== CREATE SALE SUCCESS ===');
     res.status(201).json({ 
       message: 'Venta creada exitosamente',
       sale_id: saleId 
     });
   } catch (error) {
-    console.error('=== CREATE SALE ERROR ===');
     console.error('Error creating sale:', error);
-    console.error('Error stack:', error.stack);
     res.status(500).json({ error: 'Error interno del servidor' });
   }
 });
@@ -191,13 +180,15 @@ router.delete('/:id', authenticateToken, async (req: AuthenticatedRequest, res) 
       }
     }
 
-    // Eliminar items de la venta
-    await executeUpdate('DELETE FROM sale_items WHERE sale_id = $1', [saleId]);
+    // Eliminar los items de la venta
+    await executeUpdate(`
+      DELETE FROM sale_items WHERE sale_id = $1
+    `, [saleId]);
 
     // Eliminar la venta
     await executeUpdate(`
-      DELETE FROM sales WHERE id = $1 AND optic_id = $2
-    `, [saleId, req.user?.optic_id]);
+      DELETE FROM sales WHERE id = $1
+    `, [saleId]);
 
     res.json({ message: 'Venta eliminada exitosamente' });
   } catch (error) {
