@@ -31,7 +31,7 @@ router.get('/', authenticateToken, async (req: AuthenticatedRequest, res: expres
   try {
     const result = await executeQuery('SELECT * FROM products WHERE optic_id = $1 ORDER BY created_at DESC', [req.user.optic_id]);
     
-    res.json(result);
+    res.json(result.rows);
   } catch (error) {
     console.error('Error fetching products:', error);
     res.status(500).json({ error: 'Database error' });
