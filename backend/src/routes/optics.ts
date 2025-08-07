@@ -21,25 +21,33 @@ interface AuthenticatedRequest extends express.Request {
 // GET /stats - Obtener estadísticas del óptico
 router.get('/stats', authenticateToken, async (req: AuthenticatedRequest, res) => {
   try {
-    console.log('User optic_id:', req.user.optic_id); // Debug
+    console.log('=== STATS ROUTE DEBUG ===');
+    console.log('User optic_id:', req.user.optic_id);
+    console.log('User object:', req.user);
 
     // Obtener estadísticas de productos
+    console.log('Executing products query...');
     const productsResult = await executeQuery(`
       SELECT COUNT(*) as total_products FROM products WHERE optic_id = $1
     `, [req.user.optic_id]);
+    console.log('Products result:', productsResult);
 
     // Obtener estadísticas de clientes
+    console.log('Executing clients query...');
     const clientsResult = await executeQuery(`
       SELECT COUNT(*) as total_clients FROM clients WHERE optic_id = $1
     `, [req.user.optic_id]);
+    console.log('Clients result:', clientsResult);
 
     // Obtener estadísticas de ventas
+    console.log('Executing sales query...');
     const salesResult = await executeQuery(`
       SELECT 
         COUNT(*) as total_sales,
         COALESCE(SUM(total_amount), 0) as total_revenue
       FROM sales WHERE optic_id = $1
     `, [req.user.optic_id]);
+    console.log('Sales result:', salesResult);
 
     const stats = {
       total_products: parseInt(productsResult.rows[0].total_products),
@@ -48,10 +56,13 @@ router.get('/stats', authenticateToken, async (req: AuthenticatedRequest, res) =
       total_revenue: salesResult.rows[0].total_revenue ? parseFloat(salesResult.rows[0].total_revenue) : 0
     };
 
-    console.log('Stats:', stats); // Debug
+    console.log('Final stats:', stats);
+    console.log('=== STATS ROUTE SUCCESS ===');
     res.json(stats);
   } catch (error) {
+    console.error('=== STATS ROUTE ERROR ===');
     console.error('Error fetching stats:', error);
+    console.error('Error stack:', error.stack);
     res.status(500).json({ error: 'Error interno del servidor' });
   }
 });
@@ -59,8 +70,11 @@ router.get('/stats', authenticateToken, async (req: AuthenticatedRequest, res) =
 // GET /activity - Obtener actividad reciente
 router.get('/activity', authenticateToken, async (req: AuthenticatedRequest, res) => {
   try {
-    console.log('User optic_id for activity:', req.user.optic_id); // Debug
+    console.log('=== ACTIVITY ROUTE DEBUG ===');
+    console.log('User optic_id for activity:', req.user.optic_id);
+    console.log('User object:', req.user);
 
+    console.log('Executing activity query...');
     const result = await executeQuery(`
       SELECT 
         s.id,
@@ -74,6 +88,7 @@ router.get('/activity', authenticateToken, async (req: AuthenticatedRequest, res
       ORDER BY s.created_at DESC
       LIMIT 10
     `, [req.user.optic_id]);
+    console.log('Activity query result:', result);
 
     const activity = result.rows.map(row => ({
       id: row.id,
@@ -83,10 +98,14 @@ router.get('/activity', authenticateToken, async (req: AuthenticatedRequest, res
       created_at: row.created_at
     }));
 
-    console.log('Activity items:', activity.length); // Debug
+    console.log('Activity items:', activity.length);
+    console.log('Activity data:', activity);
+    console.log('=== ACTIVITY ROUTE SUCCESS ===');
     res.json(activity);
   } catch (error) {
+    console.error('=== ACTIVITY ROUTE ERROR ===');
     console.error('Error fetching activity:', error);
+    console.error('Error stack:', error.stack);
     res.status(500).json({ error: 'Error interno del servidor' });
   }
 });
