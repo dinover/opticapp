@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { useAuth } from '../contexts/AuthContext';
 import { authAPI } from '../services/api';
 import { RegistrationRequest } from '../types';
-import { CheckCircle, XCircle, Clock, Eye, MessageSquare } from 'lucide-react';
+import { CheckCircle, XCircle, Clock } from 'lucide-react';
 import toast from 'react-hot-toast';
 
 const AdminRegistrationRequestsPage: React.FC = () => {

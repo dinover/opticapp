@@ -32,7 +32,7 @@ const RegisterPage: React.FC = () => {
 
   const onSubmit = async (data: RegisterFormData) => {
     try {
-      const response = await registerUser(data);
+      await registerUser(data);
       // Redirect to login page after successful registration
       // The user will see a message that their account needs approval
     } catch (error) {
