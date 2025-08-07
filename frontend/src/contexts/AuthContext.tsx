@@ -67,7 +67,12 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
   const login = async (username: string, password: string) => {
     try {
       setLoading(true);
+      console.log('AuthContext: Attempting login with username:', username);
+      console.log('AuthContext: API URL being used:', import.meta.env.VITE_API_URL);
+      
       const response: AuthResponse = await authAPI.login({ username, password });
+      
+      console.log('AuthContext: Login successful, response:', response);
       
       setToken(response.token);
       setUser(response.user);
@@ -79,6 +84,9 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
       
       toast.success('¡Inicio de sesión exitoso!');
     } catch (error: any) {
+      console.error('AuthContext: Login error:', error);
+      console.error('AuthContext: Error response:', error.response?.data);
+      console.error('AuthContext: Error status:', error.response?.status);
       const message = error.response?.data?.error || 'Error al iniciar sesión';
       toast.error(message);
       throw error;

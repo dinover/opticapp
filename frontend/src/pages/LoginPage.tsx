@@ -26,9 +26,11 @@ const LoginPage: React.FC = () => {
   });
 
   const onSubmit = async (data: LoginFormData) => {
+    console.log('LoginPage: Form submitted with data:', data);
     try {
       await login(data.username, data.password);
     } catch (error) {
+      console.error('LoginPage: Error in onSubmit:', error);
       // Error is handled in the auth context
     }
   };
