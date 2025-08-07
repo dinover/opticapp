@@ -34,6 +34,7 @@ export const authenticateToken = (req: AuthRequest, res: Response, next: NextFun
 
     try {
       // Get user from database using our query helper
+      console.log('Fetching user from database with ID:', decoded.userId);
       const user = await executeQuerySingle(
         'SELECT id, username, email, optic_id, role, is_approved, created_at, updated_at FROM users WHERE id = $1',
         [decoded.userId]
