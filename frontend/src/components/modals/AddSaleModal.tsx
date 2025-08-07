@@ -2,9 +2,10 @@ import React, { useState, useEffect } from 'react';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
-import { X, ShoppingCart, Users, Package, DollarSign } from 'lucide-react';
+import { X, User, Package, DollarSign, Calendar, Eye } from 'lucide-react';
 import { salesAPI, clientsAPI, productsAPI } from '../../services/api';
 import { Client, Product } from '../../types';
+import ProductImage from '../ProductImage';
 import toast from 'react-hot-toast';
 
 const saleSchema = z.object({
@@ -194,7 +195,7 @@ const AddSaleModal: React.FC<AddSaleModalProps> = ({ isOpen, onClose, onSuccess 
           <div className="flex items-center justify-between mb-6">
             <div className="flex items-center space-x-3">
               <div className="p-2 bg-gradient-to-r from-primary-500 to-secondary-500 rounded-lg">
-                <ShoppingCart className="w-6 h-6 text-white" />
+                <Package className="w-6 h-6 text-white" />
               </div>
               <div>
                 <h3 className="text-lg font-semibold text-gray-900">Registrar Nueva Venta</h3>
@@ -243,7 +244,7 @@ const AddSaleModal: React.FC<AddSaleModalProps> = ({ isOpen, onClose, onSuccess 
                  <>
                    <div className="relative">
                      <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
-                       <Users className="h-5 w-5 text-gray-400" />
+                       <User className="h-5 w-5 text-gray-400" />
                      </div>
                      <input
                        type="text"
@@ -351,17 +352,12 @@ const AddSaleModal: React.FC<AddSaleModalProps> = ({ isOpen, onClose, onSuccess 
             {selectedProduct && (
               <div className="p-4 bg-gray-50 rounded-lg">
                 <div className="flex items-center space-x-4">
-                  {selectedProduct.image_url ? (
-                    <img
-                      src={selectedProduct.image_url}
-                      alt={selectedProduct.name}
-                      className="w-16 h-16 object-cover rounded-lg"
-                    />
-                  ) : (
-                    <div className="w-16 h-16 bg-gray-200 rounded-lg flex items-center justify-center">
-                      <Package className="w-8 h-8 text-gray-400" />
-                    </div>
-                  )}
+                  <ProductImage
+                    src={selectedProduct.image_url}
+                    alt={selectedProduct.name}
+                    className="w-16 h-16 object-cover rounded-lg"
+                    fallbackIcon={<Package className="w-8 h-8 text-gray-400" />}
+                  />
                   <div className="flex-1">
                     <h4 className="font-medium text-gray-900">{selectedProduct.name}</h4>
                     <p className="text-sm text-gray-600">

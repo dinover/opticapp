@@ -1,6 +1,7 @@
 import React from 'react';
-import { X, Package, DollarSign, TrendingDown, Calendar } from 'lucide-react';
+import { X, DollarSign, TrendingDown, Calendar, Package } from 'lucide-react';
 import { Product } from '../../types';
+import ProductImage from '../ProductImage';
 
 interface ViewProductModalProps {
   isOpen: boolean;
@@ -53,17 +54,12 @@ const ViewProductModal: React.FC<ViewProductModalProps> = ({ isOpen, onClose, pr
 
           {/* Product Image */}
           <div className="mb-6">
-            {product.image_url ? (
-              <img
-                src={product.image_url}
-                alt={product.name}
-                className="w-full h-48 object-cover rounded-lg"
-              />
-            ) : (
-              <div className="w-full h-48 bg-gray-200 rounded-lg flex items-center justify-center">
-                <Package className="w-16 h-16 text-gray-400" />
-              </div>
-            )}
+            <ProductImage
+              src={product.image_url}
+              alt={product.name}
+              className="w-full h-48 object-cover rounded-lg"
+              fallbackIcon={<Package className="w-16 h-16 text-gray-400" />}
+            />
           </div>
 
           {/* Product Details */}

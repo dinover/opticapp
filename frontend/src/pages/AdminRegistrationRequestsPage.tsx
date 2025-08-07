@@ -179,19 +179,19 @@ const AdminRegistrationRequestsPage: React.FC = () => {
       {/* Modal para aprobar/rechazar */}
       {showModal && selectedRequest && (
         <div className="fixed inset-0 bg-black/50 flex items-center justify-center p-4 z-50">
-          <div className="glass-effect rounded-2xl p-8 max-w-md w-full">
-            <h3 className="text-xl font-bold text-white mb-4">
+          <div className="bg-white/95 backdrop-blur-sm rounded-2xl p-8 max-w-md w-full shadow-2xl">
+            <h3 className="text-xl font-bold text-gray-900 mb-4">
               Revisar Solicitud de {selectedRequest.username}
             </h3>
             
             <div className="mb-6">
-              <label className="block text-sm font-medium text-white mb-2">
+              <label className="block text-sm font-medium text-gray-700 mb-2">
                 Notas del Administrador (opcional)
               </label>
               <textarea
                 value={adminNotes}
                 onChange={(e) => setAdminNotes(e.target.value)}
-                className="w-full p-3 bg-white/10 border border-white/20 rounded-lg text-white placeholder-white/60 focus:outline-none focus:ring-2 focus:ring-white/50"
+                className="w-full p-3 bg-gray-50 border border-gray-300 rounded-lg text-gray-900 placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-transparent"
                 placeholder="Agrega notas sobre esta solicitud..."
                 rows={3}
               />
@@ -220,7 +220,7 @@ const AdminRegistrationRequestsPage: React.FC = () => {
                 setSelectedRequest(null);
                 setAdminNotes('');
               }}
-              className="w-full mt-4 text-white/60 hover:text-white transition-colors"
+              className="w-full mt-4 text-gray-600 hover:text-gray-800 transition-colors"
             >
               Cancelar
             </button>

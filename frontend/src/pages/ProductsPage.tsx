@@ -14,6 +14,7 @@ import { Product } from '../types';
 import AddProductModal from '../components/modals/AddProductModal';
 import ViewProductModal from '../components/modals/ViewProductModal';
 import EditProductModal from '../components/modals/EditProductModal';
+import ProductImage from '../components/ProductImage';
 
 const ProductsPage: React.FC = () => {
   const [products, setProducts] = useState<Product[]>([]);
@@ -253,17 +254,11 @@ const ProductsPage: React.FC = () => {
                     <tr key={product.id} className="border-b border-gray-100 hover:bg-gray-50">
                       <td className="py-4 px-4">
                         <div className="flex items-center space-x-3">
-                          {product.image_url ? (
-                            <img
-                              src={product.image_url}
-                              alt={product.name}
-                              className="w-12 h-12 object-cover rounded-lg"
-                            />
-                          ) : (
-                            <div className="w-12 h-12 bg-gray-200 rounded-lg flex items-center justify-center">
-                              <Package className="w-6 h-6 text-gray-400" />
-                            </div>
-                          )}
+                          <ProductImage
+                            src={product.image_url}
+                            alt={product.name}
+                            className="w-12 h-12 object-cover rounded-lg"
+                          />
                           <div>
                             <p className="font-medium text-gray-900">{product.name}</p>
                             {product.description && (
