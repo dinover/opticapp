@@ -91,7 +91,7 @@ app.get('/api/health', (req, res) => {
   console.log('Health check requested');
   res.json({ 
     status: 'OK', 
-    message: 'AppDelStream API is running',
+    message: 'OpticApp API is running',
     timestamp: new Date().toISOString(),
     port: PORT
   });

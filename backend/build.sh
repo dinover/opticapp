@@ -1,17 +1,6 @@
 #!/bin/bash
-
-echo "🚀 Building AppDelStream Backend..."
-
-# Install dependencies
-echo "📦 Installing dependencies..."
+echo "🚀 Building OpticApp Backend..."
+cd backend
 npm install
-
-# Build TypeScript
-echo "🔨 Building TypeScript..."
 npm run build
-
-# Create uploads directory
-echo "📁 Creating uploads directory..."
-mkdir -p dist/uploads
-
-echo "✅ Build completed successfully!" 
+echo "✅ Backend build completed!" 

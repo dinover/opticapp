@@ -44,8 +44,8 @@ const LoginPage: React.FC = () => {
             <div className="w-16 h-16 bg-gradient-to-r from-primary-500 to-secondary-500 rounded-full flex items-center justify-center mx-auto mb-4">
               <LogIn className="w-8 h-8 text-white" />
             </div>
-            <h1 className="text-3xl font-bold text-gray-900 mb-2">AppDelStream</h1>
-            <p className="text-gray-600">Control de Stock de Gafas</p>
+            <h1 className="text-3xl font-bold text-gray-900 mb-2">OpticApp</h1>
+            <p className="text-gray-600">Sistema de Gestión Óptica</p>
           </div>
 
           {/* Login Form */}

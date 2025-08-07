@@ -1,7 +1,7 @@
 #!/bin/bash
 
-echo "🚀 Instalando AppDelStream - Sistema de Control de Stock de Gafas"
-echo "================================================================"
+echo "🚀 Instalando OpticApp - Sistema de Gestión Óptica"
+echo "=================================================="
 
 # Verificar Node.js
 if ! command -v node &> /dev/null; then
@@ -50,11 +50,13 @@ npm install
 cd ..
 
 echo ""
-echo "✅ Instalación completada exitosamente!"
+echo "🎉 ¡OpticApp está listo para usar!"
 echo ""
-echo "📋 Próximos pasos:"
-echo "1. Revisa y ajusta el archivo backend/.env"
-echo "2. Ejecuta: npm run dev"
-echo "3. Abre http://localhost:5173 en tu navegador"
+echo "📋 Para iniciar el desarrollo:"
+echo "   npm run dev"
 echo ""
-echo "🎉 ¡AppDelStream está listo para usar!" 
+echo "🌐 Frontend: http://localhost:5173"
+echo "🔧 Backend:  http://localhost:3001"
+echo ""
+echo "📚 Documentación: https://github.com/dinover/opticapp"
+echo "" 
