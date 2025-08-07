@@ -57,8 +57,10 @@ const AddSaleModal: React.FC<AddSaleModalProps> = ({
   };
 
   const updateItem = (index: number, field: keyof SaleItem, value: any) => {
+    console.log('updateItem called:', { index, field, value }); // Debug
     const updatedItems = [...saleItems];
     updatedItems[index] = { ...updatedItems[index], [field]: value };
+    console.log('Updated item:', updatedItems[index]); // Debug
     setSaleItems(updatedItems);
   };
 
@@ -207,8 +209,10 @@ const AddSaleModal: React.FC<AddSaleModalProps> = ({
               </div>
 
               <div className="space-y-4">
-                {saleItems.map((item, index) => (
-                  <div key={index} className="border border-gray-200 rounded-lg p-4">
+                {saleItems.map((item, index) => {
+                  console.log(`Rendering item ${index}:`, item); // Debug
+                  return (
+                    <div key={index} className="border border-gray-200 rounded-lg p-4">
                     <div className="flex items-center justify-between mb-4">
                       <h4 className="font-medium text-gray-900">Producto {index + 1}</h4>
                       <button
@@ -440,7 +444,8 @@ const AddSaleModal: React.FC<AddSaleModalProps> = ({
                       />
                     </div>
                   </div>
-                ))}
+                );
+              })}
               </div>
             </div>
 
