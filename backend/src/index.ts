@@ -3,6 +3,7 @@ import cors from 'cors';
 import helmet from 'helmet';
 import dotenv from 'dotenv';
 import path from 'path';
+import fs from 'fs'; // Added for file existence check
 
 // Import routes
 import authRoutes from './routes/auth';
@@ -55,18 +56,28 @@ app.use((req, res, next) => {
   next();
 });
 
-// Static files for uploaded images with CORS
-app.use('/uploads', (req, res, next) => {
-  // Set CORS headers for image requests
+// Image serving route with proper CORS
+app.get('/uploads/:filename', (req, res) => {
+  const filename = req.params.filename;
+  const imagePath = path.join(__dirname, '../uploads', filename);
+  
+  // Set CORS headers
   res.header('Access-Control-Allow-Origin', '*');
   res.header('Access-Control-Allow-Methods', 'GET, OPTIONS');
   res.header('Access-Control-Allow-Headers', 'Origin, X-Requested-With, Content-Type, Accept');
+  res.header('Cross-Origin-Resource-Policy', 'cross-origin');
   
-  if (req.method === 'OPTIONS') {
-    return res.sendStatus(200);
+  // Check if file exists
+  if (!fs.existsSync(imagePath)) {
+    return res.status(404).json({ error: 'Image not found' });
   }
-  next();
-}, express.static(path.join(__dirname, '../uploads')));
+  
+  // Serve the image
+  res.sendFile(imagePath);
+});
+
+// Static files for uploaded images (fallback)
+app.use('/uploads', express.static(path.join(__dirname, '../uploads')));
 
 // Routes
 app.use('/api/auth', authRoutes);
