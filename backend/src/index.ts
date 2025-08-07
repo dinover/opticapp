@@ -55,8 +55,18 @@ app.use((req, res, next) => {
   next();
 });
 
-// Static files for uploaded images
-app.use('/uploads', express.static(path.join(__dirname, '../uploads')));
+// Static files for uploaded images with CORS
+app.use('/uploads', (req, res, next) => {
+  // Set CORS headers for image requests
+  res.header('Access-Control-Allow-Origin', '*');
+  res.header('Access-Control-Allow-Methods', 'GET, OPTIONS');
+  res.header('Access-Control-Allow-Headers', 'Origin, X-Requested-With, Content-Type, Accept');
+  
+  if (req.method === 'OPTIONS') {
+    return res.sendStatus(200);
+  }
+  next();
+}, express.static(path.join(__dirname, '../uploads')));
 
 // Routes
 app.use('/api/auth', authRoutes);
