@@ -60,26 +60,26 @@ const Layout: React.FC = () => {
       }`}>
         <div className="flex flex-col h-full">
           {/* Header */}
-          <div className="flex items-center justify-between p-6 border-b border-gray-200">
+          <div className="flex items-center justify-between p-6 border-b border-gray-200 bg-gradient-to-r from-primary-600 to-secondary-600">
             <div className="flex items-center space-x-3">
-              <div className="w-8 h-8 bg-gradient-to-r from-primary-500 to-secondary-500 rounded-lg flex items-center justify-center">
+              <div className="w-8 h-8 bg-white/20 rounded-lg flex items-center justify-center">
                 <Building className="w-5 h-5 text-white" />
               </div>
               <div>
-                <h1 className="text-lg font-bold text-gray-900">AppDelStream</h1>
-                <p className="text-xs text-gray-500">Control de Stock</p>
+                <h1 className="text-lg font-bold text-white">AppDelStream</h1>
+                <p className="text-xs text-white/80">Control de Stock</p>
               </div>
             </div>
             <button
               onClick={() => setSidebarOpen(false)}
-              className="lg:hidden p-1 rounded-md text-gray-400 hover:text-gray-600"
+              className="lg:hidden p-1 rounded-md text-white/70 hover:text-white"
             >
               <X className="w-6 h-6" />
             </button>
           </div>
 
           {/* Optic Info */}
-          <div className="p-4 border-b border-gray-200">
+          <div className="p-4 border-b border-gray-200 bg-gray-50">
             <div className="flex items-center space-x-3">
               <div className="w-10 h-10 bg-gradient-to-r from-primary-500 to-secondary-500 rounded-full flex items-center justify-center">
                 <Building className="w-5 h-5 text-white" />
@@ -88,7 +88,7 @@ const Layout: React.FC = () => {
                 <p className="text-sm font-medium text-gray-900 truncate">
                   {optic?.name || 'Óptica'}
                 </p>
-                <p className="text-xs text-gray-500 truncate">
+                <p className="text-xs text-gray-600 truncate">
                   {optic?.address || 'Dirección'}
                 </p>
               </div>
@@ -96,7 +96,7 @@ const Layout: React.FC = () => {
           </div>
 
           {/* Navigation */}
-          <nav className="flex-1 px-4 py-6 space-y-2">
+          <nav className="flex-1 px-4 py-6 space-y-2 bg-white">
             {allNavigation.map((item) => {
               const Icon = item.icon;
               return (
@@ -118,7 +118,7 @@ const Layout: React.FC = () => {
           </nav>
 
           {/* User Info & Actions */}
-          <div className="p-4 border-t border-gray-200">
+          <div className="p-4 border-t border-gray-200 bg-gray-50">
             <div className="flex items-center space-x-3 mb-4">
               <div className="w-8 h-8 bg-gradient-to-r from-gray-500 to-gray-600 rounded-full flex items-center justify-center">
                 <User className="w-4 h-4 text-white" />
@@ -127,7 +127,7 @@ const Layout: React.FC = () => {
                 <p className="text-sm font-medium text-gray-900 truncate">
                   {user?.username || 'Usuario'}
                 </p>
-                <p className="text-xs text-gray-500 capitalize">
+                <p className="text-xs text-gray-600 capitalize">
                   {user?.role || 'user'}
                 </p>
               </div>
@@ -157,33 +157,23 @@ const Layout: React.FC = () => {
           <div className="flex items-center justify-between px-4 py-4">
             <button
               onClick={() => setSidebarOpen(true)}
-              className="lg:hidden p-2 rounded-md text-gray-400 hover:text-gray-600 hover:bg-gray-100"
+              className="lg:hidden p-2 rounded-md text-gray-600 hover:text-gray-900 hover:bg-gray-100"
             >
               <Menu className="w-6 h-6" />
             </button>
-            
             <div className="flex items-center space-x-4">
-              <div className="hidden sm:block">
-                <h2 className="text-lg font-semibold text-gray-900">
-                  {navigation.find(item => isActive(item.href))?.name || 'Dashboard'}
-                </h2>
-              </div>
-            </div>
-
-            <div className="flex items-center space-x-4">
-              <div className="hidden sm:flex items-center space-x-2 text-sm text-gray-500">
-                <span>{optic?.name}</span>
-                <span>•</span>
-                <span className="capitalize">{user?.role}</span>
+              <div className="hidden sm:flex items-center space-x-2 text-sm text-gray-600">
+                <span>Bienvenido,</span>
+                <span className="font-medium text-gray-900">{user?.username}</span>
               </div>
             </div>
           </div>
         </div>
 
         {/* Page content */}
-        <main className="p-6">
+        <div className="p-6 bg-gray-50 min-h-screen">
           <Outlet />
-        </main>
+        </div>
       </div>
     </div>
   );

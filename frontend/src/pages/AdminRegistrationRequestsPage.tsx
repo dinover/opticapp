@@ -84,9 +84,9 @@ const AdminRegistrationRequestsPage: React.FC = () => {
   if (user?.role !== 'admin') {
     return (
       <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-primary-500 via-secondary-500 to-primary-600">
-        <div className="glass-effect rounded-2xl p-8 text-center">
-          <h1 className="text-2xl font-bold text-white mb-4">Acceso Denegado</h1>
-          <p className="text-white/80">Solo los administradores pueden acceder a esta página.</p>
+        <div className="bg-white/95 backdrop-blur-sm rounded-2xl p-8 text-center shadow-xl">
+          <h1 className="text-2xl font-bold text-gray-900 mb-4">Acceso Denegado</h1>
+          <p className="text-gray-600">Solo los administradores pueden acceder a esta página.</p>
         </div>
       </div>
     );
@@ -95,41 +95,41 @@ const AdminRegistrationRequestsPage: React.FC = () => {
   return (
     <div className="min-h-screen bg-gradient-to-br from-primary-500 via-secondary-500 to-primary-600 p-4">
       <div className="max-w-7xl mx-auto">
-        <div className="glass-effect rounded-2xl p-8">
+        <div className="bg-white/95 backdrop-blur-sm rounded-2xl p-8 shadow-xl">
           <div className="flex items-center justify-between mb-8">
             <div>
-              <h1 className="text-3xl font-bold text-white mb-2">Solicitudes de Registro</h1>
-              <p className="text-white/80">Gestiona las solicitudes de registro de nuevas ópticas</p>
+              <h1 className="text-3xl font-bold text-gray-900 mb-2">Solicitudes de Registro</h1>
+              <p className="text-gray-600">Gestiona las solicitudes de registro de nuevas ópticas</p>
             </div>
             <div className="text-right">
-              <p className="text-white/60 text-sm">Total de solicitudes</p>
-              <p className="text-2xl font-bold text-white">{requests.length}</p>
+              <p className="text-gray-500 text-sm">Total de solicitudes</p>
+              <p className="text-2xl font-bold text-gray-900">{requests.length}</p>
             </div>
           </div>
 
           {loading ? (
             <div className="text-center py-8">
-              <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-white mx-auto"></div>
-              <p className="text-white/80 mt-4">Cargando solicitudes...</p>
+              <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary-500 mx-auto"></div>
+              <p className="text-gray-600 mt-4">Cargando solicitudes...</p>
             </div>
           ) : requests.length === 0 ? (
             <div className="text-center py-8">
-              <Clock className="w-16 h-16 text-white/40 mx-auto mb-4" />
-              <h3 className="text-xl font-semibold text-white mb-2">No hay solicitudes</h3>
-              <p className="text-white/60">No hay solicitudes de registro pendientes.</p>
+              <Clock className="w-16 h-16 text-gray-400 mx-auto mb-4" />
+              <h3 className="text-xl font-semibold text-gray-900 mb-2">No hay solicitudes</h3>
+              <p className="text-gray-500">No hay solicitudes de registro pendientes.</p>
             </div>
           ) : (
             <div className="space-y-4">
               {requests.map((request) => (
-                <div key={request.id} className="bg-white/10 rounded-lg p-6 border border-white/20">
+                <div key={request.id} className="bg-gray-50 rounded-lg p-6 border border-gray-200">
                   <div className="flex items-center justify-between mb-4">
                     <div className="flex items-center space-x-3">
                       {getStatusIcon(request.status)}
                       <div>
-                        <h3 className="text-lg font-semibold text-white">
+                        <h3 className="text-lg font-semibold text-gray-900">
                           {request.username} - {request.optic_name}
                         </h3>
-                        <p className="text-white/60 text-sm">{request.email}</p>
+                        <p className="text-gray-600 text-sm">{request.email}</p>
                       </div>
                     </div>
                     <div className="flex items-center space-x-2">
@@ -152,16 +152,16 @@ const AdminRegistrationRequestsPage: React.FC = () => {
 
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-4 text-sm">
                     <div>
-                      <h4 className="font-semibold text-white mb-2">Información de la Óptica</h4>
-                      <div className="space-y-1 text-white/80">
+                      <h4 className="font-semibold text-gray-900 mb-2">Información de la Óptica</h4>
+                      <div className="space-y-1 text-gray-700">
                         <p><strong>Dirección:</strong> {request.optic_address}</p>
                         <p><strong>Teléfono:</strong> {request.optic_phone}</p>
                         <p><strong>Email:</strong> {request.optic_email}</p>
                       </div>
                     </div>
                     <div>
-                      <h4 className="font-semibold text-white mb-2">Detalles de la Solicitud</h4>
-                      <div className="space-y-1 text-white/80">
+                      <h4 className="font-semibold text-gray-900 mb-2">Detalles de la Solicitud</h4>
+                      <div className="space-y-1 text-gray-700">
                         <p><strong>Fecha:</strong> {new Date(request.created_at).toLocaleDateString()}</p>
                         {request.admin_notes && (
                           <p><strong>Notas:</strong> {request.admin_notes}</p>
