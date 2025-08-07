@@ -37,7 +37,7 @@ router.post('/register', [
 
     // Create registration request
     await executeInsert(
-      'INSERT INTO registration_requests (user_id, optic_id, status) VALUES (?, ?, ?)',
+      'INSERT INTO registration_requests (user_id, optic_id, status) VALUES ($1, $2, $3)',
       [user.id, optic.id, 'pending']
     );
 
