@@ -3,7 +3,7 @@ import { X, Plus, Trash2 } from 'lucide-react';
 import { Client, Product } from '../../types';
 
 interface SaleItem {
-  product_id?: number;
+  product_id?: number | string;
   unregistered_product_name?: string;
   quantity: number;
   unit_price: number;
@@ -98,9 +98,12 @@ const AddSaleModal: React.FC<AddSaleModalProps> = ({
           'Authorization': `Bearer ${localStorage.getItem('token')}`
         },
         body: JSON.stringify({
-          client_id: selectedClient || null,
-          unregistered_client_name: unregisteredClientName || null,
-          items: saleItems,
+          client_id: selectedClient !== 'unregistered' ? selectedClient : null,
+          unregistered_client_name: selectedClient === 'unregistered' ? unregisteredClientName : null,
+          items: saleItems.map(item => ({
+            ...item,
+            product_id: typeof item.product_id === 'number' ? item.product_id : null
+          })),
           notes
         })
       });
@@ -159,17 +162,18 @@ const AddSaleModal: React.FC<AddSaleModalProps> = ({
                 {/* Cliente registrado */}
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-2">
-                    Cliente Registrado
+                    Cliente
                   </label>
                   <select
                     value={selectedClient}
                     onChange={(e) => {
                       setSelectedClient(e.target.value);
-                      if (e.target.value) setUnregisteredClientName('');
+                      if (e.target.value !== 'unregistered') setUnregisteredClientName('');
                     }}
                     className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-primary-500"
                   >
                     <option value="">Seleccionar cliente...</option>
+                    <option value="unregistered">Cliente no registrado</option>
                     {clients.map((client) => (
                       <option key={client.id} value={client.id.toString()}>
                         {client.first_name} {client.last_name} - {client.dni}
@@ -178,11 +182,11 @@ const AddSaleModal: React.FC<AddSaleModalProps> = ({
                   </select>
                 </div>
 
-                {/* Cliente no registrado - solo mostrar si no hay cliente seleccionado */}
-                {!selectedClient && (
+                {/* Cliente no registrado - solo mostrar si se selecciona "Cliente no registrado" */}
+                {selectedClient === 'unregistered' && (
                   <div>
                     <label className="block text-sm font-medium text-gray-700 mb-2">
-                      O Cliente No Registrado
+                      Nombre del Cliente No Registrado
                     </label>
                     <input
                       type="text"
@@ -228,22 +232,31 @@ const AddSaleModal: React.FC<AddSaleModalProps> = ({
                       {/* Producto registrado */}
                       <div>
                         <label className="block text-sm font-medium text-gray-700 mb-1">
-                          Producto del Catálogo
+                          Producto
                         </label>
                         <select
                           value={item.product_id || ''}
                           onChange={(e) => {
-                            const productId = e.target.value ? parseInt(e.target.value) : undefined;
-                            const product = products.find(p => p.id === productId);
-                            updateItem(index, 'product_id', productId);
-                            updateItem(index, 'unregistered_product_name', undefined);
-                            if (product) {
-                              updateItem(index, 'unit_price', product.price);
+                            const productId = e.target.value;
+                            if (productId === 'unregistered') {
+                              updateItem(index, 'product_id', 'unregistered');
+                              updateItem(index, 'unregistered_product_name', '');
+                            } else if (productId) {
+                              const product = products.find(p => p.id === parseInt(productId));
+                              updateItem(index, 'product_id', parseInt(productId));
+                              updateItem(index, 'unregistered_product_name', undefined);
+                              if (product) {
+                                updateItem(index, 'unit_price', product.price);
+                              }
+                            } else {
+                              updateItem(index, 'product_id', undefined);
+                              updateItem(index, 'unregistered_product_name', undefined);
                             }
                           }}
                           className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-primary-500"
                         >
                           <option value="">Seleccionar producto...</option>
+                          <option value="unregistered">Producto no registrado</option>
                           {products.map((product) => (
                             <option key={product.id} value={product.id}>
                               {product.name} - {formatCurrency(product.price)}
@@ -252,11 +265,11 @@ const AddSaleModal: React.FC<AddSaleModalProps> = ({
                         </select>
                       </div>
 
-                      {/* Producto no registrado - solo mostrar si no hay producto seleccionado */}
-                      {!item.product_id && (
+                      {/* Producto no registrado - solo mostrar si se selecciona "Producto no registrado" */}
+                      {item.product_id === 'unregistered' && (
                         <div>
                           <label className="block text-sm font-medium text-gray-700 mb-1">
-                            O Producto No Registrado
+                            Nombre del Producto No Registrado
                           </label>
                           <input
                             type="text"
@@ -316,7 +329,7 @@ const AddSaleModal: React.FC<AddSaleModalProps> = ({
                         <summary className="cursor-pointer text-sm font-medium text-gray-700 hover:text-gray-900">
                           Graduación (Opcional)
                         </summary>
-                        <div className="mt-3 grid grid-cols-1 md:grid-cols-2 gap-4">
+                        <div className="mt-3 space-y-4">
                           {/* Ojo Derecho */}
                           <div className="space-y-3">
                             <h5 className="font-medium text-gray-700">Ojo Derecho (OD)</h5>
