@@ -19,22 +19,19 @@ const ProductImage: React.FC<ProductImageProps> = ({
   const [imageError, setImageError] = useState(false);
   const [imageLoading, setImageLoading] = useState(true);
 
-  // Construir la URL completa si es una ruta relativa
   const getImageUrl = (imageSrc?: string) => {
     if (!imageSrc) return null;
     
-    // Si ya es una URL completa, usarla tal como está
+    // Si es una URL completa (Cloudinary o HTTP), usarla directamente
     if (imageSrc.startsWith('http://') || imageSrc.startsWith('https://')) {
       return imageSrc;
     }
     
-    // Si es una ruta relativa, construir la URL completa
+    // Si es una ruta relativa (uploads), construir la URL del backend
     if (imageSrc.startsWith('/')) {
-      // En desarrollo, usar localhost:3001
       if (import.meta.env.DEV) {
         return `http://localhost:3001${imageSrc}`;
       }
-      // En producción, usar Railway
       return `https://opticapp-production.up.railway.app${imageSrc}`;
     }
     
@@ -53,7 +50,6 @@ const ProductImage: React.FC<ProductImageProps> = ({
     setImageLoading(false);
   };
 
-  // Si no hay src o hubo error, mostrar fallback
   if (!imageUrl || imageError) {
     return (
       <div className={`${className} bg-gray-200 flex items-center justify-center`}>

@@ -5,14 +5,16 @@
   "main": "dist/index.js",
   "scripts": {
     "dev": "tsx watch src/index.ts",
-    "build": "tsc && node -e \"require('fs').mkdirSync('dist/uploads', { recursive: true })\" && node -e \"require('fs').mkdirSync('uploads', { recursive: true })\"",
+    "build": "tsc",
     "start": "node dist/index.js",
     "db:migrate": "tsx src/database/migrate.ts",
-    "db:cleanup": "tsx src/database/cleanup.ts"
+    "db:cleanup": "tsx src/database/cleanup.ts",
+    "db:migrate-cloudinary": "tsx src/database/migrate-cloudinary.ts"
   },
   "dependencies": {
     "@types/sqlite3": "^3.1.11",
     "bcryptjs": "^2.4.3",
+    "cloudinary": "^1.41.3",
     "cors": "^2.8.5",
     "dotenv": "^16.3.1",
     "express": "^4.18.2",
@@ -20,6 +22,7 @@
     "helmet": "^7.1.0",
     "jsonwebtoken": "^9.0.2",
     "multer": "^1.4.5-lts.1",
+    "multer-storage-cloudinary": "^4.0.0",
     "pg": "^8.11.3",
     "sqlite3": "^5.1.7"
   },
