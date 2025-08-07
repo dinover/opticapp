@@ -76,7 +76,7 @@ router.post('/login', [
   try {
     // Find user
     const userResult = await executeQuerySingle(
-      'SELECT * FROM users WHERE username = ?',
+      'SELECT * FROM users WHERE username = $1',
       [username]
     );
 
@@ -101,7 +101,7 @@ router.post('/login', [
 
     // Get optic info
     const opticResult = await executeQuerySingle(
-      'SELECT * FROM optics WHERE id = ?',
+      'SELECT * FROM optics WHERE id = $1',
       [user.optic_id]
     );
 
@@ -146,7 +146,7 @@ router.get('/profile', authenticateToken, async (req: Request, res: Response) =>
     const authReq = req as any;
     
     const userResult = await executeQuerySingle(
-      'SELECT id, username, email, optic_id, role, created_at, updated_at FROM users WHERE id = ?',
+      'SELECT id, username, email, optic_id, role, created_at, updated_at FROM users WHERE id = $1',
       [authReq.user.id]
     );
 
@@ -158,7 +158,7 @@ router.get('/profile', authenticateToken, async (req: Request, res: Response) =>
 
     // Get optic info
     const opticResult = await executeQuerySingle(
-      'SELECT * FROM optics WHERE id = ?',
+      'SELECT * FROM optics WHERE id = $1',
       [user.optic_id]
     );
 
@@ -229,7 +229,7 @@ router.put('/registration-requests/:id', authenticateToken, [
     
     // Get the registration request
     const requestResult = await executeQuerySingle(
-      'SELECT * FROM registration_requests WHERE id = ?',
+      'SELECT * FROM registration_requests WHERE id = $1',
       [id]
     );
     
@@ -241,14 +241,14 @@ router.put('/registration-requests/:id', authenticateToken, [
     
     // Update registration request
     await executeUpdate(
-      'UPDATE registration_requests SET status = ?, admin_notes = ?, reviewed_by = ?, reviewed_at = CURRENT_TIMESTAMP WHERE id = ?',
+      'UPDATE registration_requests SET status = $1, admin_notes = $2, reviewed_by = $3, reviewed_at = CURRENT_TIMESTAMP WHERE id = $4',
       [status, admin_notes, authReq.user.id, id]
     );
     
     if (status === 'approved') {
       // Approve the user
       await executeUpdate(
-        'UPDATE users SET is_approved = ? WHERE id = ?',
+        'UPDATE users SET is_approved = $1 WHERE id = $2',
         [true, request.user_id]
       );
     }
@@ -287,7 +287,7 @@ router.post('/promote-to-admin', authenticateToken, [
   try {
     // Find user
     const userResult = await executeQuerySingle(
-      'SELECT * FROM users WHERE username = ?',
+      'SELECT * FROM users WHERE username = $1',
       [username]
     );
 
@@ -299,7 +299,7 @@ router.post('/promote-to-admin', authenticateToken, [
 
     // Update user to admin and approve
     await executeUpdate(
-      'UPDATE users SET role = ?, is_approved = ? WHERE id = ?',
+      'UPDATE users SET role = $1, is_approved = $2 WHERE id = $3',
       ['admin', true, user.id]
     );
 

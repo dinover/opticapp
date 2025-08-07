@@ -7,7 +7,8 @@
     "dev": "tsx watch src/index.ts",
     "build": "tsc && node -e \"require('fs').mkdirSync('dist/uploads', { recursive: true })\" && node -e \"require('fs').mkdirSync('uploads', { recursive: true })\"",
     "start": "node dist/index.js",
-    "db:migrate": "tsx src/database/migrate.ts"
+    "db:migrate": "tsx src/database/migrate.ts",
+    "db:cleanup": "tsx src/database/cleanup.ts"
   },
   "dependencies": {
     "@types/sqlite3": "^3.1.11",
