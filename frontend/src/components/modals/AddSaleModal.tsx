@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
-import { X, User, Package, DollarSign, Calendar, Eye } from 'lucide-react';
+import { X, User, Package, DollarSign } from 'lucide-react';
 import { salesAPI, clientsAPI, productsAPI } from '../../services/api';
 import { Client, Product } from '../../types';
 import ProductImage from '../ProductImage';
