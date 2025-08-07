@@ -19,6 +19,26 @@ export async function migrateDatabase(): Promise<void> {
       }
     });
     
+    // Add total_amount column to sales table if it doesn't exist
+    sqliteDb.run(`
+      ALTER TABLE sales ADD COLUMN total_amount REAL DEFAULT 0
+    `, (err) => {
+      if (err && !err.message.includes('duplicate column name')) {
+        console.error('Error adding total_amount column:', err);
+      }
+    });
+    
+    // Update existing sales to have total_amount
+    sqliteDb.run(`
+      UPDATE sales 
+      SET total_amount = COALESCE(quantity * unit_price, 0) 
+      WHERE total_amount IS NULL OR total_amount = 0
+    `, (err) => {
+      if (err) {
+        console.error('Error updating sales total_amount:', err);
+      }
+    });
+    
     // Convert existing users to normal users and approve them
     sqliteDb.run(`
       UPDATE users SET role = 'user', is_approved = 1 WHERE role = 'admin' OR role IS NULL
@@ -125,6 +145,26 @@ export async function migrateDatabase(): Promise<void> {
           created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
           updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
         )
+      `);
+      
+      // Add total_amount column to sales table if it doesn't exist
+      await client.query(`
+        DO $$ 
+        BEGIN 
+          IF NOT EXISTS (
+            SELECT 1 FROM information_schema.columns 
+            WHERE table_name = 'sales' AND column_name = 'total_amount'
+          ) THEN 
+            ALTER TABLE sales ADD COLUMN total_amount DECIMAL(10,2) DEFAULT 0;
+          END IF;
+        END $$;
+      `);
+      
+      // Update existing sales to have total_amount
+      await client.query(`
+        UPDATE sales 
+        SET total_amount = COALESCE(quantity * unit_price, 0) 
+        WHERE total_amount IS NULL OR total_amount = 0
       `);
       
       // Convert existing users to normal users and approve them
