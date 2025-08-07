@@ -19,6 +19,30 @@ const ProductImage: React.FC<ProductImageProps> = ({
   const [imageError, setImageError] = useState(false);
   const [imageLoading, setImageLoading] = useState(true);
 
+  // Construir la URL completa si es una ruta relativa
+  const getImageUrl = (imageSrc?: string) => {
+    if (!imageSrc) return null;
+    
+    // Si ya es una URL completa, usarla tal como está
+    if (imageSrc.startsWith('http://') || imageSrc.startsWith('https://')) {
+      return imageSrc;
+    }
+    
+    // Si es una ruta relativa, construir la URL completa
+    if (imageSrc.startsWith('/')) {
+      // En desarrollo, usar localhost:3001
+      if (import.meta.env.DEV) {
+        return `http://localhost:3001${imageSrc}`;
+      }
+      // En producción, usar Railway
+      return `https://opticapp-production.up.railway.app${imageSrc}`;
+    }
+    
+    return imageSrc;
+  };
+
+  const imageUrl = getImageUrl(src);
+
   const handleImageError = () => {
     setImageError(true);
     setImageLoading(false);
@@ -30,7 +54,7 @@ const ProductImage: React.FC<ProductImageProps> = ({
   };
 
   // Si no hay src o hubo error, mostrar fallback
-  if (!src || imageError) {
+  if (!imageUrl || imageError) {
     return (
       <div className={`${className} bg-gray-200 flex items-center justify-center`}>
         {fallbackIcon}
@@ -46,7 +70,7 @@ const ProductImage: React.FC<ProductImageProps> = ({
         </div>
       )}
       <img
-        src={src}
+        src={imageUrl}
         alt={alt}
         className={`${className} ${imageLoading ? 'opacity-0' : 'opacity-100'} transition-opacity duration-200`}
         onError={handleImageError}
