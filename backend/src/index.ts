@@ -53,6 +53,9 @@ app.use(express.urlencoded({ extended: true }));
 // Request logging middleware
 app.use((req, res, next) => {
   console.log(`${new Date().toISOString()} - ${req.method} ${req.url}`);
+  console.log('Headers:', req.headers);
+  console.log('User-Agent:', req.get('User-Agent'));
+  console.log('Origin:', req.get('Origin'));
   next();
 });
 
@@ -85,6 +88,15 @@ app.use('/api/optics', opticRoutes);
 app.use('/api/products', productRoutes);
 app.use('/api/clients', clientRoutes);
 app.use('/api/sales', saleRoutes);
+
+// Log all registered routes
+console.log('=== REGISTERED ROUTES ===');
+console.log('/api/auth/*');
+console.log('/api/optics/*');
+console.log('/api/products/*');
+console.log('/api/clients/*');
+console.log('/api/sales/*');
+console.log('========================');
 
 // Health check endpoint
 app.get('/api/health', (req, res) => {
