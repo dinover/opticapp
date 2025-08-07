@@ -13,7 +13,12 @@ const PORT = process.env.PORT || 3001;
 
 // Configurar CORS
 const corsOptions = {
-  origin: process.env.FRONTEND_URL || 'http://localhost:5173',
+  origin: [
+    'http://localhost:5173',
+    'https://opticapp-frontend.vercel.app',
+    /^https:\/\/.*\.vercel\.app$/,
+    /^https:\/\/.*-daniel-oliveras-projects\.vercel\.app$/
+  ],
   credentials: true,
   optionsSuccessStatus: 200
 };
