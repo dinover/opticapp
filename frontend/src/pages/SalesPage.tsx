@@ -31,6 +31,8 @@ const SalesPage: React.FC = () => {
     try {
       setLoading(true);
       const data = await salesAPI.getAll();
+      console.log('Sales data received:', data);
+      console.log('Sample sale:', data[0]);
       setSales(data);
     } catch (error) {
       console.error('Error fetching sales:', error);
@@ -79,24 +81,32 @@ const SalesPage: React.FC = () => {
   };
 
   const getTotalRevenue = () => {
-    return sales.reduce((total, sale) => {
+    const total = sales.reduce((total, sale) => {
       const price = sale.total_price;
+      console.log('Sale ID:', sale.id, 'Price:', price, 'Type:', typeof price);
       // Handle null, undefined, NaN, and invalid numbers
       if (price === null || price === undefined || isNaN(price) || !isFinite(price)) {
+        console.log('Invalid price for sale:', sale.id, 'skipping...');
         return total;
       }
       return total + price;
     }, 0);
+    console.log('Total revenue calculated:', total);
+    return total;
   };
 
   const getAverageSale = () => {
     if (sales.length === 0) return 0;
     const totalRevenue = getTotalRevenue();
+    console.log('Total revenue for average:', totalRevenue, 'Sales count:', sales.length);
     // Handle division by zero and invalid results
     if (totalRevenue === 0 || isNaN(totalRevenue) || !isFinite(totalRevenue)) {
+      console.log('Invalid total revenue, returning 0');
       return 0;
     }
-    return totalRevenue / sales.length;
+    const average = totalRevenue / sales.length;
+    console.log('Average calculated:', average);
+    return average;
   };
 
   const getUniqueClients = () => {
