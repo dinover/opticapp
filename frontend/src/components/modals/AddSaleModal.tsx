@@ -48,6 +48,7 @@ const AddSaleModal: React.FC<AddSaleModalProps> = ({
 
   const addProductItem = () => {
     setSaleItems([...saleItems, {
+      product_id: '',
       quantity: 1,
       unit_price: 0
     }]);
