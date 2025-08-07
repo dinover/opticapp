@@ -10,10 +10,14 @@ interface AuthenticatedRequest extends express.Request {
 
 // GET / - Obtener todos los clientes del óptico
 router.get('/', authenticateToken, async (req: AuthenticatedRequest, res) => {
+  console.log('=== CLIENTS ROUTE HIT ===');
+  console.log('Request URL:', req.url);
+  console.log('Request path:', req.path);
+  console.log('Request method:', req.method);
+  console.log('User object:', req.user);
+  
   try {
-    console.log('=== CLIENTS DEBUG ===');
-    console.log('User:', req.user);
-    console.log('Optic ID:', req.user?.optic_id);
+    console.log('User optic_id:', req.user?.optic_id);
     console.log('User ID:', req.user?.id);
     
     const result = await executeQuery(

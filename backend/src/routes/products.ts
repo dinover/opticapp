@@ -16,12 +16,16 @@ interface AuthenticatedRequest extends express.Request {
   };
 }
 
-// Get all products for the authenticated user's optic
-router.get('/', authenticateToken, async (req: AuthenticatedRequest, res: express.Response) => {
+// GET / - Obtener todos los productos del óptico
+router.get('/', authenticateToken, async (req: AuthenticatedRequest, res) => {
+  console.log('=== PRODUCTS ROUTE HIT ===');
+  console.log('Request URL:', req.url);
+  console.log('Request path:', req.path);
+  console.log('Request method:', req.method);
+  console.log('User object:', req.user);
+  
   try {
-    console.log('=== PRODUCTS DEBUG ===');
-    console.log('User:', req.user);
-    console.log('Optic ID:', req.user?.optic_id);
+    console.log('User optic_id:', req.user?.optic_id);
     console.log('User ID:', req.user?.id);
     
     const result = await executeQuery('SELECT * FROM products WHERE optic_id = $1 ORDER BY created_at DESC', [req.user.optic_id]);

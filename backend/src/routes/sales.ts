@@ -10,6 +10,12 @@ interface AuthenticatedRequest extends express.Request {
 
 // GET / - Obtener todas las ventas del óptico
 router.get('/', authenticateToken, async (req: AuthenticatedRequest, res) => {
+  console.log('=== SALES ROUTE HIT ===');
+  console.log('Request URL:', req.url);
+  console.log('Request path:', req.path);
+  console.log('Request method:', req.method);
+  console.log('User object:', req.user);
+  
   try {
     console.log('=== SALES DEBUG ===');
     console.log('User:', req.user);
