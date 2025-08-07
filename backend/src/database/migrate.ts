@@ -215,7 +215,68 @@ export async function migrateDatabase(): Promise<void> {
   // Run cleanup after migration
   await cleanupDatabase();
   
-  console.log('Database migrations completed');
+  // Migración para eliminar columnas antiguas de sales que ya no se usan
+  console.log('Eliminando columnas antiguas de la tabla sales...');
+  
+  if (process.env.NODE_ENV === 'production') {
+    // PostgreSQL
+    try {
+      await pool.query(`
+        ALTER TABLE sales 
+        DROP COLUMN IF EXISTS quantity,
+        DROP COLUMN IF EXISTS unit_price,
+        DROP COLUMN IF EXISTS product_id,
+        DROP COLUMN IF EXISTS unregistered_product_name,
+        DROP COLUMN IF EXISTS od_esf,
+        DROP COLUMN IF EXISTS od_cil,
+        DROP COLUMN IF EXISTS od_eje,
+        DROP COLUMN IF EXISTS od_add,
+        DROP COLUMN IF EXISTS oi_esf,
+        DROP COLUMN IF EXISTS oi_cil,
+        DROP COLUMN IF EXISTS oi_eje,
+        DROP COLUMN IF EXISTS oi_add
+      `);
+      console.log('Columnas antiguas eliminadas de sales (PostgreSQL)');
+    } catch (error) {
+      console.log('Error eliminando columnas antiguas (PostgreSQL):', error);
+    }
+  } else {
+    // SQLite
+    try {
+      // SQLite no soporta DROP COLUMN directamente, necesitamos recrear la tabla
+      await sqliteDb.run(`
+        CREATE TABLE sales_new (
+          id INTEGER PRIMARY KEY AUTOINCREMENT,
+          optic_id INTEGER NOT NULL,
+          client_id INTEGER,
+          unregistered_client_name TEXT,
+          total_amount REAL DEFAULT 0,
+          notes TEXT,
+          created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+          updated_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+          FOREIGN KEY (optic_id) REFERENCES optics (id),
+          FOREIGN KEY (client_id) REFERENCES clients (id)
+        )
+      `);
+      
+      // Copiar datos existentes
+      await sqliteDb.run(`
+        INSERT INTO sales_new (id, optic_id, client_id, unregistered_client_name, total_amount, notes, created_at, updated_at)
+        SELECT id, optic_id, client_id, unregistered_client_name, total_amount, notes, created_at, updated_at
+        FROM sales
+      `);
+      
+      // Eliminar tabla antigua y renombrar la nueva
+      await sqliteDb.run('DROP TABLE sales');
+      await sqliteDb.run('ALTER TABLE sales_new RENAME TO sales');
+      
+      console.log('Tabla sales recreada sin columnas antiguas (SQLite)');
+    } catch (error) {
+      console.log('Error recreando tabla sales (SQLite):', error);
+    }
+  }
+
+  console.log('Migración completada exitosamente');
 }
 
 // Run migration if this file is executed directly

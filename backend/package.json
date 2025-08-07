@@ -9,7 +9,9 @@
     "start": "node dist/index.js",
     "db:migrate": "tsx src/database/migrate.ts",
     "db:cleanup": "tsx src/database/cleanup.ts",
-    "db:migrate-cloudinary": "tsx src/database/migrate-cloudinary.ts"
+    "db:migrate-cloudinary": "tsx src/database/migrate-cloudinary.ts",
+    "db:migrate-sales": "tsx src/database/migrate-sales.ts",
+    "db:seed": "tsx src/database/seed-data.ts"
   },
   "dependencies": {
     "@types/sqlite3": "^3.1.11",
