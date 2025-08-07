@@ -14,7 +14,7 @@ export async function cleanupDatabase(): Promise<void> {
     
     const client = await pool.connect();
     try {
-      // Delete duplicate users (keep only the first one)
+      // Delete duplicate users (keep only the first one by username)
       await client.query(`
         DELETE FROM users 
         WHERE id NOT IN (
@@ -22,6 +22,22 @@ export async function cleanupDatabase(): Promise<void> {
           FROM users 
           GROUP BY username
         )
+      `);
+      
+      // Delete users with duplicate emails (keep only the first one by email)
+      await client.query(`
+        DELETE FROM users 
+        WHERE id NOT IN (
+          SELECT MIN(id) 
+          FROM users 
+          GROUP BY email
+        )
+      `);
+      
+      // Clean up orphaned registration requests
+      await client.query(`
+        DELETE FROM registration_requests 
+        WHERE user_id NOT IN (SELECT id FROM users)
       `);
       
       // Ensure we have exactly one admin user
