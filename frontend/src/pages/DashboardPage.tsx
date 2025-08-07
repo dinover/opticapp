@@ -48,11 +48,19 @@ const DashboardPage: React.FC = () => {
     );
   }
 
-  const formatCurrency = (amount: number) => {
+  const formatCurrency = (amount: number | null | undefined) => {
+    // Handle null, undefined, NaN, and invalid numbers
+    if (amount === null || amount === undefined || isNaN(amount) || !isFinite(amount)) {
+      return new Intl.NumberFormat('es-AR', {
+        style: 'currency',
+        currency: 'ARS',
+      }).format(0);
+    }
+    
     return new Intl.NumberFormat('es-AR', {
       style: 'currency',
       currency: 'ARS',
-    }).format(amount || 0);
+    }).format(amount);
   };
 
   const formatDate = (dateString: string) => {
@@ -144,7 +152,9 @@ const DashboardPage: React.FC = () => {
             </div>
             <div className="ml-4">
               <p className="text-sm font-medium text-gray-600">Ingresos</p>
-              <p className="text-2xl font-bold text-gray-900">{formatCurrency(stats?.total_revenue || 0)}</p>
+              <p className="text-2xl font-bold text-gray-900">
+                {formatCurrency(stats?.total_revenue)}
+              </p>
             </div>
           </div>
         </div>

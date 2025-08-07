@@ -99,7 +99,7 @@ router.get('/stats', authenticateToken, async (req: Request, res: Response) => {
         total_stock: parseInt(productsResult.rows[0].total_stock) || 0,
         total_clients: parseInt(clientsResult.rows[0].total_clients) || 0,
         total_sales: parseInt(salesResult.rows[0].total_sales) || 0,
-        total_revenue: parseFloat(salesResult.rows[0].total_revenue) || 0,
+        total_revenue: salesResult.rows[0].total_revenue ? parseFloat(salesResult.rows[0].total_revenue) : 0,
         low_stock_count: parseInt(lowStockResult.rows[0].low_stock_count) || 0,
         out_of_stock_count: parseInt(outOfStockResult.rows[0].out_of_stock_count) || 0
       };

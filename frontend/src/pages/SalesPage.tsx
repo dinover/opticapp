@@ -55,7 +55,15 @@ const SalesPage: React.FC = () => {
     setSales(filtered);
   };
 
-  const formatCurrency = (amount: number) => {
+  const formatCurrency = (amount: number | null | undefined) => {
+    // Handle null, undefined, NaN, and invalid numbers
+    if (amount === null || amount === undefined || isNaN(amount) || !isFinite(amount)) {
+      return new Intl.NumberFormat('es-AR', {
+        style: 'currency',
+        currency: 'ARS',
+      }).format(0);
+    }
+    
     return new Intl.NumberFormat('es-AR', {
       style: 'currency',
       currency: 'ARS',
@@ -71,12 +79,24 @@ const SalesPage: React.FC = () => {
   };
 
   const getTotalRevenue = () => {
-    return sales.reduce((total, sale) => total + sale.total_price, 0);
+    return sales.reduce((total, sale) => {
+      const price = sale.total_price;
+      // Handle null, undefined, NaN, and invalid numbers
+      if (price === null || price === undefined || isNaN(price) || !isFinite(price)) {
+        return total;
+      }
+      return total + price;
+    }, 0);
   };
 
   const getAverageSale = () => {
     if (sales.length === 0) return 0;
-    return getTotalRevenue() / sales.length;
+    const totalRevenue = getTotalRevenue();
+    // Handle division by zero and invalid results
+    if (totalRevenue === 0 || isNaN(totalRevenue) || !isFinite(totalRevenue)) {
+      return 0;
+    }
+    return totalRevenue / sales.length;
   };
 
   const getUniqueClients = () => {
