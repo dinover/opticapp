@@ -199,19 +199,23 @@ export const salesAPI = {
 
   create: async (data: {
     client_id?: number;
-    product_id?: number;
-    quantity: number;
-    total_price: number;
-    sale_date: string;
+    unregistered_client_name?: string;
+    items: Array<{
+      product_id?: number;
+      unregistered_product_name?: string;
+      quantity: number;
+      unit_price: number;
+      od_esf?: number;
+      od_cil?: number;
+      od_eje?: number;
+      od_add?: number;
+      oi_esf?: number;
+      oi_cil?: number;
+      oi_eje?: number;
+      oi_add?: number;
+      notes?: string;
+    }>;
     notes?: string;
-    od_esf?: string;
-    od_cil?: string;
-    od_eje?: string;
-    od_add?: string;
-    oi_esf?: string;
-    oi_cil?: string;
-    oi_eje?: string;
-    oi_add?: string;
   }): Promise<SaleWithDetails> => {
     const response = await api.post('/sales', data);
     return response.data;

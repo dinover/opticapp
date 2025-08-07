@@ -3,6 +3,7 @@ import { Plus, Search, Trash2 } from 'lucide-react';
 import { Sale, Client, Product } from '../types';
 import AddSaleModal from '../components/modals/AddSaleModal';
 import Pagination from '../components/Pagination';
+import { salesAPI, clientsAPI, productsAPI } from '../services/api';
 
 const SalesPage: React.FC = () => {
   const [sales, setSales] = useState<Sale[]>([]);
@@ -22,15 +23,8 @@ const SalesPage: React.FC = () => {
 
   const fetchSales = async () => {
     try {
-      const response = await fetch('/api/sales', {
-        headers: {
-          'Authorization': `Bearer ${localStorage.getItem('token')}`
-        }
-      });
-      if (response.ok) {
-        const data = await response.json();
-        setSales(data);
-      }
+      const data = await salesAPI.getAll();
+      setSales(data);
     } catch (error) {
       console.error('Error fetching sales:', error);
     } finally {
@@ -40,15 +34,8 @@ const SalesPage: React.FC = () => {
 
   const fetchClients = async () => {
     try {
-      const response = await fetch('/api/clients', {
-        headers: {
-          'Authorization': `Bearer ${localStorage.getItem('token')}`
-        }
-      });
-      if (response.ok) {
-        const data = await response.json();
-        setClients(data);
-      }
+      const data = await clientsAPI.getAll();
+      setClients(data);
     } catch (error) {
       console.error('Error fetching clients:', error);
     }
@@ -56,15 +43,8 @@ const SalesPage: React.FC = () => {
 
   const fetchProducts = async () => {
     try {
-      const response = await fetch('/api/products', {
-        headers: {
-          'Authorization': `Bearer ${localStorage.getItem('token')}`
-        }
-      });
-      if (response.ok) {
-        const data = await response.json();
-        setProducts(data);
-      }
+      const data = await productsAPI.getAll();
+      setProducts(data);
     } catch (error) {
       console.error('Error fetching products:', error);
     }
@@ -76,19 +56,9 @@ const SalesPage: React.FC = () => {
     }
 
     try {
-      const response = await fetch(`/api/sales/${saleId}`, {
-        method: 'DELETE',
-        headers: {
-          'Authorization': `Bearer ${localStorage.getItem('token')}`
-        }
-      });
-
-      if (response.ok) {
-        alert('Venta eliminada exitosamente');
-        fetchSales();
-      } else {
-        alert('Error al eliminar la venta');
-      }
+      await salesAPI.delete(saleId);
+      alert('Venta eliminada exitosamente');
+      fetchSales();
     } catch (error) {
       console.error('Error deleting sale:', error);
       alert('Error al eliminar la venta');

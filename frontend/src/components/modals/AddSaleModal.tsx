@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { X, Plus, Trash2 } from 'lucide-react';
 import { Client, Product } from '../../types';
+import { salesAPI } from '../../services/api';
 
 interface SaleItem {
   product_id?: number | string;
@@ -92,32 +93,21 @@ const AddSaleModal: React.FC<AddSaleModalProps> = ({
     setIsSubmitting(true);
 
     try {
-      const response = await fetch('/api/sales', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${localStorage.getItem('token')}`
-        },
-        body: JSON.stringify({
-          client_id: selectedClient !== 'unregistered' ? selectedClient : null,
-          unregistered_client_name: selectedClient === 'unregistered' ? unregisteredClientName : null,
-          items: saleItems.map(item => ({
-            ...item,
-            product_id: typeof item.product_id === 'number' ? item.product_id : null
-          })),
-          notes
-        })
+      const response = await salesAPI.create({
+        client_id: selectedClient !== 'unregistered' ? parseInt(selectedClient) : undefined,
+        unregistered_client_name: selectedClient === 'unregistered' ? unregisteredClientName : undefined,
+        items: saleItems.map(item => ({
+          ...item,
+          product_id: typeof item.product_id === 'number' ? item.product_id : undefined,
+          unregistered_product_name: typeof item.product_id === 'string' && item.product_id !== '' ? item.unregistered_product_name : undefined
+        })),
+        notes
       });
 
-      if (response.ok) {
-        alert('Venta creada exitosamente');
-        onSaleCreated();
-        onClose();
-        resetForm();
-      } else {
-        const error = await response.json();
-        alert(`Error: ${error.error}`);
-      }
+      alert('Venta creada exitosamente');
+      onSaleCreated();
+      onClose();
+      resetForm();
     } catch (error) {
       console.error('Error creating sale:', error);
       alert('Error al crear la venta');
