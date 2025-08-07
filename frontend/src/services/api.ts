@@ -11,10 +11,22 @@ import {
   RegistrationRequest
 } from '../types';
 
-// Temporary hardcoded URL while debugging environment variable
-const API_BASE_URL = import.meta.env.VITE_API_URL || 'https://opticapp-production.up.railway.app/api';
+// API Configuration
+const getApiBaseUrl = () => {
+  // Check if we're in development
+  if (import.meta.env.DEV) {
+    return 'http://localhost:3001/api';
+  }
+  
+  // In production, use the Railway URL
+  return 'https://opticapp-production.up.railway.app/api';
+};
+
+const API_BASE_URL = getApiBaseUrl();
 
 console.log('=== API Configuration Debug ===');
+console.log('Environment:', import.meta.env.MODE);
+console.log('DEV mode:', import.meta.env.DEV);
 console.log('VITE_API_URL from env:', import.meta.env.VITE_API_URL);
 console.log('API_BASE_URL being used:', API_BASE_URL);
 console.log('Current window.location:', window.location.href);
@@ -25,6 +37,7 @@ const api = axios.create({
   headers: {
     'Content-Type': 'application/json',
   },
+  timeout: 10000, // 10 second timeout
 });
 
 // Request interceptor to add auth token
@@ -34,17 +47,23 @@ api.interceptors.request.use(
     if (token) {
       config.headers.Authorization = `Bearer ${token}`;
     }
+    console.log('API Request:', config.method?.toUpperCase(), config.url, config.data);
     return config;
   },
   (error) => {
+    console.error('API Request Error:', error);
     return Promise.reject(error);
   }
 );
 
 // Response interceptor to handle auth errors
 api.interceptors.response.use(
-  (response) => response,
+  (response) => {
+    console.log('API Response:', response.status, response.config.url, response.data);
+    return response;
+  },
   (error) => {
+    console.error('API Response Error:', error.response?.status, error.response?.data);
     if (error.response?.status === 401) {
       localStorage.removeItem('token');
       localStorage.removeItem('user');
@@ -58,12 +77,16 @@ api.interceptors.response.use(
 // Auth endpoints
 export const authAPI = {
   login: async (credentials: LoginRequest): Promise<AuthResponse> => {
+    console.log('Attempting login with:', credentials.username);
     const response = await api.post('/auth/login', credentials);
+    console.log('Login successful:', response.data);
     return response.data;
   },
 
   register: async (data: RegisterRequest): Promise<any> => {
+    console.log('Attempting registration for:', data.username);
     const response = await api.post('/auth/register', data);
+    console.log('Registration successful:', response.data);
     return response.data;
   },
 
