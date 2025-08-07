@@ -83,14 +83,14 @@ const SalesPage: React.FC = () => {
   };
 
   const getClientName = (sale: Sale) => {
-    if (sale.client_first_name && sale.client_last_name) {
-      return `${sale.client_first_name} ${sale.client_last_name}`;
+    if (sale.first_name && sale.last_name) {
+      return `${sale.first_name} ${sale.last_name}`;
     }
     return sale.unregistered_client_name || 'Cliente no registrado';
   };
 
   const getTotalRevenue = () => {
-    return sales.reduce((total, sale) => total + (sale.total_amount || 0), 0);
+    return sales.reduce((total, sale) => total + parseFloat(sale.total_price || '0'), 0);
   };
 
   const getAverageSale = () => {
@@ -223,7 +223,7 @@ const SalesPage: React.FC = () => {
                       {formatDate(sale.sale_date)}
                     </td>
                     <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">
-                      {formatCurrency(sale.total_amount || 0)}
+                      {formatCurrency(sale.total_price || 0)}
                     </td>
                     <td className="px-6 py-4 text-sm text-gray-500">
                       <div className="max-w-xs truncate">

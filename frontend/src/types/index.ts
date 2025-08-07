@@ -78,16 +78,27 @@ export interface Sale {
   id: number;
   optic_id: number;
   client_id?: number;
-  unregistered_client_name?: string;
+  product_id?: number;
+  quantity?: number;
+  total_price: string;
   sale_date: string;
-  total_amount: number;
   notes?: string;
+  unregistered_client_name?: string;
+  unregistered_product_name?: string;
+  od_esf?: string;
+  od_cil?: string;
+  od_eje?: string;
+  od_add?: string;
+  oi_esf?: string;
+  oi_cil?: string;
+  oi_eje?: string;
+  oi_add?: string;
+  total_amount: string;
   created_at: string;
   updated_at: string;
   // Campos del cliente (vienen del JOIN)
-  client_first_name?: string;
-  client_last_name?: string;
-  client_dni?: string;
+  first_name?: string;
+  last_name?: string;
 }
 
 export interface SaleWithDetails extends Sale {
