@@ -82,4 +82,33 @@ router.get('/activity', authenticateToken, async (req: AuthenticatedRequest, res
   }
 });
 
+// GET /low-stock - Obtener productos con bajo stock
+router.get('/low-stock', authenticateToken, async (req: AuthenticatedRequest, res) => {
+  try {
+    const result = await executeQuery(`
+      SELECT 
+        id,
+        name,
+        stock_quantity,
+        price
+      FROM products 
+      WHERE optic_id = $1 AND stock_quantity <= 5
+      ORDER BY stock_quantity ASC
+      LIMIT 10
+    `, [req.user.optic_id]);
+
+    const lowStockProducts = result.rows.map(row => ({
+      id: row.id,
+      name: row.name,
+      stock_quantity: parseInt(row.stock_quantity),
+      price: parseFloat(row.price)
+    }));
+
+    res.json(lowStockProducts);
+  } catch (error) {
+    console.error('Error fetching low stock products:', error);
+    res.status(500).json({ error: 'Error interno del servidor' });
+  }
+});
+
 export default router; 

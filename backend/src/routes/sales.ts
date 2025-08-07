@@ -1,213 +1,177 @@
-import { Router, Request, Response } from 'express';
-import { body, validationResult } from 'express-validator';
-import { executeQuery, executeQuerySingle, executeInsert, executeUpdate } from '../database/query';
+import express from 'express';
 import { authenticateToken } from '../middleware/auth';
+import { executeQuery, executeQuerySingle, executeInsert, executeUpdate } from '../database/query';
 
-interface AuthenticatedRequest extends Request {
+const router = express.Router();
+
+interface AuthenticatedRequest extends express.Request {
   user?: any;
 }
 
-const router = Router();
-
-// Get all sales for the authenticated user's optic
-router.get('/', authenticateToken, async (req: AuthenticatedRequest, res: Response) => {
+// GET / - Obtener todas las ventas del óptico
+router.get('/', authenticateToken, async (req: AuthenticatedRequest, res) => {
   try {
     const result = await executeQuery(`
-      SELECT s.*, 
-             c.first_name as client_first_name, 
-             c.last_name as client_last_name,
-             c.dni as client_dni
+      SELECT 
+        s.*,
+        c.first_name,
+        c.last_name
       FROM sales s
       LEFT JOIN clients c ON s.client_id = c.id
-      WHERE s.optic_id = ?
-      ORDER BY s.sale_date DESC
+      WHERE s.optic_id = $1
+      ORDER BY s.created_at DESC
     `, [req.user?.optic_id]);
-    
+
     res.json(result.rows);
   } catch (error) {
     console.error('Error fetching sales:', error);
-    res.status(500).json({ error: 'Database error' });
+    res.status(500).json({ error: 'Error interno del servidor' });
   }
 });
 
-// Get single sale
-router.get('/:id', authenticateToken, async (req: AuthenticatedRequest, res: Response) => {
+// GET /:id - Obtener una venta específica con sus items
+router.get('/:id', authenticateToken, async (req: AuthenticatedRequest, res) => {
   try {
     const saleId = parseInt(req.params.id);
-    
-    const result = await executeQuerySingle(`
-      SELECT s.*, 
-             c.first_name as client_first_name, 
-             c.last_name as client_last_name,
-             c.dni as client_dni
+
+    // Obtener la venta
+    const saleResult = await executeQuerySingle(`
+      SELECT 
+        s.*,
+        c.first_name,
+        c.last_name
       FROM sales s
       LEFT JOIN clients c ON s.client_id = c.id
-      WHERE s.id = ? AND s.optic_id = ?
+      WHERE s.id = $1 AND s.optic_id = $2
     `, [saleId, req.user?.optic_id]);
-    
-    if (!result) {
-      return res.status(404).json({ error: 'Sale not found' });
+
+    if (!saleResult) {
+      return res.status(404).json({ error: 'Venta no encontrada' });
     }
-    
-    res.json(result);
+
+    // Obtener los items de la venta
+    const itemsResult = await executeQuery(`
+      SELECT 
+        si.*,
+        p.name as product_name,
+        p.price as product_price
+      FROM sale_items si
+      LEFT JOIN products p ON si.product_id = p.id
+      WHERE si.sale_id = $1
+    `, [saleId]);
+
+    const sale = {
+      ...saleResult,
+      items: itemsResult.rows
+    };
+
+    res.json(sale);
   } catch (error) {
     console.error('Error fetching sale:', error);
-    res.status(500).json({ error: 'Database error' });
+    res.status(500).json({ error: 'Error interno del servidor' });
   }
 });
 
-// Create new sale
-router.post('/', [
-  authenticateToken,
-  body('client_id').optional().isInt().withMessage('Client ID must be an integer'),
-  body('unregistered_client_name').optional().isString().withMessage('Unregistered client name must be a string'),
-  body('items').isArray().withMessage('Items must be an array'),
-  body('items.*.product_id').optional().isInt().withMessage('Product ID must be an integer'),
-  body('items.*.unregistered_product_name').optional().isString().withMessage('Unregistered product name must be a string'),
-  body('items.*.quantity').isInt({ min: 1 }).withMessage('Quantity must be at least 1'),
-  body('items.*.unit_price').isFloat({ min: 0 }).withMessage('Unit price must be positive'),
-  body('items.*.od_esf').optional().isFloat().withMessage('OD Esfera must be a number'),
-  body('items.*.od_cil').optional().isFloat().withMessage('OD Cilindro must be a number'),
-  body('items.*.od_eje').optional().isInt({ min: 0, max: 180 }).withMessage('OD Eje must be between 0 and 180'),
-  body('items.*.od_add').optional().isFloat().withMessage('OD Adición must be a number'),
-  body('items.*.oi_esf').optional().isFloat().withMessage('OI Esfera must be a number'),
-  body('items.*.oi_cil').optional().isFloat().withMessage('OI Cilindro must be a number'),
-  body('items.*.oi_eje').optional().isInt({ min: 0, max: 180 }).withMessage('OI Eje must be between 0 and 180'),
-  body('items.*.oi_add').optional().isFloat().withMessage('OI Adición must be a number'),
-  body('items.*.notes').optional().isString().withMessage('Notes must be a string'),
-  body('notes').optional().isString().withMessage('Sale notes must be a string')
-], async (req: AuthenticatedRequest, res: Response) => {
-  const errors = validationResult(req);
-  if (!errors.isEmpty()) {
-    return res.status(400).json({ errors: errors.array() });
-  }
-
+// POST / - Crear una nueva venta
+router.post('/', authenticateToken, async (req: AuthenticatedRequest, res) => {
   try {
     const { client_id, unregistered_client_name, items, notes } = req.body;
-    
-    // Validate that either client_id or unregistered_client_name is provided
-    if (!client_id && !unregistered_client_name) {
-      return res.status(400).json({ error: 'Either client_id or unregistered_client_name is required' });
+
+    if (!items || !Array.isArray(items) || items.length === 0) {
+      return res.status(400).json({ error: 'Debe incluir al menos un producto' });
     }
 
-    // Validate that each item has either product_id or unregistered_product_name
-    for (const item of items) {
-      if (!item.product_id && !item.unregistered_product_name) {
-        return res.status(400).json({ error: 'Each item must have either product_id or unregistered_product_name' });
-      }
-    }
-
-    // Calculate total amount
-    const totalAmount = items.reduce((sum: number, item: any) => {
-      return sum + (item.quantity * item.unit_price);
+    // Calcular el total de la venta
+    const totalAmount = items.reduce((total: number, item: any) => {
+      return total + (item.quantity * item.unit_price);
     }, 0);
 
-    // Create the sale
-    const sale = await executeInsert(`
-      INSERT INTO sales (optic_id, client_id, unregistered_client_name, total_amount, notes, sale_date)
-      VALUES (?, ?, ?, ?, ?, CURRENT_TIMESTAMP)
+    // Crear la venta
+    const saleResult = await executeInsert(`
+      INSERT INTO sales (optic_id, client_id, unregistered_client_name, total_amount, notes, created_at)
+      VALUES ($1, $2, $3, $4, $5, CURRENT_TIMESTAMP)
+      RETURNING id
     `, [req.user?.optic_id, client_id || null, unregistered_client_name || null, totalAmount, notes || null]);
 
-    // Create sale items
+    const saleId = saleResult.rows[0].id;
+
+    // Crear los items de la venta
     for (const item of items) {
       await executeInsert(`
         INSERT INTO sale_items (
-          sale_id, product_id, unregistered_product_name, quantity, unit_price, total_price,
+          sale_id, product_id, unregistered_product_name, quantity, unit_price,
           od_esf, od_cil, od_eje, od_add, oi_esf, oi_cil, oi_eje, oi_add, notes
-        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+        ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14)
       `, [
-        sale.id,
-        item.product_id || null,
-        item.unregistered_product_name || null,
-        item.quantity,
-        item.unit_price,
-        item.quantity * item.unit_price,
-        item.od_esf || null,
-        item.od_cil || null,
-        item.od_eje || null,
-        item.od_add || null,
-        item.oi_esf || null,
-        item.oi_cil || null,
-        item.oi_eje || null,
-        item.oi_add || null,
+        saleId, item.product_id || null, item.unregistered_product_name || null,
+        item.quantity, item.unit_price,
+        item.od_esf || null, item.od_cil || null, item.od_eje || null, item.od_add || null,
+        item.oi_esf || null, item.oi_cil || null, item.oi_eje || null, item.oi_add || null,
         item.notes || null
       ]);
 
-      // Update product stock if it's a registered product
+      // Actualizar stock si es un producto registrado
       if (item.product_id) {
         await executeUpdate(`
           UPDATE products 
-          SET stock_quantity = stock_quantity - ? 
-          WHERE id = ? AND optic_id = ?
+          SET stock_quantity = stock_quantity - $1
+          WHERE id = $2 AND optic_id = $3
         `, [item.quantity, item.product_id, req.user?.optic_id]);
       }
     }
 
-    // Get the complete sale with items
-    const completeSale = await executeQuerySingle(`
-      SELECT s.*, 
-             c.first_name as client_first_name, 
-             c.last_name as client_last_name,
-             c.dni as client_dni
-      FROM sales s
-      LEFT JOIN clients c ON s.client_id = c.id
-      WHERE s.id = ?
-    `, [sale.id]);
-
-    const saleItems = await executeQuery(`
-      SELECT si.*, p.name as product_name, p.brand, p.model, p.color
-      FROM sale_items si
-      LEFT JOIN products p ON si.product_id = p.id
-      WHERE si.sale_id = ?
-    `, [sale.id]);
-
-    res.status(201).json({
-      ...completeSale,
-      items: saleItems.rows
+    res.status(201).json({ 
+      message: 'Venta creada exitosamente',
+      sale_id: saleId 
     });
   } catch (error) {
     console.error('Error creating sale:', error);
-    res.status(500).json({ error: 'Database error' });
+    res.status(500).json({ error: 'Error interno del servidor' });
   }
 });
 
-// Delete sale
-router.delete('/:id', authenticateToken, async (req: AuthenticatedRequest, res: Response) => {
+// DELETE /:id - Eliminar una venta
+router.delete('/:id', authenticateToken, async (req: AuthenticatedRequest, res) => {
   try {
     const saleId = parseInt(req.params.id);
-    
-    // Get sale items to restore stock
-    const items = await executeQuery(`
-      SELECT product_id, quantity FROM sale_items WHERE sale_id = ?
+
+    // Verificar que la venta existe y pertenece al óptico
+    const saleResult = await executeQuerySingle(`
+      SELECT id FROM sales WHERE id = $1 AND optic_id = $2
+    `, [saleId, req.user?.optic_id]);
+
+    if (!saleResult) {
+      return res.status(404).json({ error: 'Venta no encontrada' });
+    }
+
+    // Obtener los items para restaurar stock
+    const itemsResult = await executeQuery(`
+      SELECT product_id, quantity FROM sale_items WHERE sale_id = $1
     `, [saleId]);
-    
-    // Restore product stock
-    for (const item of items.rows) {
+
+    // Restaurar stock de productos registrados
+    for (const item of itemsResult.rows) {
       if (item.product_id) {
         await executeUpdate(`
           UPDATE products 
-          SET stock_quantity = stock_quantity + ? 
-          WHERE id = ? AND optic_id = ?
+          SET stock_quantity = stock_quantity + $1
+          WHERE id = $2 AND optic_id = $3
         `, [item.quantity, item.product_id, req.user?.optic_id]);
       }
     }
-    
-    // Delete sale items (cascade)
-    await executeUpdate('DELETE FROM sale_items WHERE sale_id = ?', [saleId]);
-    
-    // Delete sale
-    const result = await executeUpdate(`
-      DELETE FROM sales WHERE id = ? AND optic_id = ?
+
+    // Eliminar items de la venta
+    await executeUpdate('DELETE FROM sale_items WHERE sale_id = $1', [saleId]);
+
+    // Eliminar la venta
+    await executeUpdate(`
+      DELETE FROM sales WHERE id = $1 AND optic_id = $2
     `, [saleId, req.user?.optic_id]);
 
-    if (result.rowCount === 0) {
-      return res.status(404).json({ error: 'Sale not found' });
-    }
-
-    res.json({ message: 'Sale deleted successfully' });
+    res.json({ message: 'Venta eliminada exitosamente' });
   } catch (error) {
     console.error('Error deleting sale:', error);
-    res.status(500).json({ error: 'Database error' });
+    res.status(500).json({ error: 'Error interno del servidor' });
   }
 });
 

@@ -1,231 +1,174 @@
-import { Router, Request, Response } from 'express';
-import { body, validationResult } from 'express-validator';
-import { executeQuery, executeQuerySingle, executeInsert, executeUpdate } from '../database/query';
+import express from 'express';
 import { authenticateToken } from '../middleware/auth';
+import { executeQuery, executeQuerySingle, executeInsert, executeUpdate } from '../database/query';
 
-interface AuthenticatedRequest extends Request {
+const router = express.Router();
+
+interface AuthenticatedRequest extends express.Request {
   user?: any;
 }
 
-const router = Router();
-
-// Get all clients for the authenticated user's optic
-router.get('/', authenticateToken, async (req: AuthenticatedRequest, res: Response) => {
+// GET / - Obtener todos los clientes del óptico
+router.get('/', authenticateToken, async (req: AuthenticatedRequest, res) => {
   try {
     const result = await executeQuery(
-      'SELECT * FROM clients WHERE optic_id = ? ORDER BY created_at DESC',
+      'SELECT * FROM clients WHERE optic_id = $1 ORDER BY created_at DESC',
       [req.user?.optic_id]
     );
-    
     res.json(result.rows);
   } catch (error) {
     console.error('Error fetching clients:', error);
-    res.status(500).json({ error: 'Database error' });
+    res.status(500).json({ error: 'Error interno del servidor' });
   }
 });
 
-// Get single client
-router.get('/:id', authenticateToken, async (req: AuthenticatedRequest, res: Response) => {
+// GET /:id - Obtener un cliente específico
+router.get('/:id', authenticateToken, async (req: AuthenticatedRequest, res) => {
   try {
     const clientId = parseInt(req.params.id);
-    
     const result = await executeQuerySingle(
-      'SELECT * FROM clients WHERE id = ? AND optic_id = ?',
+      'SELECT * FROM clients WHERE id = $1 AND optic_id = $2',
       [clientId, req.user?.optic_id]
     );
     
     if (!result) {
-      return res.status(404).json({ error: 'Client not found' });
+      return res.status(404).json({ error: 'Cliente no encontrado' });
     }
     
     res.json(result);
   } catch (error) {
     console.error('Error fetching client:', error);
-    res.status(500).json({ error: 'Database error' });
+    res.status(500).json({ error: 'Error interno del servidor' });
   }
 });
 
-// Create new client
-router.post('/', [
-  authenticateToken,
-  body('dni').notEmpty().withMessage('DNI is required'),
-  body('first_name').notEmpty().withMessage('First name is required'),
-  body('last_name').notEmpty().withMessage('Last name is required'),
-  body('phone').optional().isString().withMessage('Phone must be a string'),
-  body('email').optional().isEmail().withMessage('Valid email is required'),
-  body('notes').optional().isString().withMessage('Notes must be a string')
-], async (req: AuthenticatedRequest, res: Response) => {
-  const errors = validationResult(req);
-  if (!errors.isEmpty()) {
-    return res.status(400).json({ errors: errors.array() });
-  }
-
+// POST / - Crear un nuevo cliente
+router.post('/', authenticateToken, async (req: AuthenticatedRequest, res) => {
   try {
     const { dni, first_name, last_name, phone, email, notes } = req.body;
-    
-    // Check if DNI already exists
-    const existingResult = await executeQuerySingle(
-      'SELECT id FROM clients WHERE optic_id = ? AND dni = ?',
-      [req.user?.optic_id, dni]
-    );
-    
-    if (existingResult) {
-      return res.status(400).json({ error: 'Client with this DNI already exists' });
+
+    // Validar que el DNI no esté duplicado
+    if (dni) {
+      const existingClient = await executeQuerySingle(
+        'SELECT id FROM clients WHERE optic_id = $1 AND dni = $2',
+        [req.user?.optic_id, dni]
+      );
+      
+      if (existingClient) {
+        return res.status(400).json({ error: 'Ya existe un cliente con ese DNI' });
+      }
     }
 
     const result = await executeInsert(
-      'INSERT INTO clients (optic_id, dni, first_name, last_name, phone, email, notes) VALUES (?, ?, ?, ?, ?, ?, ?)',
+      'INSERT INTO clients (optic_id, dni, first_name, last_name, phone, email, notes) VALUES ($1, $2, $3, $4, $5, $6, $7) RETURNING *',
       [req.user?.optic_id, dni, first_name, last_name, phone, email, notes]
     );
-    
-    res.status(201).json(result);
+
+    res.status(201).json(result.rows[0]);
   } catch (error) {
     console.error('Error creating client:', error);
-    res.status(500).json({ error: 'Database error' });
+    res.status(500).json({ error: 'Error interno del servidor' });
   }
 });
 
-// Update client
-router.put('/:id', [
-  authenticateToken,
-  body('dni').optional().notEmpty().withMessage('DNI cannot be empty'),
-  body('first_name').optional().notEmpty().withMessage('First name cannot be empty'),
-  body('last_name').optional().notEmpty().withMessage('Last name cannot be empty'),
-  body('phone').optional().isString().withMessage('Phone must be a string'),
-  body('email').optional().isEmail().withMessage('Valid email is required'),
-  body('notes').optional().isString().withMessage('Notes must be a string')
-], async (req: AuthenticatedRequest, res: Response) => {
-  const errors = validationResult(req);
-  if (!errors.isEmpty()) {
-    return res.status(400).json({ errors: errors.array() });
-  }
-
+// PUT /:id - Actualizar un cliente
+router.put('/:id', authenticateToken, async (req: AuthenticatedRequest, res) => {
   try {
     const clientId = parseInt(req.params.id);
     const { dni, first_name, last_name, phone, email, notes } = req.body;
-    
-    // Check if client exists and belongs to user's optic
+
+    // Verificar que el cliente existe
     const existingClient = await executeQuerySingle(
-      'SELECT id FROM clients WHERE id = ? AND optic_id = ?',
+      'SELECT id FROM clients WHERE id = $1 AND optic_id = $2',
       [clientId, req.user?.optic_id]
     );
     
     if (!existingClient) {
-      return res.status(404).json({ error: 'Client not found' });
+      return res.status(404).json({ error: 'Cliente no encontrado' });
     }
 
-    // If DNI is being updated, check for duplicates
+    // Si se está actualizando el DNI, verificar que no esté duplicado
     if (dni) {
-      const duplicateResult = await executeQuerySingle(
-        'SELECT id FROM clients WHERE optic_id = ? AND dni = ? AND id != ?',
+      const duplicateClient = await executeQuerySingle(
+        'SELECT id FROM clients WHERE optic_id = $1 AND dni = $2 AND id != $3',
         [req.user?.optic_id, dni, clientId]
       );
       
-      if (duplicateResult) {
-        return res.status(400).json({ error: 'Client with this DNI already exists' });
+      if (duplicateClient) {
+        return res.status(400).json({ error: 'Ya existe otro cliente con ese DNI' });
       }
     }
 
-    // Build update query dynamically
+    // Construir la consulta de actualización dinámicamente
     const updateFields = [];
     const updateValues = [];
     let paramIndex = 1;
 
     if (dni !== undefined) {
-      updateFields.push('dni = ?');
+      updateFields.push('dni = $' + paramIndex++);
       updateValues.push(dni);
-      paramIndex++;
     }
     if (first_name !== undefined) {
-      updateFields.push('first_name = ?');
+      updateFields.push('first_name = $' + paramIndex++);
       updateValues.push(first_name);
-      paramIndex++;
     }
     if (last_name !== undefined) {
-      updateFields.push('last_name = ?');
+      updateFields.push('last_name = $' + paramIndex++);
       updateValues.push(last_name);
-      paramIndex++;
     }
     if (phone !== undefined) {
-      updateFields.push('phone = ?');
+      updateFields.push('phone = $' + paramIndex++);
       updateValues.push(phone);
-      paramIndex++;
     }
     if (email !== undefined) {
-      updateFields.push('email = ?');
+      updateFields.push('email = $' + paramIndex++);
       updateValues.push(email);
-      paramIndex++;
     }
     if (notes !== undefined) {
-      updateFields.push('notes = ?');
+      updateFields.push('notes = $' + paramIndex++);
       updateValues.push(notes);
-      paramIndex++;
     }
 
     if (updateFields.length === 0) {
-      return res.status(400).json({ error: 'No fields to update' });
+      return res.status(400).json({ error: 'No se proporcionaron campos para actualizar' });
     }
 
+    updateFields.push('updated_at = CURRENT_TIMESTAMP');
     updateValues.push(clientId, req.user?.optic_id);
 
-    const result = await executeUpdate(
-      `UPDATE clients SET ${updateFields.join(', ')}, updated_at = CURRENT_TIMESTAMP WHERE id = ? AND optic_id = ?`,
-      updateValues
-    );
+    const query = `UPDATE clients SET ${updateFields.join(', ')} WHERE id = $${paramIndex} AND optic_id = $${paramIndex + 1}`;
+    
+    const result = await executeUpdate(query, updateValues);
 
     if (result.rowCount === 0) {
-      return res.status(404).json({ error: 'Client not found' });
+      return res.status(404).json({ error: 'Cliente no encontrado' });
     }
 
-    // Get updated client
-    const updatedClient = await executeQuerySingle(
-      'SELECT * FROM clients WHERE id = ? AND optic_id = ?',
-      [clientId, req.user?.optic_id]
-    );
-
-    res.json(updatedClient);
+    res.json({ message: 'Cliente actualizado exitosamente' });
   } catch (error) {
     console.error('Error updating client:', error);
-    res.status(500).json({ error: 'Database error' });
+    res.status(500).json({ error: 'Error interno del servidor' });
   }
 });
 
-// Delete client
-router.delete('/:id', authenticateToken, async (req: AuthenticatedRequest, res: Response) => {
+// DELETE /:id - Eliminar un cliente
+router.delete('/:id', authenticateToken, async (req: AuthenticatedRequest, res) => {
   try {
     const clientId = parseInt(req.params.id);
     
     const result = await executeUpdate(
-      'DELETE FROM clients WHERE id = ? AND optic_id = ?',
+      'DELETE FROM clients WHERE id = $1 AND optic_id = $2',
       [clientId, req.user?.optic_id]
     );
 
     if (result.rowCount === 0) {
-      return res.status(404).json({ error: 'Client not found' });
+      return res.status(404).json({ error: 'Cliente no encontrado' });
     }
 
-    res.json({ message: 'Client deleted successfully' });
+    res.json({ message: 'Cliente eliminado exitosamente' });
   } catch (error) {
     console.error('Error deleting client:', error);
-    res.status(500).json({ error: 'Database error' });
-  }
-});
-
-// Search clients
-router.get('/search/:query', authenticateToken, async (req: AuthenticatedRequest, res: Response) => {
-  try {
-    const query = req.params.query;
-    const searchTerm = `%${query}%`;
-    
-    const result = await executeQuery(
-      'SELECT * FROM clients WHERE optic_id = ? AND (first_name LIKE ? OR last_name LIKE ? OR dni LIKE ? OR email LIKE ?) ORDER BY created_at DESC',
-      [req.user?.optic_id, searchTerm, searchTerm, searchTerm, searchTerm]
-    );
-    
-    res.json(result.rows);
-  } catch (error) {
-    console.error('Error searching clients:', error);
-    res.status(500).json({ error: 'Database error' });
+    res.status(500).json({ error: 'Error interno del servidor' });
   }
 });
 
