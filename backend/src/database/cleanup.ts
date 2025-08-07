@@ -75,6 +75,13 @@ export async function cleanupDatabase(): Promise<void> {
         console.log('Admin user already exists, no need to create');
       }
       
+      // Ensure admin user has correct role
+      const adminUser = await client.query('SELECT * FROM users WHERE username = $1', ['admin']);
+      if (adminUser.rows.length > 0 && adminUser.rows[0].role !== 'admin') {
+        await client.query('UPDATE users SET role = $1 WHERE username = $2', ['admin', 'admin']);
+        console.log('Updated admin user role to admin');
+      }
+      
       console.log('Database cleanup completed successfully');
     } finally {
       client.release();
