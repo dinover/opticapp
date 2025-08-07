@@ -11,6 +11,11 @@ interface AuthenticatedRequest extends express.Request {
 // GET / - Obtener todas las ventas del óptico
 router.get('/', authenticateToken, async (req: AuthenticatedRequest, res) => {
   try {
+    console.log('=== SALES DEBUG ===');
+    console.log('User:', req.user);
+    console.log('Optic ID:', req.user?.optic_id);
+    console.log('User ID:', req.user?.id);
+    
     const result = await executeQuery(`
       SELECT 
         s.*,
@@ -22,6 +27,9 @@ router.get('/', authenticateToken, async (req: AuthenticatedRequest, res) => {
       ORDER BY s.created_at DESC
     `, [req.user?.optic_id]);
 
+    console.log('Query result:', result.rows.length, 'sales found');
+    console.log('First sale:', result.rows[0]);
+    
     res.json(result.rows);
   } catch (error) {
     console.error('Error fetching sales:', error);

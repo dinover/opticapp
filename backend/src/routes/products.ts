@@ -19,7 +19,15 @@ interface AuthenticatedRequest extends express.Request {
 // Get all products for the authenticated user's optic
 router.get('/', authenticateToken, async (req: AuthenticatedRequest, res: express.Response) => {
   try {
+    console.log('=== PRODUCTS DEBUG ===');
+    console.log('User:', req.user);
+    console.log('Optic ID:', req.user?.optic_id);
+    console.log('User ID:', req.user?.id);
+    
     const result = await executeQuery('SELECT * FROM products WHERE optic_id = $1 ORDER BY created_at DESC', [req.user.optic_id]);
+    
+    console.log('Query result:', result.rows.length, 'products found');
+    console.log('First product:', result.rows[0]);
     
     res.json(result.rows);
   } catch (error) {

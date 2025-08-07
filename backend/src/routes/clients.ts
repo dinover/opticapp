@@ -11,10 +11,19 @@ interface AuthenticatedRequest extends express.Request {
 // GET / - Obtener todos los clientes del óptico
 router.get('/', authenticateToken, async (req: AuthenticatedRequest, res) => {
   try {
+    console.log('=== CLIENTS DEBUG ===');
+    console.log('User:', req.user);
+    console.log('Optic ID:', req.user?.optic_id);
+    console.log('User ID:', req.user?.id);
+    
     const result = await executeQuery(
       'SELECT * FROM clients WHERE optic_id = $1 ORDER BY created_at DESC',
       [req.user?.optic_id]
     );
+    
+    console.log('Query result:', result.rows.length, 'clients found');
+    console.log('First client:', result.rows[0]);
+    
     res.json(result.rows);
   } catch (error) {
     console.error('Error fetching clients:', error);
