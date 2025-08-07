@@ -84,12 +84,24 @@ const SalesPage: React.FC = () => {
     const total = sales.reduce((total, sale) => {
       const price = sale.total_price;
       console.log('Sale ID:', sale.id, 'Price:', price, 'Type:', typeof price);
+      
       // Handle null, undefined, NaN, and invalid numbers
       if (price === null || price === undefined || isNaN(price) || !isFinite(price)) {
         console.log('Invalid price for sale:', sale.id, 'skipping...');
         return total;
       }
-      return total + price;
+      
+      // Convert string to number if needed
+      const numericPrice = typeof price === 'string' ? parseFloat(price) : price;
+      console.log('Converted price:', numericPrice);
+      
+      // Validate the converted number
+      if (isNaN(numericPrice) || !isFinite(numericPrice)) {
+        console.log('Invalid converted price for sale:', sale.id, 'skipping...');
+        return total;
+      }
+      
+      return total + numericPrice;
     }, 0);
     console.log('Total revenue calculated:', total);
     return total;
@@ -99,11 +111,18 @@ const SalesPage: React.FC = () => {
     if (sales.length === 0) return 0;
     const totalRevenue = getTotalRevenue();
     console.log('Total revenue for average:', totalRevenue, 'Sales count:', sales.length);
+    
     // Handle division by zero and invalid results
-    if (totalRevenue === 0 || isNaN(totalRevenue) || !isFinite(totalRevenue)) {
+    if (totalRevenue === 0) {
+      console.log('Total revenue is 0, returning 0');
+      return 0;
+    }
+    
+    if (isNaN(totalRevenue) || !isFinite(totalRevenue)) {
       console.log('Invalid total revenue, returning 0');
       return 0;
     }
+    
     const average = totalRevenue / sales.length;
     console.log('Average calculated:', average);
     return average;
