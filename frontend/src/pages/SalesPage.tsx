@@ -223,7 +223,7 @@ const SalesPage: React.FC = () => {
                       {formatDate(sale.sale_date)}
                     </td>
                     <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">
-                      {formatCurrency(sale.total_price || 0)}
+                      {formatCurrency(parseFloat(sale.total_price || '0'))}
                     </td>
                     <td className="px-6 py-4 text-sm text-gray-500">
                       <div className="max-w-xs truncate">
