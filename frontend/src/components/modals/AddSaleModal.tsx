@@ -50,6 +50,7 @@ const AddSaleModal: React.FC<AddSaleModalProps> = ({
   const addProductItem = () => {
     setSaleItems([...saleItems, {
       product_id: '',
+      unregistered_product_name: '',
       quantity: 1,
       unit_price: 0
     }]);
@@ -229,19 +230,23 @@ const AddSaleModal: React.FC<AddSaleModalProps> = ({
                           value={item.product_id || ''}
                           onChange={(e) => {
                             const productId = e.target.value;
+                            console.log('Selected product ID:', productId); // Debug
+                            
                             if (productId === 'unregistered') {
                               updateItem(index, 'product_id', 'unregistered');
                               updateItem(index, 'unregistered_product_name', '');
+                              updateItem(index, 'unit_price', 0);
                             } else if (productId) {
                               const product = products.find(p => p.id === parseInt(productId));
                               updateItem(index, 'product_id', parseInt(productId));
-                              updateItem(index, 'unregistered_product_name', undefined);
+                              updateItem(index, 'unregistered_product_name', '');
                               if (product) {
                                 updateItem(index, 'unit_price', product.price);
                               }
                             } else {
-                              updateItem(index, 'product_id', undefined);
-                              updateItem(index, 'unregistered_product_name', undefined);
+                              updateItem(index, 'product_id', '');
+                              updateItem(index, 'unregistered_product_name', '');
+                              updateItem(index, 'unit_price', 0);
                             }
                           }}
                           className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-primary-500"
@@ -257,7 +262,7 @@ const AddSaleModal: React.FC<AddSaleModalProps> = ({
                       </div>
 
                       {/* Producto no registrado - solo mostrar si se selecciona "Producto no registrado" */}
-                      {item.product_id === 'unregistered' && (
+                      {(item.product_id === 'unregistered' || item.product_id === '') && (
                         <div>
                           <label className="block text-sm font-medium text-gray-700 mb-1">
                             Nombre del Producto No Registrado
