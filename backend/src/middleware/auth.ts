@@ -9,17 +9,28 @@ interface AuthRequest extends Request {
 }
 
 export const authenticateToken = (req: AuthRequest, res: Response, next: NextFunction) => {
+  console.log('=== AUTHENTICATION DEBUG ===');
+  console.log('URL:', req.url);
+  console.log('Method:', req.method);
+  
   const authHeader = req.headers['authorization'];
+  console.log('Auth header:', authHeader ? 'Present' : 'Missing');
+  
   const token = authHeader && authHeader.split(' ')[1];
+  console.log('Token:', token ? 'Present' : 'Missing');
 
   if (!token) {
+    console.log('No token provided');
     return res.status(401).json({ error: 'Access token required' });
   }
 
   jwt.verify(token, process.env.JWT_SECRET || 'your-secret-key', async (err: any, decoded: any) => {
     if (err) {
+      console.log('JWT verification failed:', err.message);
       return res.status(403).json({ error: 'Invalid or expired token' });
     }
+
+    console.log('JWT decoded:', decoded);
 
     try {
       // Get user from database using our query helper
@@ -28,7 +39,10 @@ export const authenticateToken = (req: AuthRequest, res: Response, next: NextFun
         [decoded.userId]
       );
 
+      console.log('User from DB:', user);
+
       if (!user) {
+        console.log('User not found in database');
         return res.status(404).json({ error: 'User not found' });
       }
 
@@ -44,11 +58,15 @@ export const authenticateToken = (req: AuthRequest, res: Response, next: NextFun
         updated_at: user.updated_at
       };
 
+      console.log('Typed user:', typedUser);
+      console.log('Optic ID:', typedUser.optic_id);
+
       req.user = typedUser;
       req.opticId = typedUser.optic_id;
+      console.log('=== AUTHENTICATION SUCCESS ===');
       next();
     } catch (error) {
-      console.error('Database error:', error);
+      console.error('Database error in auth:', error);
       return res.status(500).json({ error: 'Database error' });
     }
   });

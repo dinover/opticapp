@@ -8,14 +8,21 @@ const router = express.Router();
 interface AuthenticatedRequest extends express.Request {
   user: {
     id: number;
+    username: string;
+    email: string;
     optic_id: number;
     role: string;
+    is_approved: boolean;
+    created_at: string;
+    updated_at: string;
   };
 }
 
 // GET /stats - Obtener estadísticas del óptico
 router.get('/stats', authenticateToken, async (req: AuthenticatedRequest, res) => {
   try {
+    console.log('User optic_id:', req.user.optic_id); // Debug
+
     // Obtener estadísticas de productos
     const productsResult = await executeQuery(`
       SELECT COUNT(*) as total_products FROM products WHERE optic_id = $1
@@ -41,6 +48,7 @@ router.get('/stats', authenticateToken, async (req: AuthenticatedRequest, res) =
       total_revenue: salesResult.rows[0].total_revenue ? parseFloat(salesResult.rows[0].total_revenue) : 0
     };
 
+    console.log('Stats:', stats); // Debug
     res.json(stats);
   } catch (error) {
     console.error('Error fetching stats:', error);
@@ -51,6 +59,8 @@ router.get('/stats', authenticateToken, async (req: AuthenticatedRequest, res) =
 // GET /activity - Obtener actividad reciente
 router.get('/activity', authenticateToken, async (req: AuthenticatedRequest, res) => {
   try {
+    console.log('User optic_id for activity:', req.user.optic_id); // Debug
+
     const result = await executeQuery(`
       SELECT 
         s.id,
@@ -73,6 +83,7 @@ router.get('/activity', authenticateToken, async (req: AuthenticatedRequest, res
       created_at: row.created_at
     }));
 
+    console.log('Activity items:', activity.length); // Debug
     res.json(activity);
   } catch (error) {
     console.error('Error fetching activity:', error);
