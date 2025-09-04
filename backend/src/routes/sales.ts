@@ -13,6 +13,7 @@ router.get('/', authenticateToken, async (req: AuthenticatedRequest, res) => {
         s.client_id,
         s.unregistered_client_name,
         s.total_amount,
+        s.sale_date,
         s.notes,
         s.created_at,
         c.first_name,
@@ -41,6 +42,7 @@ router.get('/:id', authenticateToken, async (req: AuthenticatedRequest, res) => 
         s.client_id,
         s.unregistered_client_name,
         s.total_amount,
+        s.sale_date,
         s.notes,
         s.created_at,
         c.first_name,
@@ -105,8 +107,8 @@ router.post('/', authenticateToken, async (req: AuthenticatedRequest, res) => {
 
     // Crear la venta
     const saleResult = await executeInsert(`
-      INSERT INTO sales (optic_id, client_id, unregistered_client_name, total_amount, notes, created_at)
-      VALUES ($1, $2, $3, $4, $5, CURRENT_TIMESTAMP)
+      INSERT INTO sales (optic_id, client_id, unregistered_client_name, total_amount, sale_date, notes, created_at)
+      VALUES ($1, $2, $3, $4, CURRENT_DATE, $5, CURRENT_TIMESTAMP)
       RETURNING id
     `, [req.user?.optic_id, client_id || null, unregistered_client_name || null, totalAmount, notes || null]);
 

@@ -1,8 +1,12 @@
 import { fixTotalPriceIssue } from './database/fix-total-price-issue';
+import { fixSalesSchema } from './database/fix-sales-schema';
 
 export async function runStartupTasks() {
   try {
     console.log('🚀 Running startup tasks...');
+    
+    // Run the sales schema fix migration
+    await fixSalesSchema();
     
     // Run the total price fix migration
     await fixTotalPriceIssue();

@@ -53,29 +53,37 @@ export interface Sale {
   id: number;
   optic_id: number;
   client_id?: number;
-  product_id?: number;
-  quantity: number;
   total_amount: number;
   sale_date: string;
   notes?: string;
   unregistered_client_name?: string;
-  unregistered_product_name?: string;
-  // Campos de prescripción óptica
-  od_esf?: string;
-  od_cil?: string;
-  od_eje?: string;
-  od_add?: string;
-  oi_esf?: string;
-  oi_cil?: string;
-  oi_eje?: string;
-  oi_add?: string;
   created_at: string;
   updated_at: string;
 }
 
+export interface SaleItem {
+  id: number;
+  sale_id: number;
+  product_id?: number;
+  unregistered_product_name?: string;
+  quantity: number;
+  unit_price: number;
+  total_price: number;
+  od_esf?: number;
+  od_cil?: number;
+  od_eje?: number;
+  od_add?: number;
+  oi_esf?: number;
+  oi_cil?: number;
+  oi_eje?: number;
+  oi_add?: number;
+  notes?: string;
+  created_at: string;
+}
+
 export interface SaleWithDetails extends Sale {
-  client: Client;
-  product: Product;
+  client?: Client;
+  items: SaleItem[];
 }
 
 export interface LoginRequest {
