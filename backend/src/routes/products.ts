@@ -67,7 +67,7 @@ router.post('/', authenticateToken, upload.single('image'), async (req: Authenti
 
     res.status(201).json({ 
       message: 'Producto creado exitosamente',
-      product_id: result.rows[0].id 
+      product_id: result.id 
     });
   } catch (error) {
     console.error('Error creating product:', error);
