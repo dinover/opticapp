@@ -107,8 +107,8 @@ const ClientsPage: React.FC = () => {
       {/* Header */}
       <div className="flex items-center justify-between">
         <div>
-          <h1 className="text-2xl font-bold text-gray-900">Clientes</h1>
-          <p className="text-gray-600">Gestiona la base de datos de clientes</p>
+          <h1 className="text-2xl font-bold text-gray-900 dark:text-white">Clientes</h1>
+          <p className="text-gray-600 dark:text-gray-400">Gestiona la base de datos de clientes</p>
         </div>
         <button 
           onClick={() => setShowAddModal(true)}
@@ -131,7 +131,7 @@ const ClientsPage: React.FC = () => {
                 value={searchTerm}
                 onChange={(e) => setSearchTerm(e.target.value)}
                 onKeyPress={(e) => e.key === 'Enter' && handleSearch()}
-                className="w-full pl-10 pr-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-transparent"
+                className="w-full pl-10 pr-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-transparent bg-white dark:bg-gray-700 text-gray-900 dark:text-white placeholder-gray-500 dark:placeholder-gray-400"
               />
             </div>
           </div>
@@ -160,52 +160,52 @@ const ClientsPage: React.FC = () => {
         <div className="overflow-x-auto">
           <table className="w-full">
             <thead>
-              <tr className="border-b border-gray-200">
-                <th className="text-left py-3 px-4 font-semibold text-gray-900">
+              <tr className="border-b border-gray-200 dark:border-gray-700">
+                <th className="text-left py-3 px-4 font-semibold text-gray-900 dark:text-white">
                   <span>Cliente</span>
                 </th>
-                <th className="text-left py-3 px-4 font-semibold text-gray-900">
+                <th className="text-left py-3 px-4 font-semibold text-gray-900 dark:text-white">
                   <span>DNI</span>
                 </th>
-                <th className="text-left py-3 px-4 font-semibold text-gray-900">Contacto</th>
-                <th className="text-left py-3 px-4 font-semibold text-gray-900">Notas</th>
-                <th className="text-right py-3 px-4 font-semibold text-gray-900">Acciones</th>
+                <th className="text-left py-3 px-4 font-semibold text-gray-900 dark:text-white">Contacto</th>
+                <th className="text-left py-3 px-4 font-semibold text-gray-900 dark:text-white">Notas</th>
+                <th className="text-right py-3 px-4 font-semibold text-gray-900 dark:text-white">Acciones</th>
               </tr>
             </thead>
             <tbody>
               {currentClients.length === 0 ? (
                 <tr>
-                  <td colSpan={5} className="text-center py-8 text-gray-500">
-                    <Users className="w-12 h-12 mx-auto mb-3 text-gray-300" />
+                  <td colSpan={5} className="text-center py-8 text-gray-500 dark:text-gray-400">
+                    <Users className="w-12 h-12 mx-auto mb-3 text-gray-300 dark:text-gray-600" />
                     <p>No se encontraron clientes</p>
                   </td>
                 </tr>
               ) : (
                 currentClients.map((client) => (
-                  <tr key={client.id} className="border-b border-gray-100 hover:bg-gray-50">
+                  <tr key={client.id} className="border-b border-gray-100 dark:border-gray-700 hover:bg-gray-50 dark:hover:bg-gray-700">
                     <td className="py-4 px-4">
                       <div>
-                        <p className="font-medium text-gray-900">
+                        <p className="font-medium text-gray-900 dark:text-white">
                           {client.first_name} {client.last_name}
                         </p>
-                        <p className="text-sm text-gray-500">
+                        <p className="text-sm text-gray-500 dark:text-gray-400">
                           Cliente #{client.id}
                         </p>
                       </div>
                     </td>
                     <td className="py-4 px-4">
-                      <p className="font-mono text-gray-900">{client.dni}</p>
+                      <p className="font-mono text-gray-900 dark:text-white">{client.dni}</p>
                     </td>
                     <td className="py-4 px-4">
                       <div className="space-y-1">
                         {client.phone && (
-                          <div className="flex items-center space-x-2 text-sm text-gray-600">
+                          <div className="flex items-center space-x-2 text-sm text-gray-600 dark:text-gray-400">
                             <Phone className="w-4 h-4" />
                             <span>{client.phone}</span>
                           </div>
                         )}
                         {client.email && (
-                          <div className="flex items-center space-x-2 text-sm text-gray-600">
+                          <div className="flex items-center space-x-2 text-sm text-gray-600 dark:text-gray-400">
                             <Mail className="w-4 h-4" />
                             <span>{client.email}</span>
                           </div>
@@ -214,11 +214,11 @@ const ClientsPage: React.FC = () => {
                     </td>
                     <td className="py-4 px-4">
                       {client.notes ? (
-                        <p className="text-sm text-gray-600 truncate max-w-xs">
+                        <p className="text-sm text-gray-600 dark:text-gray-400 truncate max-w-xs">
                           {client.notes}
                         </p>
                       ) : (
-                        <span className="text-sm text-gray-400">Sin notas</span>
+                        <span className="text-sm text-gray-400 dark:text-gray-500">Sin notas</span>
                       )}
                     </td>
                     <td className="py-4 px-4 text-right">
@@ -265,7 +265,7 @@ const ClientsPage: React.FC = () => {
       />
 
       {/* Summary */}
-      <div className="flex items-center justify-between text-sm text-gray-600">
+      <div className="flex items-center justify-between text-sm text-gray-600 dark:text-gray-400">
         <p>Total de clientes: {clients.length}</p>
         <p>Clientes con email: {clients.filter(c => c.email).length}</p>
       </div>

@@ -142,8 +142,8 @@ const SalesPage: React.FC = () => {
       {/* Header */}
       <div className="flex items-center justify-between">
         <div>
-          <h1 className="text-2xl font-bold text-gray-900">Ventas</h1>
-          <p className="text-gray-600">Gestiona las ventas de tu óptica</p>
+          <h1 className="text-2xl font-bold text-gray-900 dark:text-white">Ventas</h1>
+          <p className="text-gray-600 dark:text-gray-400">Gestiona las ventas de tu óptica</p>
         </div>
         <button
           onClick={() => setShowAddModal(true)}
@@ -156,17 +156,17 @@ const SalesPage: React.FC = () => {
 
       {/* Stats */}
       <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-        <div className="bg-white p-6 rounded-lg shadow">
-          <h3 className="text-sm font-medium text-gray-500">Total de Ventas</h3>
-          <p className="text-2xl font-bold text-gray-900">{sales.length}</p>
+        <div className="bg-white dark:bg-gray-800 p-6 rounded-lg shadow">
+          <h3 className="text-sm font-medium text-gray-500 dark:text-gray-400">Total de Ventas</h3>
+          <p className="text-2xl font-bold text-gray-900 dark:text-white">{sales.length}</p>
         </div>
-        <div className="bg-white p-6 rounded-lg shadow">
-          <h3 className="text-sm font-medium text-gray-500">Ingresos Totales</h3>
-          <p className="text-2xl font-bold text-gray-900">{formatCurrency(getTotalRevenue())}</p>
+        <div className="bg-white dark:bg-gray-800 p-6 rounded-lg shadow">
+          <h3 className="text-sm font-medium text-gray-500 dark:text-gray-400">Ingresos Totales</h3>
+          <p className="text-2xl font-bold text-gray-900 dark:text-white">{formatCurrency(getTotalRevenue())}</p>
         </div>
-        <div className="bg-white p-6 rounded-lg shadow">
-          <h3 className="text-sm font-medium text-gray-500">Venta Promedio</h3>
-          <p className="text-2xl font-bold text-gray-900">{formatCurrency(getAverageSale())}</p>
+        <div className="bg-white dark:bg-gray-800 p-6 rounded-lg shadow">
+          <h3 className="text-sm font-medium text-gray-500 dark:text-gray-400">Venta Promedio</h3>
+          <p className="text-2xl font-bold text-gray-900 dark:text-white">{formatCurrency(getAverageSale())}</p>
         </div>
       </div>
 
@@ -179,60 +179,60 @@ const SalesPage: React.FC = () => {
             placeholder="Buscar por cliente, ID o producto..."
             value={searchTerm}
             onChange={(e) => setSearchTerm(e.target.value)}
-            className="w-full pl-10 pr-4 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-primary-500"
+            className="w-full pl-10 pr-4 py-2 border border-gray-300 dark:border-gray-600 rounded-md focus:outline-none focus:ring-2 focus:ring-primary-500 bg-white dark:bg-gray-700 text-gray-900 dark:text-white placeholder-gray-500 dark:placeholder-gray-400"
           />
         </div>
       </div>
 
       {/* Sales Table */}
-      <div className="bg-white rounded-lg shadow overflow-hidden">
+      <div className="bg-white dark:bg-gray-800 rounded-lg shadow overflow-hidden">
         <div className="overflow-x-auto">
-          <table className="min-w-full divide-y divide-gray-200">
-            <thead className="bg-gray-50">
+          <table className="min-w-full divide-y divide-gray-200 dark:divide-gray-700">
+            <thead className="bg-gray-50 dark:bg-gray-700">
               <tr>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">
                   ID
                 </th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">
                   Cliente
                 </th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">
                   Fecha
                 </th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">
                   Total
                 </th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">
                   Notas
                 </th>
-                <th className="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">
+                <th className="px-6 py-3 text-right text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">
                   Acciones
                 </th>
               </tr>
             </thead>
-            <tbody className="bg-white divide-y divide-gray-200">
+            <tbody className="bg-white dark:bg-gray-800 divide-y divide-gray-200 dark:divide-gray-700">
               {currentSales.length === 0 ? (
                 <tr>
-                  <td colSpan={6} className="px-6 py-4 text-center text-gray-500">
+                  <td colSpan={6} className="px-6 py-4 text-center text-gray-500 dark:text-gray-400">
                     No se encontraron ventas
                   </td>
                 </tr>
               ) : (
                 currentSales.map((sale) => (
-                  <tr key={sale.id} className="hover:bg-gray-50">
-                    <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">
+                  <tr key={sale.id} className="hover:bg-gray-50 dark:hover:bg-gray-700">
+                    <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900 dark:text-white">
                       #{sale.id}
                     </td>
-                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
+                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900 dark:text-white">
                       {getClientName(sale)}
                     </td>
-                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500 dark:text-gray-400">
                       {formatDate(sale.sale_date)}
                     </td>
-                    <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">
+                    <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900 dark:text-white">
                       {formatCurrency(parseFloat(sale.total_amount || '0'))}
                     </td>
-                    <td className="px-6 py-4 text-sm text-gray-500">
+                    <td className="px-6 py-4 text-sm text-gray-500 dark:text-gray-400">
                       <div className="max-w-xs truncate">
                         {sale.notes || '-'}
                       </div>
