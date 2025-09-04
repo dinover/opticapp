@@ -1,7 +1,8 @@
 import React, { useState, useEffect } from 'react';
-import { Plus, Search, Trash2 } from 'lucide-react';
-import { Sale, Client, Product } from '../types';
+import { Plus, Search, Trash2, Eye } from 'lucide-react';
+import { Sale, Client, Product, SaleWithDetails } from '../types';
 import AddSaleModal from '../components/modals/AddSaleModal';
+import ViewSaleModal from '../components/modals/ViewSaleModal';
 import Pagination from '../components/Pagination';
 import { salesAPI, clientsAPI, productsAPI } from '../services/api';
 
@@ -12,6 +13,8 @@ const SalesPage: React.FC = () => {
   const [loading, setLoading] = useState(true);
   const [searchTerm, setSearchTerm] = useState('');
   const [showAddModal, setShowAddModal] = useState(false);
+  const [showViewModal, setShowViewModal] = useState(false);
+  const [selectedSale, setSelectedSale] = useState<SaleWithDetails | null>(null);
   const [currentPage, setCurrentPage] = useState(1);
   const [itemsPerPage, setItemsPerPage] = useState(10);
 
@@ -47,6 +50,18 @@ const SalesPage: React.FC = () => {
       setProducts(data);
     } catch (error) {
       console.error('Error fetching products:', error);
+    }
+  };
+
+  const handleViewSale = async (sale: Sale) => {
+    try {
+      // Fetch detailed sale information
+      const detailedSale = await salesAPI.getById(sale.id);
+      setSelectedSale(detailedSale);
+      setShowViewModal(true);
+    } catch (error) {
+      console.error('Error fetching sale details:', error);
+      alert('Error al cargar los detalles de la venta');
     }
   };
 
@@ -231,12 +246,22 @@ const SalesPage: React.FC = () => {
                       </div>
                     </td>
                     <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
-                      <button
-                        onClick={() => handleDeleteSale(sale.id)}
-                        className="text-red-600 hover:text-red-900"
-                      >
-                        <Trash2 className="w-4 h-4" />
-                      </button>
+                      <div className="flex items-center justify-end space-x-2">
+                        <button
+                          onClick={() => handleViewSale(sale)}
+                          className="p-2 text-blue-600 hover:bg-blue-50 rounded-lg transition-colors"
+                          title="Ver detalles"
+                        >
+                          <Eye className="w-4 h-4" />
+                        </button>
+                        <button
+                          onClick={() => handleDeleteSale(sale.id)}
+                          className="p-2 text-red-600 hover:bg-red-50 rounded-lg transition-colors"
+                          title="Eliminar"
+                        >
+                          <Trash2 className="w-4 h-4" />
+                        </button>
+                      </div>
                     </td>
                   </tr>
                 ))
@@ -266,6 +291,13 @@ const SalesPage: React.FC = () => {
         }}
         clients={clients}
         products={products}
+      />
+
+      {/* View Sale Modal */}
+      <ViewSaleModal
+        isOpen={showViewModal}
+        onClose={() => setShowViewModal(false)}
+        sale={selectedSale}
       />
     </div>
   );
