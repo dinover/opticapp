@@ -152,11 +152,15 @@ router.post('/', authenticateToken, async (req: AuthenticatedRequest, res) => {
 
       // Actualizar stock si es un producto registrado
       if (productId) {
-        await executeUpdate(`
+        const updateResult = await executeUpdate(`
           UPDATE products 
           SET stock_quantity = stock_quantity - $1
           WHERE id = $2 AND optic_id = $3
         `, [item.quantity, productId, req.user?.optic_id]);
+        
+        if (updateResult && updateResult.rowCount === 0) {
+          console.warn(`Product with ID ${productId} not found for stock update`);
+        }
       }
     }
 

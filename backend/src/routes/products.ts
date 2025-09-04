@@ -118,7 +118,7 @@ router.put('/:id', authenticateToken, upload.single('image'), async (req: Authen
       productId, req.user?.optic_id
     ]);
 
-    if (result.rowCount === 0) {
+    if (result && result.rowCount === 0) {
       return res.status(404).json({ error: 'Producto no encontrado' });
     }
 
@@ -157,7 +157,7 @@ router.delete('/:id', authenticateToken, async (req: AuthenticatedRequest, res) 
       WHERE id = $1 AND optic_id = $2 AND deleted_at IS NULL
     `, [productId, req.user?.optic_id]);
 
-    if (result.rowCount === 0) {
+    if (result && result.rowCount === 0) {
       return res.status(404).json({ error: 'Producto no encontrado' });
     }
 
