@@ -50,7 +50,7 @@ const Layout: React.FC = () => {
   };
 
   return (
-    <div className={`min-h-screen bg-gray-50 dark:bg-gray-900 lg:flex ${isDarkMode ? 'dark' : ''}`}>
+    <div className={`h-screen bg-gray-50 dark:bg-gray-900 lg:flex overflow-hidden ${isDarkMode ? 'dark' : ''}`}>
       {/* Mobile sidebar overlay */}
       {sidebarOpen && (
         <div 
@@ -65,7 +65,7 @@ const Layout: React.FC = () => {
       }`}>
         <div className="flex flex-col h-full">
           {/* Header */}
-          <div className="flex items-center justify-between p-6 border-b border-gray-200 bg-gradient-to-r from-primary-600 to-secondary-600">
+          <div className="flex-shrink-0 flex items-center justify-between p-6 border-b border-gray-200 bg-gradient-to-r from-primary-600 to-secondary-600">
             <div className="flex items-center space-x-3">
               <div className="p-2 bg-white/20 rounded-lg">
                 <Glasses className="w-6 h-6 text-white" />
@@ -81,7 +81,7 @@ const Layout: React.FC = () => {
           </div>
 
           {/* Optic Info */}
-          <div className="p-4 border-b border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-700">
+          <div className="flex-shrink-0 p-4 border-b border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-700">
             <div className="flex items-center space-x-3">
               <div className="w-10 h-10 bg-gradient-to-r from-primary-500 to-secondary-500 rounded-full flex items-center justify-center">
                 <Building className="w-5 h-5 text-white" />
@@ -98,7 +98,7 @@ const Layout: React.FC = () => {
           </div>
 
           {/* Navigation */}
-          <nav className="flex-1 px-4 py-6 space-y-2 bg-white dark:bg-gray-800">
+          <nav className="flex-1 px-4 py-6 space-y-2 bg-white dark:bg-gray-800 overflow-y-auto">
             {allNavigation.map((item) => {
               const Icon = item.icon;
               return (
@@ -120,7 +120,7 @@ const Layout: React.FC = () => {
           </nav>
 
           {/* User Info & Actions */}
-          <div className="p-4 border-t border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-700">
+          <div className="flex-shrink-0 p-4 border-t border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-700">
             <div className="flex items-center space-x-3 mb-4">
               <div className="w-8 h-8 bg-gradient-to-r from-gray-500 to-gray-600 rounded-full flex items-center justify-center">
                 <User className="w-4 h-4 text-white" />
@@ -156,9 +156,9 @@ const Layout: React.FC = () => {
       </div>
 
       {/* Main content */}
-      <div className="flex-1 lg:min-w-0">
+      <div className="flex-1 lg:min-w-0 flex flex-col h-full">
         {/* Top bar */}
-        <div className="sticky top-0 z-30 bg-white dark:bg-gray-800 shadow-sm border-b border-gray-200 dark:border-gray-700">
+        <div className="flex-shrink-0 bg-white dark:bg-gray-800 shadow-sm border-b border-gray-200 dark:border-gray-700">
           <div className="flex items-center justify-between px-4 py-4">
             <button
               onClick={() => setSidebarOpen(true)}
@@ -176,7 +176,7 @@ const Layout: React.FC = () => {
         </div>
 
         {/* Page content */}
-        <div className="p-6 bg-gray-50 dark:bg-gray-900 min-h-screen">
+        <div className="flex-1 p-6 bg-gray-50 dark:bg-gray-900 overflow-y-auto">
           <Outlet />
         </div>
       </div>
