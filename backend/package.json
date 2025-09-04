@@ -13,6 +13,7 @@
     "db:migrate-sales": "tsx src/database/migrate-sales.ts",
     "db:fix-total-price": "tsx src/database/fix-total-price-issue.ts",
     "db:fix-sales-schema": "tsx src/database/fix-sales-schema.ts",
+    "db:fix-clients-schema": "tsx src/database/fix-clients-schema.ts",
     "db:verify-sales": "tsx src/database/verify-sales-structure.ts",
     "db:test-migrations": "tsx src/database/test-migrations.ts",
     "db:seed": "tsx src/database/seed-data.ts"

@@ -44,20 +44,21 @@ router.get('/:id', authenticateToken, async (req: AuthenticatedRequest, res) => 
 // POST / - Crear un nuevo cliente
 router.post('/', authenticateToken, async (req: AuthenticatedRequest, res) => {
   try {
-    const { first_name, last_name, email, phone, dni, address } = req.body;
+    const { first_name, last_name, email, phone, dni } = req.body;
 
-    if (!first_name || !last_name) {
-      return res.status(400).json({ error: 'Nombre y apellido son requeridos' });
+    // Permitir crear cliente con solo nombre o solo DNI
+    if (!first_name && !last_name && !dni) {
+      return res.status(400).json({ error: 'Debe proporcionar al menos nombre y apellido, o DNI' });
     }
 
     const result = await executeInsert(`
       INSERT INTO clients (
-        optic_id, first_name, last_name, email, phone, dni, address, created_at
-      ) VALUES ($1, $2, $3, $4, $5, $6, $7, CURRENT_TIMESTAMP)
+        optic_id, first_name, last_name, email, phone, dni, created_at
+      ) VALUES ($1, $2, $3, $4, $5, $6, CURRENT_TIMESTAMP)
       RETURNING id
     `, [
-      req.user?.optic_id, first_name, last_name, email || null, 
-      phone || null, dni || null, address || null
+      req.user?.optic_id, first_name || null, last_name || null, email || null, 
+      phone || null, dni || null
     ]);
 
     res.status(201).json({ 
@@ -74,20 +75,21 @@ router.post('/', authenticateToken, async (req: AuthenticatedRequest, res) => {
 router.put('/:id', authenticateToken, async (req: AuthenticatedRequest, res) => {
   try {
     const clientId = parseInt(req.params.id);
-    const { first_name, last_name, email, phone, dni, address } = req.body;
+    const { first_name, last_name, email, phone, dni } = req.body;
 
-    if (!first_name || !last_name) {
-      return res.status(400).json({ error: 'Nombre y apellido son requeridos' });
+    // Permitir actualizar cliente con solo nombre o solo DNI
+    if (!first_name && !last_name && !dni) {
+      return res.status(400).json({ error: 'Debe proporcionar al menos nombre y apellido, o DNI' });
     }
 
     const result = await executeUpdate(`
       UPDATE clients SET 
         first_name = $1, last_name = $2, email = $3, phone = $4, 
-        dni = $5, address = $6, updated_at = CURRENT_TIMESTAMP
-      WHERE id = $7 AND optic_id = $8
+        dni = $5, updated_at = CURRENT_TIMESTAMP
+      WHERE id = $6 AND optic_id = $7
     `, [
-      first_name, last_name, email || null, phone || null, 
-      dni || null, address || null, clientId, req.user?.optic_id
+      first_name || null, last_name || null, email || null, phone || null, 
+      dni || null, clientId, req.user?.optic_id
     ]);
 
     if (result.rowCount === 0) {

@@ -69,9 +69,9 @@ export async function initializeDatabase(): Promise<void> {
       CREATE TABLE IF NOT EXISTS clients (
         id SERIAL PRIMARY KEY,
         optic_id INTEGER NOT NULL REFERENCES optics(id),
-        dni VARCHAR(50) NOT NULL,
-        first_name VARCHAR(255) NOT NULL,
-        last_name VARCHAR(255) NOT NULL,
+        dni VARCHAR(50),
+        first_name VARCHAR(255),
+        last_name VARCHAR(255),
         phone VARCHAR(50),
         email VARCHAR(255),
         notes TEXT,
