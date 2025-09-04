@@ -44,7 +44,7 @@ router.get('/:id', authenticateToken, async (req: AuthenticatedRequest, res) => 
 // POST / - Crear un nuevo cliente
 router.post('/', authenticateToken, async (req: AuthenticatedRequest, res) => {
   try {
-    const { first_name, last_name, email, phone, dni } = req.body;
+    const { first_name, last_name, email, phone, dni, notes } = req.body;
 
     // Permitir crear cliente con solo nombre o solo DNI
     if (!first_name && !last_name && !dni) {
@@ -53,12 +53,12 @@ router.post('/', authenticateToken, async (req: AuthenticatedRequest, res) => {
 
     const result = await executeInsert(`
       INSERT INTO clients (
-        optic_id, first_name, last_name, email, phone, dni, created_at
-      ) VALUES ($1, $2, $3, $4, $5, $6, CURRENT_TIMESTAMP)
+        optic_id, first_name, last_name, email, phone, dni, notes, created_at
+      ) VALUES ($1, $2, $3, $4, $5, $6, $7, CURRENT_TIMESTAMP)
       RETURNING id
     `, [
       req.user?.optic_id, first_name || null, last_name || null, email || null, 
-      phone || null, dni || null
+      phone || null, dni || null, notes || null
     ]);
 
     res.status(201).json({ 
@@ -75,7 +75,7 @@ router.post('/', authenticateToken, async (req: AuthenticatedRequest, res) => {
 router.put('/:id', authenticateToken, async (req: AuthenticatedRequest, res) => {
   try {
     const clientId = parseInt(req.params.id);
-    const { first_name, last_name, email, phone, dni } = req.body;
+    const { first_name, last_name, email, phone, dni, notes } = req.body;
 
     // Permitir actualizar cliente con solo nombre o solo DNI
     if (!first_name && !last_name && !dni) {
@@ -85,11 +85,11 @@ router.put('/:id', authenticateToken, async (req: AuthenticatedRequest, res) => 
     const result = await executeUpdate(`
       UPDATE clients SET 
         first_name = $1, last_name = $2, email = $3, phone = $4, 
-        dni = $5, updated_at = CURRENT_TIMESTAMP
-      WHERE id = $6 AND optic_id = $7
+        dni = $5, notes = $6, updated_at = CURRENT_TIMESTAMP
+      WHERE id = $7 AND optic_id = $8
     `, [
       first_name || null, last_name || null, email || null, phone || null, 
-      dni || null, clientId, req.user?.optic_id
+      dni || null, notes || null, clientId, req.user?.optic_id
     ]);
 
     if (result.rowCount === 0) {
