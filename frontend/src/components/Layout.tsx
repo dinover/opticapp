@@ -15,10 +15,14 @@ import {
   Glasses
 } from 'lucide-react';
 import { useAuth } from '../contexts/AuthContext';
+import { useTheme } from '../contexts/ThemeContext';
+import SettingsModal from './modals/SettingsModal';
 
 const Layout: React.FC = () => {
   const [sidebarOpen, setSidebarOpen] = useState(false);
+  const [showSettingsModal, setShowSettingsModal] = useState(false);
   const { user, optic, logout } = useAuth();
+  const { isDarkMode } = useTheme();
   const location = useLocation();
   const navigate = useNavigate();
 
@@ -46,7 +50,7 @@ const Layout: React.FC = () => {
   };
 
   return (
-    <div className="min-h-screen bg-gray-50 lg:flex">
+    <div className={`min-h-screen bg-gray-50 dark:bg-gray-900 lg:flex ${isDarkMode ? 'dark' : ''}`}>
       {/* Mobile sidebar overlay */}
       {sidebarOpen && (
         <div 
@@ -56,7 +60,7 @@ const Layout: React.FC = () => {
       )}
 
       {/* Sidebar */}
-      <div className={`fixed inset-y-0 left-0 z-50 w-64 bg-white shadow-lg transform transition-transform duration-300 ease-in-out lg:translate-x-0 lg:relative lg:inset-0 ${
+      <div className={`fixed inset-y-0 left-0 z-50 w-64 bg-white dark:bg-gray-800 shadow-lg transform transition-transform duration-300 ease-in-out lg:translate-x-0 lg:relative lg:inset-0 ${
         sidebarOpen ? 'translate-x-0' : '-translate-x-full'
       }`}>
         <div className="flex flex-col h-full">
@@ -77,16 +81,16 @@ const Layout: React.FC = () => {
           </div>
 
           {/* Optic Info */}
-          <div className="p-4 border-b border-gray-200 bg-gray-50">
+          <div className="p-4 border-b border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-700">
             <div className="flex items-center space-x-3">
               <div className="w-10 h-10 bg-gradient-to-r from-primary-500 to-secondary-500 rounded-full flex items-center justify-center">
                 <Building className="w-5 h-5 text-white" />
               </div>
               <div className="flex-1 min-w-0">
-                <p className="text-sm font-medium text-gray-900 truncate">
+                <p className="text-sm font-medium text-gray-900 dark:text-white truncate">
                   {optic?.name || 'Óptica'}
                 </p>
-                <p className="text-xs text-gray-600 truncate">
+                <p className="text-xs text-gray-600 dark:text-gray-400 truncate">
                   {optic?.address || 'Dirección'}
                 </p>
               </div>
@@ -94,7 +98,7 @@ const Layout: React.FC = () => {
           </div>
 
           {/* Navigation */}
-          <nav className="flex-1 px-4 py-6 space-y-2 bg-white">
+          <nav className="flex-1 px-4 py-6 space-y-2 bg-white dark:bg-gray-800">
             {allNavigation.map((item) => {
               const Icon = item.icon;
               return (
@@ -104,7 +108,7 @@ const Layout: React.FC = () => {
                   className={`flex items-center space-x-3 px-3 py-2 rounded-lg text-sm font-medium transition-colors ${
                     isActive(item.href)
                       ? 'bg-gradient-to-r from-primary-500 to-secondary-500 text-white shadow-md'
-                      : 'text-gray-700 hover:bg-gray-100'
+                      : 'text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700'
                   }`}
                   onClick={() => setSidebarOpen(false)}
                 >
@@ -116,23 +120,26 @@ const Layout: React.FC = () => {
           </nav>
 
           {/* User Info & Actions */}
-          <div className="p-4 border-t border-gray-200 bg-gray-50">
+          <div className="p-4 border-t border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-700">
             <div className="flex items-center space-x-3 mb-4">
               <div className="w-8 h-8 bg-gradient-to-r from-gray-500 to-gray-600 rounded-full flex items-center justify-center">
                 <User className="w-4 h-4 text-white" />
               </div>
               <div className="flex-1 min-w-0">
-                <p className="text-sm font-medium text-gray-900 truncate">
+                <p className="text-sm font-medium text-gray-900 dark:text-white truncate">
                   {user?.username || 'Usuario'}
                 </p>
-                <p className="text-xs text-gray-600 capitalize">
+                <p className="text-xs text-gray-600 dark:text-gray-400 capitalize">
                   {user?.role || 'user'}
                 </p>
               </div>
             </div>
             
             <div className="space-y-1">
-              <button className="w-full flex items-center space-x-3 px-3 py-2 rounded-lg text-sm font-medium text-gray-700 hover:bg-gray-100 transition-colors">
+              <button 
+                onClick={() => setShowSettingsModal(true)}
+                className="w-full flex items-center space-x-3 px-3 py-2 rounded-lg text-sm font-medium text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-600 transition-colors"
+              >
                 <Settings className="w-4 h-4" />
                 <span>Configuración</span>
               </button>
@@ -151,7 +158,7 @@ const Layout: React.FC = () => {
       {/* Main content */}
       <div className="flex-1 lg:min-w-0">
         {/* Top bar */}
-        <div className="sticky top-0 z-30 bg-white shadow-sm border-b border-gray-200">
+        <div className="sticky top-0 z-30 bg-white dark:bg-gray-800 shadow-sm border-b border-gray-200 dark:border-gray-700">
           <div className="flex items-center justify-between px-4 py-4">
             <button
               onClick={() => setSidebarOpen(true)}
@@ -160,19 +167,25 @@ const Layout: React.FC = () => {
               <Menu className="w-6 h-6" />
             </button>
             <div className="flex items-center space-x-4">
-              <div className="hidden sm:flex items-center space-x-2 text-sm text-gray-600">
+              <div className="hidden sm:flex items-center space-x-2 text-sm text-gray-600 dark:text-gray-400">
                 <span>Bienvenido,</span>
-                <span className="font-medium text-gray-900">{user?.username}</span>
+                <span className="font-medium text-gray-900 dark:text-white">{user?.username}</span>
               </div>
             </div>
           </div>
         </div>
 
         {/* Page content */}
-        <div className="p-6 bg-gray-50 min-h-screen">
+        <div className="p-6 bg-gray-50 dark:bg-gray-900 min-h-screen">
           <Outlet />
         </div>
       </div>
+
+      {/* Settings Modal */}
+      <SettingsModal
+        isOpen={showSettingsModal}
+        onClose={() => setShowSettingsModal(false)}
+      />
     </div>
   );
 };
