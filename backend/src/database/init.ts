@@ -9,7 +9,17 @@ console.log('Using connection string:', connectionString);
 // Use PostgreSQL for both development and production
 const pool = new Pool({
   connectionString: connectionString,
-  ssl: process.env.NODE_ENV === 'production' ? { rejectUnauthorized: false } : false
+  ssl: process.env.NODE_ENV === 'production' ? { rejectUnauthorized: false } : false,
+  // Connection pool settings
+  max: 20, // Maximum number of clients in the pool
+  idleTimeoutMillis: 30000, // Close idle clients after 30 seconds
+  connectionTimeoutMillis: 10000, // Return an error after 10 seconds if connection could not be established
+});
+
+// Handle pool errors
+pool.on('error', (err) => {
+  console.error('Unexpected error on idle client', err);
+  process.exit(-1);
 });
 
 export { pool };
@@ -19,11 +29,29 @@ export async function initializeDatabase(): Promise<void> {
     throw new Error('Database pool not initialized');
   }
   
-  const client = await pool.connect();
+  let client;
+  let retries = 3;
+  
+  while (retries > 0) {
+    try {
+      console.log(`Attempting to connect to database (${retries} retries left)...`);
+      client = await pool.connect();
+      console.log('Connected to PostgreSQL successfully');
+      break;
+    } catch (error) {
+      retries--;
+      console.error(`Database connection attempt failed (${retries} retries left):`, error);
+      
+      if (retries === 0) {
+        throw new Error(`Failed to connect to database after 3 attempts: ${error}`);
+      }
+      
+      // Wait before retrying
+      await new Promise(resolve => setTimeout(resolve, 2000));
+    }
+  }
   
   try {
-    console.log('Connected to PostgreSQL successfully');
-    
     // Create tables
     await client.query(`
       CREATE TABLE IF NOT EXISTS optics (
@@ -77,6 +105,7 @@ export async function initializeDatabase(): Promise<void> {
         notes TEXT,
         created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
         updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+        deleted_at TIMESTAMP,
         UNIQUE(optic_id, dni)
       )
     `);
@@ -95,7 +124,8 @@ export async function initializeDatabase(): Promise<void> {
         stock_quantity INTEGER DEFAULT 0,
         image_url VARCHAR(500),
         created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-        updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+        updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+        deleted_at TIMESTAMP
       )
     `);
 
@@ -109,7 +139,8 @@ export async function initializeDatabase(): Promise<void> {
         sale_date DATE DEFAULT CURRENT_DATE,
         notes TEXT,
         created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-        updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+        updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+        deleted_at TIMESTAMP
       )
     `);
 
@@ -131,7 +162,8 @@ export async function initializeDatabase(): Promise<void> {
         oi_eje INTEGER,
         oi_add DECIMAL(4,2),
         notes TEXT,
-        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+        deleted_at TIMESTAMP
       )
     `);
 
@@ -140,7 +172,9 @@ export async function initializeDatabase(): Promise<void> {
     console.error('Error initializing database:', error);
     throw error;
   } finally {
-    client.release();
+    if (client) {
+      client.release();
+    }
   }
 }
 

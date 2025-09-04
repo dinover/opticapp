@@ -1,19 +1,22 @@
 // Database configuration
 const isDevelopment = process.env.NODE_ENV !== 'production';
 
-// For development, we'll use a simple configuration that works with SQLite
+// Railway provides DATABASE_URL environment variable
+// If DATABASE_URL is provided, use it regardless of environment
+const hasDatabaseUrl = !!process.env.DATABASE_URL;
+
 export const databaseConfig = {
-  host: isDevelopment ? 'localhost' : 'postgres.railway.internal',
-  port: 5432,
-  database: isDevelopment ? 'opticapp_dev' : 'railway',
-  user: isDevelopment ? 'postgres' : 'postgres',
-  password: isDevelopment ? 'postgres' : 'QczfCveNywkQQgsQhoDQsGSJpYGIesOA',
-  ssl: isDevelopment ? false : { rejectUnauthorized: false }
+  host: isDevelopment && !hasDatabaseUrl ? 'localhost' : undefined,
+  port: isDevelopment && !hasDatabaseUrl ? 5432 : undefined,
+  database: isDevelopment && !hasDatabaseUrl ? 'opticapp_dev' : undefined,
+  user: isDevelopment && !hasDatabaseUrl ? 'postgres' : undefined,
+  password: isDevelopment && !hasDatabaseUrl ? 'postgres' : undefined,
+  ssl: isDevelopment && !hasDatabaseUrl ? false : { rejectUnauthorized: false }
 };
 
-// For development, we'll use a local SQLite database
+// Use DATABASE_URL if provided (Railway), otherwise use local config
 export const connectionString = process.env.DATABASE_URL || 
   (isDevelopment 
-    ? 'sqlite://./database.sqlite'
-    : `postgresql://${databaseConfig.user}:${databaseConfig.password}@${databaseConfig.host}:${databaseConfig.port}/${databaseConfig.database}`
+    ? 'postgresql://postgres:postgres@localhost:5432/opticapp_dev'
+    : 'postgresql://postgres:QczfCveNywkQQgsQhoDQsGSJpYGIesOA@postgres.railway.internal:5432/railway'
   ); 
