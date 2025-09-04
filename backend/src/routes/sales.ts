@@ -106,11 +106,25 @@ router.post('/', authenticateToken, async (req: AuthenticatedRequest, res) => {
     }, 0);
 
     // Crear la venta
+    console.log('Creating sale with params:', {
+      optic_id: req.user?.optic_id,
+      client_id: client_id || null,
+      unregistered_client_name: unregistered_client_name || null,
+      total_amount: totalAmount,
+      notes: notes || null
+    });
+
     const saleResult = await executeInsert(`
       INSERT INTO sales (optic_id, client_id, unregistered_client_name, total_amount, sale_date, notes, created_at)
       VALUES ($1, $2, $3, $4, CURRENT_DATE, $5, CURRENT_TIMESTAMP)
       RETURNING id
     `, [req.user?.optic_id, client_id || null, unregistered_client_name || null, totalAmount, notes || null]);
+
+    console.log('Sale result:', saleResult);
+
+    if (!saleResult || !saleResult.id) {
+      throw new Error('Failed to create sale - no ID returned');
+    }
 
     const saleId = saleResult.id;
 

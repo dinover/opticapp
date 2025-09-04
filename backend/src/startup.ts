@@ -1,5 +1,6 @@
 import { fixTotalPriceIssue } from './database/fix-total-price-issue';
 import { fixSalesSchema } from './database/fix-sales-schema';
+import { verifySalesStructure } from './database/verify-sales-structure';
 
 export async function runStartupTasks() {
   try {
@@ -10,6 +11,12 @@ export async function runStartupTasks() {
     
     // Run the total price fix migration
     await fixTotalPriceIssue();
+    
+    // Verify the sales table structure
+    const isStructureValid = await verifySalesStructure();
+    if (!isStructureValid) {
+      console.error('❌ Sales table structure verification failed!');
+    }
     
     console.log('✅ Startup tasks completed successfully!');
   } catch (error) {

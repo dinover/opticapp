@@ -1,4 +1,4 @@
-import { pool, sqliteDb } from './init';
+import { pool } from './init';
 import bcrypt from 'bcryptjs';
 
 const isDevelopment = process.env.NODE_ENV !== 'production';
@@ -6,10 +6,9 @@ const isDevelopment = process.env.NODE_ENV !== 'production';
 export async function cleanupDatabase(): Promise<void> {
   console.log('Starting database cleanup...');
   
-  if (isDevelopment && sqliteDb) {
-    console.log('Cleanup not needed for SQLite development');
-    return;
-  } else if (pool) {
+  if (!pool) {
+    throw new Error('Database pool not initialized');
+  }
     console.log('Cleaning up PostgreSQL database...');
     
     const client = await pool.connect();
@@ -86,9 +85,6 @@ export async function cleanupDatabase(): Promise<void> {
     } finally {
       client.release();
     }
-  } else {
-    throw new Error('No database connection available');
-  }
 }
 
 // Run cleanup if this file is executed directly

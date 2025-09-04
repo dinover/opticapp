@@ -3,139 +3,89 @@ import { executeQuery } from './query';
 async function fixSalesSchema() {
   try {
     console.log('🔧 Fixing sales table schema...');
+    console.log('🐘 Running PostgreSQL migration...');
     
-    // Check if we're in development (SQLite) or production (PostgreSQL)
-    const isDevelopment = process.env.NODE_ENV !== 'production';
+    // Create sale_items table if it doesn't exist
+    await executeQuery(`
+      CREATE TABLE IF NOT EXISTS sale_items (
+        id SERIAL PRIMARY KEY,
+        sale_id INTEGER NOT NULL,
+        product_id INTEGER,
+        unregistered_product_name VARCHAR(255),
+        quantity INTEGER NOT NULL DEFAULT 1,
+        unit_price DECIMAL(10,2) NOT NULL,
+        total_price DECIMAL(10,2) NOT NULL,
+        od_esf DECIMAL(4,2),
+        od_cil DECIMAL(4,2),
+        od_eje INTEGER,
+        od_add DECIMAL(4,2),
+        oi_esf DECIMAL(4,2),
+        oi_cil DECIMAL(4,2),
+        oi_eje INTEGER,
+        oi_add DECIMAL(4,2),
+        notes TEXT,
+        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+        FOREIGN KEY (sale_id) REFERENCES sales(id) ON DELETE CASCADE,
+        FOREIGN KEY (product_id) REFERENCES products(id) ON DELETE SET NULL
+      )
+    `);
+    console.log('✅ Created sale_items table');
     
-    if (isDevelopment) {
-      // SQLite migration
-      console.log('📱 Running SQLite migration...');
-      
-      // Create sale_items table if it doesn't exist
+    // Add total_amount column if it doesn't exist
+    try {
       await executeQuery(`
-        CREATE TABLE IF NOT EXISTS sale_items (
-          id INTEGER PRIMARY KEY AUTOINCREMENT,
-          sale_id INTEGER NOT NULL,
-          product_id INTEGER,
-          unregistered_product_name TEXT,
-          quantity INTEGER NOT NULL DEFAULT 1,
-          unit_price REAL NOT NULL,
-          total_price REAL NOT NULL,
-          od_esf REAL,
-          od_cil REAL,
-          od_eje INTEGER,
-          od_add REAL,
-          oi_esf REAL,
-          oi_cil REAL,
-          oi_eje INTEGER,
-          oi_add REAL,
-          notes TEXT,
-          created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
-          FOREIGN KEY (sale_id) REFERENCES sales(id) ON DELETE CASCADE,
-          FOREIGN KEY (product_id) REFERENCES products(id) ON DELETE SET NULL
-        )
+        ALTER TABLE sales ADD COLUMN total_amount DECIMAL(10,2)
       `);
-      console.log('✅ Created sale_items table');
-      
-      // Add total_amount column if it doesn't exist
-      try {
-        await executeQuery(`
-          ALTER TABLE sales ADD COLUMN total_amount REAL
-        `);
-        console.log('✅ Added total_amount column to sales table');
-      } catch (error) {
-        console.log('ℹ️  total_amount column already exists');
-      }
-      
-      // Make old columns nullable (SQLite doesn't support DROP COLUMN easily)
-      console.log('ℹ️  Note: In SQLite, old columns remain but are no longer used');
-      
-    } else {
-      // PostgreSQL migration
-      console.log('🐘 Running PostgreSQL migration...');
-      
-      // Create sale_items table if it doesn't exist
+      console.log('✅ Added total_amount column to sales table');
+    } catch (error) {
+      console.log('ℹ️  total_amount column already exists');
+    }
+    
+    // Make old columns nullable
+    try {
       await executeQuery(`
-        CREATE TABLE IF NOT EXISTS sale_items (
-          id SERIAL PRIMARY KEY,
-          sale_id INTEGER NOT NULL,
-          product_id INTEGER,
-          unregistered_product_name VARCHAR(255),
-          quantity INTEGER NOT NULL DEFAULT 1,
-          unit_price DECIMAL(10,2) NOT NULL,
-          total_price DECIMAL(10,2) NOT NULL,
-          od_esf DECIMAL(4,2),
-          od_cil DECIMAL(4,2),
-          od_eje INTEGER,
-          od_add DECIMAL(4,2),
-          oi_esf DECIMAL(4,2),
-          oi_cil DECIMAL(4,2),
-          oi_eje INTEGER,
-          oi_add DECIMAL(4,2),
-          notes TEXT,
-          created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-          FOREIGN KEY (sale_id) REFERENCES sales(id) ON DELETE CASCADE,
-          FOREIGN KEY (product_id) REFERENCES products(id) ON DELETE SET NULL
-        )
+        ALTER TABLE sales ALTER COLUMN product_id DROP NOT NULL
       `);
-      console.log('✅ Created sale_items table');
-      
-      // Add total_amount column if it doesn't exist
-      try {
-        await executeQuery(`
-          ALTER TABLE sales ADD COLUMN total_amount DECIMAL(10,2)
-        `);
-        console.log('✅ Added total_amount column to sales table');
-      } catch (error) {
-        console.log('ℹ️  total_amount column already exists');
-      }
-      
-      // Make old columns nullable
-      try {
-        await executeQuery(`
-          ALTER TABLE sales ALTER COLUMN product_id DROP NOT NULL
-        `);
-        console.log('✅ Made product_id nullable');
-      } catch (error) {
-        console.log('ℹ️  product_id is already nullable');
-      }
-      
-      try {
-        await executeQuery(`
-          ALTER TABLE sales ALTER COLUMN quantity DROP NOT NULL
-        `);
-        console.log('✅ Made quantity nullable');
-      } catch (error) {
-        console.log('ℹ️  quantity is already nullable');
-      }
-      
-      try {
-        await executeQuery(`
-          ALTER TABLE sales ALTER COLUMN total_price DROP NOT NULL
-        `);
-        console.log('✅ Made total_price nullable');
-      } catch (error) {
-        console.log('ℹ️  total_price is already nullable');
-      }
-      
-      try {
-        await executeQuery(`
-          ALTER TABLE sales ALTER COLUMN sale_date DROP NOT NULL
-        `);
-        console.log('✅ Made sale_date nullable');
-      } catch (error) {
-        console.log('ℹ️  sale_date is already nullable');
-      }
-      
-      // Add default value for sale_date to use created_at
-      try {
-        await executeQuery(`
-          ALTER TABLE sales ALTER COLUMN sale_date SET DEFAULT CURRENT_DATE
-        `);
-        console.log('✅ Set sale_date default to CURRENT_DATE');
-      } catch (error) {
-        console.log('ℹ️  sale_date default already set');
-      }
+      console.log('✅ Made product_id nullable');
+    } catch (error) {
+      console.log('ℹ️  product_id is already nullable');
+    }
+    
+    try {
+      await executeQuery(`
+        ALTER TABLE sales ALTER COLUMN quantity DROP NOT NULL
+      `);
+      console.log('✅ Made quantity nullable');
+    } catch (error) {
+      console.log('ℹ️  quantity is already nullable');
+    }
+    
+    try {
+      await executeQuery(`
+        ALTER TABLE sales ALTER COLUMN total_price DROP NOT NULL
+      `);
+      console.log('✅ Made total_price nullable');
+    } catch (error) {
+      console.log('ℹ️  total_price is already nullable');
+    }
+    
+    try {
+      await executeQuery(`
+        ALTER TABLE sales ALTER COLUMN sale_date DROP NOT NULL
+      `);
+      console.log('✅ Made sale_date nullable');
+    } catch (error) {
+      console.log('ℹ️  sale_date is already nullable');
+    }
+    
+    // Add default value for sale_date to use created_at
+    try {
+      await executeQuery(`
+        ALTER TABLE sales ALTER COLUMN sale_date SET DEFAULT CURRENT_DATE
+      `);
+      console.log('✅ Set sale_date default to CURRENT_DATE');
+    } catch (error) {
+      console.log('ℹ️  sale_date default already set');
     }
     
     // Update existing sales to have total_amount based on total_price
@@ -152,40 +102,28 @@ async function fixSalesSchema() {
     
     // Verify the structure
     const salesStructure = await executeQuery(`
-      ${isDevelopment ? 'PRAGMA table_info(sales)' : `
-        SELECT column_name, data_type, is_nullable, column_default
-        FROM information_schema.columns 
-        WHERE table_name = 'sales' 
-        ORDER BY ordinal_position
-      `}
+      SELECT column_name, data_type, is_nullable, column_default
+      FROM information_schema.columns 
+      WHERE table_name = 'sales' 
+      ORDER BY ordinal_position
     `);
     
     console.log('\n📋 Updated sales table structure:');
     salesStructure.rows.forEach((column: any) => {
-      if (isDevelopment) {
-        console.log(`   - ${column.name}: ${column.type}`);
-      } else {
-        console.log(`   - ${column.column_name}: ${column.data_type} (nullable: ${column.is_nullable}, default: ${column.column_default})`);
-      }
+      console.log(`   - ${column.column_name}: ${column.data_type} (nullable: ${column.is_nullable}, default: ${column.column_default})`);
     });
     
     // Check sale_items structure
     const saleItemsStructure = await executeQuery(`
-      ${isDevelopment ? 'PRAGMA table_info(sale_items)' : `
-        SELECT column_name, data_type, is_nullable
-        FROM information_schema.columns 
-        WHERE table_name = 'sale_items' 
-        ORDER BY ordinal_position
-      `}
+      SELECT column_name, data_type, is_nullable
+      FROM information_schema.columns 
+      WHERE table_name = 'sale_items' 
+      ORDER BY ordinal_position
     `);
     
     console.log('\n📋 Sale_items table structure:');
     saleItemsStructure.rows.forEach((column: any) => {
-      if (isDevelopment) {
-        console.log(`   - ${column.name}: ${column.type}`);
-      } else {
-        console.log(`   - ${column.column_name}: ${column.data_type} (nullable: ${column.is_nullable})`);
-      }
+      console.log(`   - ${column.column_name}: ${column.data_type} (nullable: ${column.is_nullable})`);
     });
     
     console.log('\n✅ Sales schema fixed successfully!');

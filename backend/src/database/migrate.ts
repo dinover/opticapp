@@ -1,282 +1,100 @@
-import { pool, sqliteDb } from './init';
+import { pool } from './init';
 import bcrypt from 'bcryptjs';
 import { cleanupDatabase } from './cleanup';
 
-const isDevelopment = process.env.NODE_ENV !== 'production';
-
 export async function migrateDatabase(): Promise<void> {
-  console.log('Starting database migration...');
+  console.log('Starting PostgreSQL database migration...');
   
-  if (isDevelopment && sqliteDb) {
-    console.log('Starting SQLite database migration...');
-    
+  if (!pool) {
+    throw new Error('Database pool not initialized');
+  }
+  
+  const client = await pool.connect();
+  try {
     // Add is_approved column if it doesn't exist
-    sqliteDb.run(`
-      ALTER TABLE users ADD COLUMN is_approved BOOLEAN DEFAULT 0
-    `, (err) => {
-      if (err && !err.message.includes('duplicate column name')) {
-        console.error('Error adding is_approved column:', err);
+    try {
+      await client.query(`
+        ALTER TABLE users ADD COLUMN is_approved BOOLEAN DEFAULT false
+      `);
+      console.log('✅ Added is_approved column to users table');
+    } catch (error: any) {
+      if (error.code === '42701') { // column already exists
+        console.log('ℹ️  is_approved column already exists');
+      } else {
+        console.error('Error adding is_approved column:', error);
       }
-    });
+    }
     
     // Add total_amount column to sales table if it doesn't exist
-    sqliteDb.run(`
-      ALTER TABLE sales ADD COLUMN total_amount REAL DEFAULT 0
-    `, (err) => {
-      if (err && !err.message.includes('duplicate column name')) {
-        console.error('Error adding total_amount column:', err);
+    try {
+      await client.query(`
+        ALTER TABLE sales ADD COLUMN total_amount DECIMAL(10,2) DEFAULT 0
+      `);
+      console.log('✅ Added total_amount column to sales table');
+    } catch (error: any) {
+      if (error.code === '42701') { // column already exists
+        console.log('ℹ️  total_amount column already exists');
+      } else {
+        console.error('Error adding total_amount column:', error);
       }
-    });
+    }
     
     // Update existing sales to have total_amount
-    sqliteDb.run(`
+    await client.query(`
       UPDATE sales 
       SET total_amount = 0 
       WHERE total_amount IS NULL OR total_amount = 0
-    `, (err) => {
-      if (err) {
-        console.error('Error updating sales total_amount:', err);
-      }
-    });
+    `);
+    console.log('✅ Updated existing sales with total_amount');
     
     // Convert existing users to normal users and approve them
-    sqliteDb.run(`
-      UPDATE users SET role = 'user', is_approved = 1 WHERE role = 'admin' OR role IS NULL
+    await client.query(`
+      UPDATE users SET role = 'user', is_approved = true WHERE role = 'admin' OR role IS NULL
     `);
+    console.log('✅ Updated existing users to normal users');
     
     // Check if admin user exists
-    sqliteDb.get('SELECT COUNT(*) as count FROM users WHERE username = ?', ['admin'], (err, row: any) => {
-      if (err) {
-        console.error('Error checking admin user:', err);
-        return;
-      }
-      
-      if (row.count === 0) {
-        // Create default optic if none exists
-        sqliteDb.get('SELECT COUNT(*) as count FROM optics', (err, row: any) => {
-          if (err) {
-            console.error('Error checking optics:', err);
-            return;
-          }
-          
-          if (row.count === 0) {
-            sqliteDb.run(
-              'INSERT INTO optics (name, address, phone, email) VALUES (?, ?, ?, ?)',
-              ['Default Optic', 'Default Address', 'Default Phone', 'default@optic.com'],
-              function(err) {
-                if (err) {
-                  console.error('Error creating default optic:', err);
-                  return;
-                }
-                
-                // Create admin user
-                const hashedPassword = bcrypt.hashSync('admin2995', 10);
-                sqliteDb.run(
-                  'INSERT INTO users (username, email, password, optic_id, role, is_approved) VALUES (?, ?, ?, ?, ?, ?)',
-                  ['admin', 'admin@opticapp.com', hashedPassword, this.lastID, 'admin', 1],
-                  (err) => {
-                    if (err) {
-                      console.error('Error creating admin user:', err);
-                    } else {
-                      console.log('Admin user created successfully');
-                    }
-                  }
-                );
-              }
-            );
-          } else {
-            // Get first optic
-            sqliteDb.get('SELECT id FROM optics LIMIT 1', (err, row: any) => {
-              if (err) {
-                console.error('Error getting optic:', err);
-                return;
-              }
-              
-              // Create admin user
-              const hashedPassword = bcrypt.hashSync('admin2995', 10);
-              sqliteDb.run(
-                'INSERT INTO users (username, email, password, optic_id, role, is_approved) VALUES (?, ?, ?, ?, ?, ?)',
-                ['admin', 'admin@opticapp.com', hashedPassword, row.id, 'admin', 1],
-                (err) => {
-                  if (err) {
-                    console.error('Error creating admin user:', err);
-                  } else {
-                    console.log('Admin user created successfully');
-                  }
-                }
-              );
-            });
-          }
-        });
-      } else {
-        console.log('Admin user already exists');
-      }
-    });
+    const adminCount = await client.query('SELECT COUNT(*) FROM users WHERE username = $1', ['admin']);
     
-    console.log('SQLite database migration completed successfully');
-  } else if (pool) {
-    console.log('Starting PostgreSQL database migration...');
-    
-    const client = await pool.connect();
-    try {
-      // Add is_approved column if it doesn't exist
-      await client.query(`
-        DO $$ 
-        BEGIN 
-          IF NOT EXISTS (
-            SELECT 1 FROM information_schema.columns 
-            WHERE table_name = 'users' AND column_name = 'is_approved'
-          ) THEN 
-            ALTER TABLE users ADD COLUMN is_approved BOOLEAN DEFAULT false;
-          END IF;
-        END $$;
-      `);
-      
-      // Create registration_requests table if it doesn't exist
-      await client.query(`
-        CREATE TABLE IF NOT EXISTS registration_requests (
-          id SERIAL PRIMARY KEY,
-          user_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
-          optic_id INTEGER NOT NULL REFERENCES optics(id) ON DELETE CASCADE,
-          status VARCHAR(20) NOT NULL DEFAULT 'pending',
-          admin_notes TEXT,
-          reviewed_by INTEGER REFERENCES users(id),
-          reviewed_at TIMESTAMP,
-          created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-          updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
-        )
-      `);
-      
-      // Add total_amount column to sales table if it doesn't exist
-      await client.query(`
-        DO $$ 
-        BEGIN 
-          IF NOT EXISTS (
-            SELECT 1 FROM information_schema.columns 
-            WHERE table_name = 'sales' AND column_name = 'total_amount'
-          ) THEN 
-            ALTER TABLE sales ADD COLUMN total_amount DECIMAL(10,2) DEFAULT 0;
-          END IF;
-        END $$;
-      `);
-      
-      // Update existing sales to have total_amount (set to 0 for now since we don't have the old columns)
-      await client.query(`
-        UPDATE sales 
-        SET total_amount = 0 
-        WHERE total_amount IS NULL OR total_amount = 0
-      `);
-      
-      // Convert existing users to normal users and approve them
-      await client.query(`
-        UPDATE users SET role = 'user', is_approved = true WHERE role = 'admin' OR role IS NULL
-      `);
-      
-      // Check if admin user exists
-      const adminResult = await client.query('SELECT COUNT(*) FROM users WHERE username = $1', ['admin']);
-      const adminCount = parseInt(adminResult.rows[0].count);
-      
-      if (adminCount === 0) {
-        // Create default optic if none exists
-        const opticResult = await client.query('SELECT COUNT(*) FROM optics');
-        const opticCount = parseInt(opticResult.rows[0].count);
-        
-        let opticId: number;
-        if (opticCount === 0) {
-          const newOpticResult = await client.query(
-            'INSERT INTO optics (name, address, phone, email) VALUES ($1, $2, $3, $4) RETURNING id',
-            ['Default Optic', 'Default Address', 'Default Phone', 'default@optic.com']
-          );
-          opticId = newOpticResult.rows[0].id;
-        } else {
-          const existingOpticResult = await client.query('SELECT id FROM optics LIMIT 1');
-          opticId = existingOpticResult.rows[0].id;
-        }
-        
-        // Create admin user
-        const hashedPassword = await bcrypt.hash('admin2995', 10);
+    if (parseInt(adminCount.rows[0].count) === 0) {
+      // Create default optic if none exists
+      const opticCount = await client.query('SELECT COUNT(*) FROM optics');
+      if (parseInt(opticCount.rows[0].count) === 0) {
         await client.query(
-          'INSERT INTO users (username, email, password, optic_id, role, is_approved) VALUES ($1, $2, $3, $4, $5, $6)',
-          ['admin', 'admin@opticapp.com', hashedPassword, opticId, 'admin', true]
+          'INSERT INTO optics (name, address, phone, email) VALUES ($1, $2, $3, $4) RETURNING id',
+          ['Default Optic', 'Default Address', 'Default Phone', 'default@optic.com']
         );
-        console.log('Admin user created successfully');
-      } else {
-        console.log('Admin user already exists');
+        console.log('✅ Created default optic');
       }
       
-      console.log('PostgreSQL database migration completed successfully');
-    } finally {
-      client.release();
+      const opticResult = await client.query('SELECT id FROM optics LIMIT 1');
+      const opticId = opticResult.rows[0].id;
+      
+      // Create admin user
+      const hashedPassword = await bcrypt.hash('admin2995', 10);
+      await client.query(
+        'INSERT INTO users (username, email, password, optic_id, role, is_approved) VALUES ($1, $2, $3, $4, $5, $6)',
+        ['admin', 'admin@opticapp.com', hashedPassword, opticId, 'admin', true]
+      );
+      console.log('✅ Created admin user');
+    } else {
+      console.log('ℹ️  Admin user already exists');
     }
-  } else {
-    throw new Error('No database connection available');
+    
+    // Ensure admin user has correct role
+    const adminUser = await client.query('SELECT * FROM users WHERE username = $1', ['admin']);
+    if (adminUser.rows.length > 0 && adminUser.rows[0].role !== 'admin') {
+      await client.query('UPDATE users SET role = $1 WHERE username = $2', ['admin', 'admin']);
+      console.log('✅ Updated admin user role to admin');
+    }
+    
+    console.log('✅ Database migration completed successfully');
+  } catch (error) {
+    console.error('❌ Error during migration:', error);
+    throw error;
+  } finally {
+    client.release();
   }
-  
-  // Run cleanup after migration
-  await cleanupDatabase();
-  
-  // Migración para eliminar columnas antiguas de sales que ya no se usan
-  console.log('Eliminando columnas antiguas de la tabla sales...');
-  
-  if (process.env.NODE_ENV === 'production') {
-    // PostgreSQL
-    try {
-      await pool.query(`
-        ALTER TABLE sales 
-        DROP COLUMN IF EXISTS quantity,
-        DROP COLUMN IF EXISTS unit_price,
-        DROP COLUMN IF EXISTS product_id,
-        DROP COLUMN IF EXISTS unregistered_product_name,
-        DROP COLUMN IF EXISTS od_esf,
-        DROP COLUMN IF EXISTS od_cil,
-        DROP COLUMN IF EXISTS od_eje,
-        DROP COLUMN IF EXISTS od_add,
-        DROP COLUMN IF EXISTS oi_esf,
-        DROP COLUMN IF EXISTS oi_cil,
-        DROP COLUMN IF EXISTS oi_eje,
-        DROP COLUMN IF EXISTS oi_add
-      `);
-      console.log('Columnas antiguas eliminadas de sales (PostgreSQL)');
-    } catch (error) {
-      console.log('Error eliminando columnas antiguas (PostgreSQL):', error);
-    }
-  } else {
-    // SQLite
-    try {
-      // SQLite no soporta DROP COLUMN directamente, necesitamos recrear la tabla
-      await sqliteDb.run(`
-        CREATE TABLE sales_new (
-          id INTEGER PRIMARY KEY AUTOINCREMENT,
-          optic_id INTEGER NOT NULL,
-          client_id INTEGER,
-          unregistered_client_name TEXT,
-          total_amount REAL DEFAULT 0,
-          notes TEXT,
-          created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
-          updated_at DATETIME DEFAULT CURRENT_TIMESTAMP,
-          FOREIGN KEY (optic_id) REFERENCES optics (id),
-          FOREIGN KEY (client_id) REFERENCES clients (id)
-        )
-      `);
-      
-      // Copiar datos existentes
-      await sqliteDb.run(`
-        INSERT INTO sales_new (id, optic_id, client_id, unregistered_client_name, total_amount, notes, created_at, updated_at)
-        SELECT id, optic_id, client_id, unregistered_client_name, total_amount, notes, created_at, updated_at
-        FROM sales
-      `);
-      
-      // Eliminar tabla antigua y renombrar la nueva
-      await sqliteDb.run('DROP TABLE sales');
-      await sqliteDb.run('ALTER TABLE sales_new RENAME TO sales');
-      
-      console.log('Tabla sales recreada sin columnas antiguas (SQLite)');
-    } catch (error) {
-      console.log('Error recreando tabla sales (SQLite):', error);
-    }
-  }
-
-  console.log('Migración completada exitosamente');
 }
 
 // Run migration if this file is executed directly
