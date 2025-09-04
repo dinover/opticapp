@@ -2,6 +2,7 @@ import React, { useState } from 'react';
 import { X, Plus, Trash2 } from 'lucide-react';
 import { Client, Product } from '../../types';
 import { salesAPI } from '../../services/api';
+import toast from 'react-hot-toast';
 
 interface SaleItem {
   product_id?: string;
@@ -72,23 +73,23 @@ const AddSaleModal: React.FC<AddSaleModalProps> = ({
     e.preventDefault();
     
     if (saleItems.length === 0) {
-      alert('Debe agregar al menos un producto a la venta');
+      toast.error('Debe agregar al menos un producto a la venta');
       return;
     }
 
     if (!selectedClient && !unregisteredClientName) {
-      alert('Debe seleccionar un cliente o ingresar un nombre');
+      toast.error('Debe seleccionar un cliente o ingresar un nombre');
       return;
     }
 
     // Validar que cada item tenga producto y precio
     for (const item of saleItems) {
       if (!item.product_id && !item.unregistered_product_name) {
-        alert('Cada producto debe tener un nombre o ser seleccionado del catálogo');
+        toast.error('Cada producto debe tener un nombre o ser seleccionado del catálogo');
         return;
       }
       if (item.unit_price <= 0) {
-        alert('Cada producto debe tener un precio válido');
+        toast.error('Cada producto debe tener un precio válido');
         return;
       }
     }
@@ -107,13 +108,14 @@ const AddSaleModal: React.FC<AddSaleModalProps> = ({
         notes
       });
 
-      alert('Venta creada exitosamente');
+      toast.success('Venta creada exitosamente');
+      resetForm();
       onSaleCreated();
       onClose();
-      resetForm();
-    } catch (error) {
+    } catch (error: any) {
       console.error('Error creating sale:', error);
-      alert('Error al crear la venta');
+      const message = error.response?.data?.error || 'Error al crear la venta';
+      toast.error(message);
     } finally {
       setIsSubmitting(false);
     }
@@ -126,6 +128,11 @@ const AddSaleModal: React.FC<AddSaleModalProps> = ({
     setNotes('');
   };
 
+  const handleClose = () => {
+    resetForm();
+    onClose();
+  };
+
   const getTotalAmount = () => {
     return saleItems.reduce((total, item) => total + (item.quantity * item.unit_price), 0);
   };
@@ -133,21 +140,30 @@ const AddSaleModal: React.FC<AddSaleModalProps> = ({
   if (!isOpen) return null;
 
   return (
-    <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
-      <div className="bg-white rounded-lg shadow-xl w-full max-w-4xl max-h-[90vh] overflow-hidden">
+    <div className="fixed inset-0 z-50 overflow-y-auto">
+      <div className="flex items-center justify-center min-h-screen px-4 pt-4 pb-20 text-center sm:block sm:p-0">
+        <div className="fixed inset-0 transition-opacity bg-gray-500 bg-opacity-75" onClick={handleClose}></div>
+        <div className="inline-block w-full max-w-4xl p-6 my-8 overflow-hidden text-left align-middle transition-all transform bg-white shadow-xl rounded-2xl">
         {/* Header */}
-        <div className="flex items-center justify-between p-6 border-b border-gray-200">
-          <h2 className="text-xl font-semibold text-gray-900">Nueva Venta</h2>
+        <div className="flex items-center justify-between mb-6">
+          <div className="flex items-center space-x-3">
+            <div className="p-2 bg-gradient-to-r from-primary-500 to-secondary-500 rounded-lg">
+              <Plus className="w-6 h-6 text-white" />
+            </div>
+            <div>
+              <h3 className="text-lg font-semibold text-gray-900">Nueva Venta</h3>
+              <p className="text-sm text-gray-500">Completa la información de la venta</p>
+            </div>
+          </div>
           <button
-            onClick={onClose}
-            className="text-gray-400 hover:text-gray-600"
+            onClick={handleClose}
+            className="p-2 text-gray-400 hover:text-gray-600 hover:bg-gray-100 rounded-lg transition-colors"
           >
-            <X className="w-6 h-6" />
+            <X className="w-5 h-5" />
           </button>
         </div>
 
-        <div className="p-6 overflow-y-auto max-h-[calc(90vh-120px)]">
-          <form onSubmit={handleSubmit} className="space-y-6">
+        <form onSubmit={handleSubmit} className="space-y-6">
             {/* Información del cliente */}
             <div>
               <h3 className="text-lg font-medium text-gray-900 mb-4">Información del Cliente</h3>
@@ -483,7 +499,7 @@ const AddSaleModal: React.FC<AddSaleModalProps> = ({
               <div className="flex space-x-3">
                 <button
                   type="button"
-                  onClick={onClose}
+                  onClick={handleClose}
                   className="flex-1 px-4 py-2 border border-gray-300 rounded-md text-gray-700 hover:bg-gray-50"
                 >
                   Cancelar
