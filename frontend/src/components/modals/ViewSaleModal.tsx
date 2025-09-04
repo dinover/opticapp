@@ -120,26 +120,22 @@ const ViewSaleModal: React.FC<ViewSaleModalProps> = ({ isOpen, onClose, sale }) 
                                              <div className="space-y-3 text-sm">
                          {/* Primera fila: Cantidad y Precio unitario */}
                          <div className="grid grid-cols-2 gap-4">
-                           <div className="flex justify-between">
-                             <span className="text-gray-500">Cantidad:</span>
+                           <div>
+                             <span className="text-gray-500">Cantidad: </span>
                              <span className="font-medium">{item.quantity}</span>
                            </div>
-                           <div className="flex justify-between">
-                             <span className="text-gray-500">Precio unitario:</span>
+                           <div>
+                             <span className="text-gray-500">Precio unitario: </span>
                              <span className="font-medium">{formatCurrency(item.unit_price)}</span>
                            </div>
                          </div>
                          
-                         {/* Segunda fila: Producto y Precio catálogo (solo si existe product_name) */}
+                         {/* Segunda fila: Producto (solo si existe product_name) */}
                          {item.product_name && (
                            <div className="grid grid-cols-2 gap-4">
-                             <div className="flex justify-between">
-                               <span className="text-gray-500">Producto:</span>
+                             <div>
+                               <span className="text-gray-500">Producto: </span>
                                <span className="font-medium">{item.product_name}</span>
-                             </div>
-                             <div className="flex justify-between">
-                               <span className="text-gray-500">Precio catálogo:</span>
-                               <span className="font-medium">{formatCurrency(item.product_price || 0)}</span>
                              </div>
                            </div>
                          )}
@@ -153,20 +149,20 @@ const ViewSaleModal: React.FC<ViewSaleModalProps> = ({ isOpen, onClose, sale }) 
                              <div>
                                <p className="text-gray-500 font-medium mb-1">Ojo Derecho (OD)</p>
                                <div className="grid grid-cols-4 gap-2">
-                                 <div className="flex justify-between">
-                                   <span className="text-gray-500">ESF:</span>
+                                 <div>
+                                   <span className="text-gray-500">ESF: </span>
                                    <span className="font-medium">{item.od_esf || '-'}</span>
                                  </div>
-                                 <div className="flex justify-between">
-                                   <span className="text-gray-500">CIL:</span>
+                                 <div>
+                                   <span className="text-gray-500">CIL: </span>
                                    <span className="font-medium">{item.od_cil || '-'}</span>
                                  </div>
-                                 <div className="flex justify-between">
-                                   <span className="text-gray-500">EJE:</span>
+                                 <div>
+                                   <span className="text-gray-500">EJE: </span>
                                    <span className="font-medium">{item.od_eje || '-'}</span>
                                  </div>
-                                 <div className="flex justify-between">
-                                   <span className="text-gray-500">ADD:</span>
+                                 <div>
+                                   <span className="text-gray-500">ADD: </span>
                                    <span className="font-medium">{item.od_add || '-'}</span>
                                  </div>
                                </div>
@@ -174,20 +170,20 @@ const ViewSaleModal: React.FC<ViewSaleModalProps> = ({ isOpen, onClose, sale }) 
                              <div>
                                <p className="text-gray-500 font-medium mb-1">Ojo Izquierdo (OI)</p>
                                <div className="grid grid-cols-4 gap-2">
-                                 <div className="flex justify-between">
-                                   <span className="text-gray-500">ESF:</span>
+                                 <div>
+                                   <span className="text-gray-500">ESF: </span>
                                    <span className="font-medium">{item.oi_esf || '-'}</span>
                                  </div>
-                                 <div className="flex justify-between">
-                                   <span className="text-gray-500">CIL:</span>
+                                 <div>
+                                   <span className="text-gray-500">CIL: </span>
                                    <span className="font-medium">{item.oi_cil || '-'}</span>
                                  </div>
-                                 <div className="flex justify-between">
-                                   <span className="text-gray-500">EJE:</span>
+                                 <div>
+                                   <span className="text-gray-500">EJE: </span>
                                    <span className="font-medium">{item.oi_eje || '-'}</span>
                                  </div>
-                                 <div className="flex justify-between">
-                                   <span className="text-gray-500">ADD:</span>
+                                 <div>
+                                   <span className="text-gray-500">ADD: </span>
                                    <span className="font-medium">{item.oi_add || '-'}</span>
                                  </div>
                                </div>
