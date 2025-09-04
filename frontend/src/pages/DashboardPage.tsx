@@ -11,6 +11,7 @@ import { opticAPI } from '../services/api';
 import { OpticStats, ActivityItem, Product } from '../types';
 import { useNavigate } from 'react-router-dom';
 import { useDashboardConfig } from '../contexts/DashboardConfigContext';
+import RevenueChart from '../components/RevenueChart';
 
 const DashboardPage: React.FC = () => {
   const [stats, setStats] = useState<OpticStats | null>(null);
@@ -244,15 +245,7 @@ const DashboardPage: React.FC = () => {
         );
 
       case 'revenue-chart':
-        return (
-          <div className="bg-white dark:bg-gray-800 rounded-lg p-6 shadow-sm border border-gray-200 dark:border-gray-700">
-            <h3 className="text-lg font-semibold text-gray-900 dark:text-white mb-4">Gráfico de Ingresos</h3>
-            <div className="text-center py-8">
-              <DollarSign className="w-12 h-12 text-gray-400 mx-auto mb-2" />
-              <p className="text-gray-500 dark:text-gray-400">Gráfico de ingresos próximamente</p>
-            </div>
-          </div>
-        );
+        return <RevenueChart />;
 
       default:
         return null;

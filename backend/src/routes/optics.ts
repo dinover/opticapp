@@ -71,4 +71,52 @@ router.get('/low-stock', authenticateToken, async (req: AuthenticatedRequest, re
   }
 });
 
+// GET /revenue - Obtener datos de ingresos por período
+router.get('/revenue', authenticateToken, async (req: AuthenticatedRequest, res) => {
+  try {
+    const { period = 'week' } = req.query;
+    let dateFilter = '';
+    let groupBy = '';
+    let dateFormat = '';
+
+    switch (period) {
+      case 'week':
+        dateFilter = 'AND s.sale_date >= CURRENT_DATE - INTERVAL \'7 days\'';
+        groupBy = 'DATE(s.sale_date)';
+        dateFormat = 'DD/MM';
+        break;
+      case 'month':
+        dateFilter = 'AND s.sale_date >= CURRENT_DATE - INTERVAL \'30 days\'';
+        groupBy = 'DATE(s.sale_date)';
+        dateFormat = 'DD/MM';
+        break;
+      case 'year':
+        dateFilter = 'AND s.sale_date >= CURRENT_DATE - INTERVAL \'12 months\'';
+        groupBy = 'DATE_TRUNC(\'month\', s.sale_date)';
+        dateFormat = 'MMM YYYY';
+        break;
+      default:
+        dateFilter = 'AND s.sale_date >= CURRENT_DATE - INTERVAL \'7 days\'';
+        groupBy = 'DATE(s.sale_date)';
+        dateFormat = 'DD/MM';
+    }
+
+    const result = await executeQuery(`
+      SELECT 
+        ${groupBy} as date,
+        COALESCE(SUM(s.total_amount), 0) as revenue,
+        COUNT(s.id) as sales_count
+      FROM sales s
+      WHERE s.optic_id = $1 ${dateFilter}
+      GROUP BY ${groupBy}
+      ORDER BY date ASC
+    `, [req.user?.optic_id]);
+
+    res.json(result.rows);
+  } catch (error) {
+    console.error('Error fetching revenue data:', error);
+    res.status(500).json({ error: 'Error interno del servidor' });
+  }
+});
+
 export default router; 

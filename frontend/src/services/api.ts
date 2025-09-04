@@ -278,6 +278,11 @@ export const opticAPI = {
     return response.data;
   },
 
+  getRevenue: async (period: 'week' | 'month' | 'year' = 'week'): Promise<any[]> => {
+    const response = await api.get(`/optics/revenue?period=${period}`);
+    return response.data;
+  },
+
   getOutOfStock: async (): Promise<Product[]> => {
     const response = await api.get('/optics/out-of-stock');
     return response.data;
