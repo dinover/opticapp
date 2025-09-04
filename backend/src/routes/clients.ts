@@ -9,7 +9,7 @@ router.get('/', authenticateToken, async (req: AuthenticatedRequest, res) => {
   try {
     const result = await executeQuery(`
       SELECT * FROM clients 
-      WHERE optic_id = $1 
+      WHERE optic_id = $1 AND deleted_at IS NULL
       ORDER BY created_at DESC
     `, [req.user?.optic_id]);
 
@@ -27,7 +27,7 @@ router.get('/:id', authenticateToken, async (req: AuthenticatedRequest, res) => 
     
     const result = await executeQuerySingle(`
       SELECT * FROM clients 
-      WHERE id = $1 AND optic_id = $2
+      WHERE id = $1 AND optic_id = $2 AND deleted_at IS NULL
     `, [clientId, req.user?.optic_id]);
 
     if (!result) {
@@ -86,7 +86,7 @@ router.put('/:id', authenticateToken, async (req: AuthenticatedRequest, res) => 
       UPDATE clients SET 
         first_name = $1, last_name = $2, email = $3, phone = $4, 
         dni = $5, notes = $6, updated_at = CURRENT_TIMESTAMP
-      WHERE id = $7 AND optic_id = $8
+      WHERE id = $7 AND optic_id = $8 AND deleted_at IS NULL
     `, [
       first_name || null, last_name || null, email || null, phone || null, 
       dni || null, notes || null, clientId, req.user?.optic_id
@@ -99,7 +99,7 @@ router.put('/:id', authenticateToken, async (req: AuthenticatedRequest, res) => 
     // Obtener los datos actualizados del cliente
     const updatedClient = await executeQuerySingle(`
       SELECT * FROM clients 
-      WHERE id = $1 AND optic_id = $2
+      WHERE id = $1 AND optic_id = $2 AND deleted_at IS NULL
     `, [clientId, req.user?.optic_id]);
 
     res.json({ 
@@ -112,13 +112,14 @@ router.put('/:id', authenticateToken, async (req: AuthenticatedRequest, res) => 
   }
 });
 
-// DELETE /:id - Eliminar un cliente
+// DELETE /:id - Eliminar un cliente (eliminación lógica)
 router.delete('/:id', authenticateToken, async (req: AuthenticatedRequest, res) => {
   try {
     const clientId = parseInt(req.params.id);
 
     const result = await executeUpdate(`
-      DELETE FROM clients WHERE id = $1 AND optic_id = $2
+      UPDATE clients SET deleted_at = CURRENT_TIMESTAMP 
+      WHERE id = $1 AND optic_id = $2 AND deleted_at IS NULL
     `, [clientId, req.user?.optic_id]);
 
     if (result.rowCount === 0) {

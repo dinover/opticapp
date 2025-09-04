@@ -1,6 +1,7 @@
 import { fixTotalPriceIssue } from './database/fix-total-price-issue';
 import { fixSalesSchema } from './database/fix-sales-schema';
 import { fixClientsSchema } from './database/fix-clients-schema';
+import { addSoftDeleteFields } from './database/add-soft-delete';
 import { verifySalesStructure } from './database/verify-sales-structure';
 
 export async function runStartupTasks() {
@@ -15,6 +16,9 @@ export async function runStartupTasks() {
     
     // Run the clients schema fix migration
     await fixClientsSchema();
+    
+    // Run the soft delete fields migration
+    await addSoftDeleteFields();
     
     // Verify the sales table structure
     const isStructureValid = await verifySalesStructure();

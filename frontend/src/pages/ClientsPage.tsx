@@ -14,6 +14,7 @@ import { Client } from '../types';
 import AddClientModal from '../components/modals/AddClientModal';
 import EditClientModal from '../components/modals/EditClientModal';
 import ViewClientModal from '../components/modals/ViewClientModal';
+import DeleteClientModal from '../components/modals/DeleteClientModal';
 import Pagination from '../components/Pagination';
 
 const ClientsPage: React.FC = () => {
@@ -23,6 +24,7 @@ const ClientsPage: React.FC = () => {
   const [showAddModal, setShowAddModal] = useState(false);
   const [showEditModal, setShowEditModal] = useState(false);
   const [showViewModal, setShowViewModal] = useState(false);
+  const [showDeleteModal, setShowDeleteModal] = useState(false);
   const [selectedClient, setSelectedClient] = useState<Client | null>(null);
   
   // Pagination state
@@ -74,9 +76,7 @@ const ClientsPage: React.FC = () => {
 
   const handleDeleteClient = (client: Client) => {
     setSelectedClient(client);
-    // The DeleteClientModal component is removed, so this function is no longer used.
-    // If a delete confirmation is needed, it should be handled directly or removed.
-    console.log('Delete client:', client);
+    setShowDeleteModal(true);
   };
 
   // Pagination functions
@@ -292,6 +292,17 @@ const ClientsPage: React.FC = () => {
         isOpen={showEditModal}
         onClose={() => {
           setShowEditModal(false);
+          setSelectedClient(null);
+        }}
+        onSuccess={fetchClients}
+        client={selectedClient}
+      />
+
+      {/* Delete Client Modal */}
+      <DeleteClientModal
+        isOpen={showDeleteModal}
+        onClose={() => {
+          setShowDeleteModal(false);
           setSelectedClient(null);
         }}
         onSuccess={fetchClients}
