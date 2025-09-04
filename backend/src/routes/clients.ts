@@ -62,7 +62,7 @@ router.post('/', authenticateToken, async (req: AuthenticatedRequest, res) => {
 
     res.status(201).json({ 
       message: 'Cliente creado exitosamente',
-      client_id: result.rows[0].id 
+      client_id: result.id 
     });
   } catch (error) {
     console.error('Error creating client:', error);
