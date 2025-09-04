@@ -106,7 +106,7 @@ const ViewSaleModal: React.FC<ViewSaleModalProps> = ({ isOpen, onClose, sale }) 
                 <span>Productos de la Venta</span>
               </h4>
               
-                             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                             <div className="space-y-4">
                  {sale.items && sale.items.length > 0 ? (
                    sale.items.map((item, index) => (
                      <div key={index} className="border border-gray-200 rounded-lg p-4">
@@ -117,17 +117,22 @@ const ViewSaleModal: React.FC<ViewSaleModalProps> = ({ isOpen, onClose, sale }) 
                          </span>
                       </div>
                       
-                                             <div className="space-y-2 text-sm">
-                         <div className="flex justify-between">
-                           <span className="text-gray-500">Cantidad:</span>
-                           <span className="font-medium">{item.quantity}</span>
+                                             <div className="space-y-3 text-sm">
+                         {/* Primera fila: Cantidad y Precio unitario */}
+                         <div className="grid grid-cols-2 gap-4">
+                           <div className="flex justify-between">
+                             <span className="text-gray-500">Cantidad:</span>
+                             <span className="font-medium">{item.quantity}</span>
+                           </div>
+                           <div className="flex justify-between">
+                             <span className="text-gray-500">Precio unitario:</span>
+                             <span className="font-medium">{formatCurrency(item.unit_price)}</span>
+                           </div>
                          </div>
-                         <div className="flex justify-between">
-                           <span className="text-gray-500">Precio unitario:</span>
-                           <span className="font-medium">{formatCurrency(item.unit_price)}</span>
-                         </div>
+                         
+                         {/* Segunda fila: Producto y Precio catálogo (solo si existe product_name) */}
                          {item.product_name && (
-                           <>
+                           <div className="grid grid-cols-2 gap-4">
                              <div className="flex justify-between">
                                <span className="text-gray-500">Producto:</span>
                                <span className="font-medium">{item.product_name}</span>
@@ -136,7 +141,7 @@ const ViewSaleModal: React.FC<ViewSaleModalProps> = ({ isOpen, onClose, sale }) 
                                <span className="text-gray-500">Precio catálogo:</span>
                                <span className="font-medium">{formatCurrency(item.product_price || 0)}</span>
                              </div>
-                           </>
+                           </div>
                          )}
                        </div>
 
@@ -147,7 +152,7 @@ const ViewSaleModal: React.FC<ViewSaleModalProps> = ({ isOpen, onClose, sale }) 
                            <div className="space-y-3 text-sm">
                              <div>
                                <p className="text-gray-500 font-medium mb-1">Ojo Derecho (OD)</p>
-                               <div className="grid grid-cols-2 gap-2">
+                               <div className="grid grid-cols-4 gap-2">
                                  <div className="flex justify-between">
                                    <span className="text-gray-500">ESF:</span>
                                    <span className="font-medium">{item.od_esf || '-'}</span>
@@ -168,7 +173,7 @@ const ViewSaleModal: React.FC<ViewSaleModalProps> = ({ isOpen, onClose, sale }) 
                              </div>
                              <div>
                                <p className="text-gray-500 font-medium mb-1">Ojo Izquierdo (OI)</p>
-                               <div className="grid grid-cols-2 gap-2">
+                               <div className="grid grid-cols-4 gap-2">
                                  <div className="flex justify-between">
                                    <span className="text-gray-500">ESF:</span>
                                    <span className="font-medium">{item.oi_esf || '-'}</span>
