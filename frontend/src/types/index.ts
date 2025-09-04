@@ -80,7 +80,7 @@ export interface Sale {
   client_id?: number;
   product_id?: number;
   quantity?: number;
-  total_price: string;
+  total_amount: string;
   sale_date: string;
   notes?: string;
   unregistered_client_name?: string;

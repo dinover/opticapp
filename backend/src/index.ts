@@ -78,6 +78,10 @@ const initializeServer = async () => {
     const { migrateDatabase } = await import('./database/migrate.js');
     await migrateDatabase();
     
+    // Run startup tasks including the total price fix
+    const { runStartupTasks } = await import('./startup.js');
+    await runStartupTasks();
+    
     app.listen(PORT, () => {
       console.log(`🚀 Server running on port ${PORT}`);
       console.log(`📊 Health check: http://localhost:${PORT}/api/health`);

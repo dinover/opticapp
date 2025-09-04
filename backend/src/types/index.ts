@@ -55,7 +55,7 @@ export interface Sale {
   client_id?: number;
   product_id?: number;
   quantity: number;
-  total_price: number;
+  total_amount: number;
   sale_date: string;
   notes?: string;
   unregistered_client_name?: string;

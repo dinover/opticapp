@@ -12,8 +12,8 @@ router.get('/stats', authenticateToken, async (req: AuthenticatedRequest, res) =
         COUNT(DISTINCT s.id) as total_sales,
         COUNT(DISTINCT c.id) as total_clients,
         COUNT(DISTINCT p.id) as total_products,
-        COALESCE(SUM(s.total_price), 0) as total_revenue,
-        COALESCE(AVG(s.total_price), 0) as average_sale
+        COALESCE(SUM(s.total_amount), 0) as total_revenue,
+        COALESCE(AVG(s.total_amount), 0) as average_sale
       FROM sales s
       LEFT JOIN clients c ON s.optic_id = c.optic_id
       LEFT JOIN products p ON s.optic_id = p.optic_id
@@ -40,7 +40,7 @@ router.get('/activity', authenticateToken, async (req: AuthenticatedRequest, res
       SELECT 
         'sale' as type,
         CONCAT('Venta #', s.id) as description,
-        s.total_price as amount,
+        s.total_amount as amount,
         s.created_at
       FROM sales s
       WHERE s.optic_id = $1

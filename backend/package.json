@@ -11,6 +11,7 @@
     "db:cleanup": "tsx src/database/cleanup.ts",
     "db:migrate-cloudinary": "tsx src/database/migrate-cloudinary.ts",
     "db:migrate-sales": "tsx src/database/migrate-sales.ts",
+    "db:fix-total-price": "tsx src/database/fix-total-price-issue.ts",
     "db:seed": "tsx src/database/seed-data.ts"
   },
   "dependencies": {
