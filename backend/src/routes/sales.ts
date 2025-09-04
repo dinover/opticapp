@@ -112,7 +112,7 @@ router.post('/', authenticateToken, async (req: AuthenticatedRequest, res) => {
       RETURNING id
     `, [req.user?.optic_id, client_id || null, unregistered_client_name || null, totalAmount, notes || null]);
 
-    const saleId = saleResult.rows[0].id;
+    const saleId = saleResult.id;
 
     // Crear los items de la venta
     for (const item of items) {
