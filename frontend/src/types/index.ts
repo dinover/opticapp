@@ -69,6 +69,7 @@ export interface SaleItem {
   created_at: string;
   // Campos del producto (vienen del JOIN)
   product_name?: string;
+  product_price?: number;
   brand?: string;
   model?: string;
   color?: string;

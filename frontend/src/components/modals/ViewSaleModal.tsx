@@ -36,8 +36,8 @@ const ViewSaleModal: React.FC<ViewSaleModalProps> = ({ isOpen, onClose, sale }) 
   };
 
   const getProductName = (item: any) => {
-    if (item.product && item.product.name) {
-      return item.product.name;
+    if (item.product_name) {
+      return item.product_name;
     }
     return item.unregistered_product_name || 'Producto no registrado';
   };
@@ -112,9 +112,9 @@ const ViewSaleModal: React.FC<ViewSaleModalProps> = ({ isOpen, onClose, sale }) 
                     <div key={index} className="border border-gray-200 rounded-lg p-4">
                       <div className="flex items-center justify-between mb-2">
                         <h5 className="font-medium text-gray-900">{getProductName(item)}</h5>
-                        <span className="text-sm font-medium text-gray-600">
-                          {formatCurrency(item.total_price)}
-                        </span>
+                                                 <span className="text-sm font-medium text-gray-600">
+                           {formatCurrency(item.quantity * item.unit_price)}
+                         </span>
                       </div>
                       
                       <div className="grid grid-cols-2 md:grid-cols-4 gap-2 text-sm">
@@ -126,54 +126,46 @@ const ViewSaleModal: React.FC<ViewSaleModalProps> = ({ isOpen, onClose, sale }) 
                           <span className="text-gray-500">Precio unitario:</span>
                           <span className="ml-1 font-medium">{formatCurrency(item.unit_price)}</span>
                         </div>
-                        {item.brand && (
-                          <>
-                            <div>
-                              <span className="text-gray-500">Marca:</span>
-                              <span className="ml-1 font-medium">{item.brand}</span>
-                            </div>
-                            <div>
-                              <span className="text-gray-500">Modelo:</span>
-                              <span className="ml-1 font-medium">{item.model || '-'}</span>
-                            </div>
-                          </>
-                        )}
+                                                 {item.product_name && (
+                           <>
+                             <div>
+                               <span className="text-gray-500">Producto:</span>
+                               <span className="ml-1 font-medium">{item.product_name}</span>
+                             </div>
+                             <div>
+                               <span className="text-gray-500">Precio catálogo:</span>
+                               <span className="ml-1 font-medium">{formatCurrency(item.product_price || 0)}</span>
+                             </div>
+                           </>
+                         )}
                       </div>
 
-                      {/* Prescription Details */}
-                      {(item.od_esf || item.od_cil || item.oi_esf || item.oi_cil) && (
-                        <div className="mt-3 pt-3 border-t border-gray-200">
-                          <h6 className="text-sm font-medium text-gray-700 mb-2">Receta Óptica</h6>
-                          <div className="grid grid-cols-2 gap-4 text-sm">
-                            <div>
-                              <p className="text-gray-500 font-medium">Ojo Derecho (OD)</p>
-                              <div className="grid grid-cols-2 gap-1 mt-1">
-                                <span className="text-gray-500">ESF:</span>
-                                <span>{item.od_esf || '-'}</span>
-                                <span className="text-gray-500">CIL:</span>
-                                <span>{item.od_cil || '-'}</span>
-                                <span className="text-gray-500">EJE:</span>
-                                <span>{item.od_eje || '-'}</span>
-                                <span className="text-gray-500">ADD:</span>
-                                <span>{item.od_add || '-'}</span>
-                              </div>
-                            </div>
-                            <div>
-                              <p className="text-gray-500 font-medium">Ojo Izquierdo (OI)</p>
-                              <div className="grid grid-cols-2 gap-1 mt-1">
-                                <span className="text-gray-500">ESF:</span>
-                                <span>{item.oi_esf || '-'}</span>
-                                <span className="text-gray-500">CIL:</span>
-                                <span>{item.oi_cil || '-'}</span>
-                                <span className="text-gray-500">EJE:</span>
-                                <span>{item.oi_eje || '-'}</span>
-                                <span className="text-gray-500">ADD:</span>
-                                <span>{item.oi_add || '-'}</span>
-                              </div>
-                            </div>
-                          </div>
-                        </div>
-                      )}
+                                             {/* Prescription Details */}
+                       {(item.od_esf || item.od_cil || item.oi_esf || item.oi_cil) && (
+                         <div className="mt-3 pt-3 border-t border-gray-200">
+                           <h6 className="text-sm font-medium text-gray-700 mb-2">Receta Óptica</h6>
+                           <div className="space-y-2 text-sm">
+                             <div>
+                               <p className="text-gray-500 font-medium mb-1">Ojo Derecho (OD)</p>
+                               <div className="flex space-x-4">
+                                 <span className="text-gray-500">ESF: <span className="font-medium">{item.od_esf || '-'}</span></span>
+                                 <span className="text-gray-500">CIL: <span className="font-medium">{item.od_cil || '-'}</span></span>
+                                 <span className="text-gray-500">EJE: <span className="font-medium">{item.od_eje || '-'}</span></span>
+                                 <span className="text-gray-500">ADD: <span className="font-medium">{item.od_add || '-'}</span></span>
+                               </div>
+                             </div>
+                             <div>
+                               <p className="text-gray-500 font-medium mb-1">Ojo Izquierdo (OI)</p>
+                               <div className="flex space-x-4">
+                                 <span className="text-gray-500">ESF: <span className="font-medium">{item.oi_esf || '-'}</span></span>
+                                 <span className="text-gray-500">CIL: <span className="font-medium">{item.oi_cil || '-'}</span></span>
+                                 <span className="text-gray-500">EJE: <span className="font-medium">{item.oi_eje || '-'}</span></span>
+                                 <span className="text-gray-500">ADD: <span className="font-medium">{item.oi_add || '-'}</span></span>
+                               </div>
+                             </div>
+                           </div>
+                         </div>
+                       )}
 
                       {/* Notes */}
                       {item.notes && (
