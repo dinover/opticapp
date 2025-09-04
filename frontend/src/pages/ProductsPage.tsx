@@ -14,6 +14,7 @@ import { Product } from '../types';
 import AddProductModal from '../components/modals/AddProductModal';
 import EditProductModal from '../components/modals/EditProductModal';
 import ViewProductModal from '../components/modals/ViewProductModal';
+import DeleteProductModal from '../components/modals/DeleteProductModal';
 import ProductImage from '../components/ProductImage';
 import Pagination from '../components/Pagination';
 
@@ -26,6 +27,7 @@ const ProductsPage: React.FC = () => {
   const [showAddModal, setShowAddModal] = useState(false);
   const [showViewModal, setShowViewModal] = useState(false);
   const [showEditModal, setShowEditModal] = useState(false);
+  const [showDeleteModal, setShowDeleteModal] = useState(false);
   const [selectedProduct, setSelectedProduct] = useState<Product | null>(null);
   
   // Pagination state
@@ -99,7 +101,7 @@ const ProductsPage: React.FC = () => {
 
   const handleDeleteProduct = (product: Product) => {
     setSelectedProduct(product);
-    // setShowDeleteModal(true); // This variable was removed, so this line is removed.
+    setShowDeleteModal(true);
   };
 
   // Pagination functions
@@ -345,6 +347,17 @@ const ProductsPage: React.FC = () => {
       />
 
       {/* Delete Product Modal */}
+      <DeleteProductModal
+        isOpen={showDeleteModal}
+        onClose={() => {
+          setShowDeleteModal(false);
+          setSelectedProduct(null);
+        }}
+        onSuccess={fetchProducts}
+        product={selectedProduct}
+      />
+
+      {/* Pagination */}
       <Pagination
         currentPage={currentPage}
         totalPages={totalPages}

@@ -20,7 +20,7 @@ router.get('/', authenticateToken, async (req: AuthenticatedRequest, res) => {
         c.last_name
       FROM sales s
       LEFT JOIN clients c ON s.client_id = c.id
-      WHERE s.optic_id = $1
+      WHERE s.optic_id = $1 AND s.deleted_at IS NULL
       ORDER BY s.created_at DESC
     `, [req.user?.optic_id]);
 
@@ -49,7 +49,7 @@ router.get('/:id', authenticateToken, async (req: AuthenticatedRequest, res) => 
         c.last_name
       FROM sales s
       LEFT JOIN clients c ON s.client_id = c.id
-      WHERE s.id = $1 AND s.optic_id = $2
+      WHERE s.id = $1 AND s.optic_id = $2 AND s.deleted_at IS NULL
     `, [saleId, req.user?.optic_id]);
 
     if (!saleResult) {
@@ -76,7 +76,7 @@ router.get('/:id', authenticateToken, async (req: AuthenticatedRequest, res) => 
         p.price as product_price
       FROM sale_items si
       LEFT JOIN products p ON si.product_id = p.id
-      WHERE si.sale_id = $1
+      WHERE si.sale_id = $1 AND si.deleted_at IS NULL
     `, [saleId]);
 
     const sale = {
@@ -177,7 +177,7 @@ router.delete('/:id', authenticateToken, async (req: AuthenticatedRequest, res) 
 
     // Verificar que la venta existe y pertenece al óptico
     const saleResult = await executeQuerySingle(`
-      SELECT id FROM sales WHERE id = $1 AND optic_id = $2
+      SELECT id FROM sales WHERE id = $1 AND optic_id = $2 AND deleted_at IS NULL
     `, [saleId, req.user?.optic_id]);
 
     if (!saleResult) {
@@ -186,7 +186,7 @@ router.delete('/:id', authenticateToken, async (req: AuthenticatedRequest, res) 
 
     // Obtener los items para restaurar stock
     const itemsResult = await executeQuery(`
-      SELECT product_id, quantity FROM sale_items WHERE sale_id = $1
+      SELECT product_id, quantity FROM sale_items WHERE sale_id = $1 AND deleted_at IS NULL
     `, [saleId]);
 
     // Restaurar stock de productos registrados
@@ -200,14 +200,14 @@ router.delete('/:id', authenticateToken, async (req: AuthenticatedRequest, res) 
       }
     }
 
-    // Eliminar los items de la venta
+    // Marcar los items de la venta como eliminados
     await executeUpdate(`
-      DELETE FROM sale_items WHERE sale_id = $1
+      UPDATE sale_items SET deleted_at = CURRENT_TIMESTAMP WHERE sale_id = $1 AND deleted_at IS NULL
     `, [saleId]);
 
-    // Eliminar la venta
+    // Marcar la venta como eliminada
     await executeUpdate(`
-      DELETE FROM sales WHERE id = $1
+      UPDATE sales SET deleted_at = CURRENT_TIMESTAMP WHERE id = $1 AND deleted_at IS NULL
     `, [saleId]);
 
     res.json({ message: 'Venta eliminada exitosamente' });

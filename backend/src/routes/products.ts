@@ -10,7 +10,7 @@ router.get('/', authenticateToken, async (req: AuthenticatedRequest, res) => {
   try {
     const result = await executeQuery(`
       SELECT * FROM products 
-      WHERE optic_id = $1 
+      WHERE optic_id = $1 AND deleted_at IS NULL
       ORDER BY created_at DESC
     `, [req.user?.optic_id]);
 
@@ -28,7 +28,7 @@ router.get('/:id', authenticateToken, async (req: AuthenticatedRequest, res) => 
     
     const result = await executeQuerySingle(`
       SELECT * FROM products 
-      WHERE id = $1 AND optic_id = $2
+      WHERE id = $1 AND optic_id = $2 AND deleted_at IS NULL
     `, [productId, req.user?.optic_id]);
 
     if (!result) {
@@ -111,7 +111,7 @@ router.put('/:id', authenticateToken, upload.single('image'), async (req: Authen
       UPDATE products SET 
         name = $1, description = $2, price = $3, stock_quantity = $4,
         brand = $5, model = $6, color = $7, size = $8, image_url = $9, updated_at = CURRENT_TIMESTAMP
-      WHERE id = $10 AND optic_id = $11
+      WHERE id = $10 AND optic_id = $11 AND deleted_at IS NULL
     `, [
       name, description || null, parseFloat(price), parseInt(stock_quantity) || 0,
       brand || null, model || null, color || null, size || null, imageUrl,
@@ -129,14 +129,14 @@ router.put('/:id', authenticateToken, upload.single('image'), async (req: Authen
   }
 });
 
-// DELETE /:id - Eliminar un producto
+// DELETE /:id - Eliminar un producto (eliminación lógica)
 router.delete('/:id', authenticateToken, async (req: AuthenticatedRequest, res) => {
   try {
     const productId = parseInt(req.params.id);
 
     // Verificar que el producto existe y pertenece al óptico
     const existingProduct = await executeQuerySingle(`
-      SELECT image_url FROM products WHERE id = $1 AND optic_id = $2
+      SELECT image_url FROM products WHERE id = $1 AND optic_id = $2 AND deleted_at IS NULL
     `, [productId, req.user?.optic_id]);
 
     if (!existingProduct) {
@@ -153,7 +153,8 @@ router.delete('/:id', authenticateToken, async (req: AuthenticatedRequest, res) 
     }
 
     const result = await executeUpdate(`
-      DELETE FROM products WHERE id = $1 AND optic_id = $2
+      UPDATE products SET deleted_at = CURRENT_TIMESTAMP 
+      WHERE id = $1 AND optic_id = $2 AND deleted_at IS NULL
     `, [productId, req.user?.optic_id]);
 
     if (result.rowCount === 0) {

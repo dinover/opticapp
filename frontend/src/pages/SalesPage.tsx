@@ -3,6 +3,7 @@ import { Plus, Search, Trash2, Eye } from 'lucide-react';
 import { Sale, Client, Product, SaleWithDetails } from '../types';
 import AddSaleModal from '../components/modals/AddSaleModal';
 import ViewSaleModal from '../components/modals/ViewSaleModal';
+import DeleteSaleModal from '../components/modals/DeleteSaleModal';
 import Pagination from '../components/Pagination';
 import { salesAPI, clientsAPI, productsAPI } from '../services/api';
 
@@ -14,6 +15,7 @@ const SalesPage: React.FC = () => {
   const [searchTerm, setSearchTerm] = useState('');
   const [showAddModal, setShowAddModal] = useState(false);
   const [showViewModal, setShowViewModal] = useState(false);
+  const [showDeleteModal, setShowDeleteModal] = useState(false);
   const [selectedSale, setSelectedSale] = useState<SaleWithDetails | null>(null);
   const [currentPage, setCurrentPage] = useState(1);
   const [itemsPerPage, setItemsPerPage] = useState(10);
@@ -65,19 +67,9 @@ const SalesPage: React.FC = () => {
     }
   };
 
-  const handleDeleteSale = async (saleId: number) => {
-    if (!confirm('¿Está seguro de que desea eliminar esta venta?')) {
-      return;
-    }
-
-    try {
-      await salesAPI.delete(saleId);
-      alert('Venta eliminada exitosamente');
-      fetchSales();
-    } catch (error) {
-      console.error('Error deleting sale:', error);
-      alert('Error al eliminar la venta');
-    }
+  const handleDeleteSale = (sale: Sale) => {
+    setSelectedSale(sale as SaleWithDetails);
+    setShowDeleteModal(true);
   };
 
   const formatDate = (dateString: string) => {
@@ -255,7 +247,7 @@ const SalesPage: React.FC = () => {
                           <Eye className="w-4 h-4" />
                         </button>
                         <button
-                          onClick={() => handleDeleteSale(sale.id)}
+                          onClick={() => handleDeleteSale(sale)}
                           className="p-2 text-red-600 hover:bg-red-50 rounded-lg transition-colors"
                           title="Eliminar"
                         >
@@ -297,6 +289,17 @@ const SalesPage: React.FC = () => {
       <ViewSaleModal
         isOpen={showViewModal}
         onClose={() => setShowViewModal(false)}
+        sale={selectedSale}
+      />
+
+      {/* Delete Sale Modal */}
+      <DeleteSaleModal
+        isOpen={showDeleteModal}
+        onClose={() => {
+          setShowDeleteModal(false);
+          setSelectedSale(null);
+        }}
+        onSuccess={fetchSales}
         sale={selectedSale}
       />
     </div>
