@@ -93,7 +93,6 @@ export interface Sale {
   oi_cil?: string;
   oi_eje?: string;
   oi_add?: string;
-  total_amount: string;
   created_at: string;
   updated_at: string;
   // Campos del cliente (vienen del JOIN)

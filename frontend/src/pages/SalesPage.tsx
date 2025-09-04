@@ -90,7 +90,7 @@ const SalesPage: React.FC = () => {
   };
 
   const getTotalRevenue = () => {
-    return sales.reduce((total, sale) => total + parseFloat(sale.total_price || '0'), 0);
+    return sales.reduce((total, sale) => total + parseFloat(sale.total_amount || '0'), 0);
   };
 
   const getAverageSale = () => {
@@ -223,7 +223,7 @@ const SalesPage: React.FC = () => {
                       {formatDate(sale.sale_date)}
                     </td>
                     <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">
-                      {formatCurrency(parseFloat(sale.total_price || '0'))}
+                      {formatCurrency(parseFloat(sale.total_amount || '0'))}
                     </td>
                     <td className="px-6 py-4 text-sm text-gray-500">
                       <div className="max-w-xs truncate">
