@@ -96,7 +96,16 @@ router.put('/:id', authenticateToken, async (req: AuthenticatedRequest, res) => 
       return res.status(404).json({ error: 'Cliente no encontrado' });
     }
 
-    res.json({ message: 'Cliente actualizado exitosamente' });
+    // Obtener los datos actualizados del cliente
+    const updatedClient = await executeQuerySingle(`
+      SELECT * FROM clients 
+      WHERE id = $1 AND optic_id = $2
+    `, [clientId, req.user?.optic_id]);
+
+    res.json({ 
+      message: 'Cliente actualizado exitosamente',
+      client: updatedClient
+    });
   } catch (error) {
     console.error('Error updating client:', error);
     res.status(500).json({ error: 'Error interno del servidor' });
