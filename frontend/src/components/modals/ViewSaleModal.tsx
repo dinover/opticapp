@@ -29,8 +29,8 @@ const ViewSaleModal: React.FC<ViewSaleModalProps> = ({ isOpen, onClose, sale }) 
   };
 
   const getClientName = (sale: SaleWithDetails) => {
-    if (sale.client && sale.client.first_name && sale.client.last_name) {
-      return `${sale.client.first_name} ${sale.client.last_name}`;
+    if (sale.first_name && sale.last_name) {
+      return `${sale.first_name} ${sale.last_name}`;
     }
     return sale.unregistered_client_name || 'Cliente no registrado';
   };
