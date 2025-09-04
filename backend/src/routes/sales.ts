@@ -141,6 +141,7 @@ router.post('/', authenticateToken, async (req: AuthenticatedRequest, res) => {
           sale_id, product_id, unregistered_product_name, quantity, unit_price, total_price,
           od_esf, od_cil, od_eje, od_add, oi_esf, oi_cil, oi_eje, oi_add, notes
         ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15)
+        RETURNING id
       `, [
         saleId, productId, item.unregistered_product_name || null,
         item.quantity, item.unit_price, itemTotalPrice,
