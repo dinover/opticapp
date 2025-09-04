@@ -38,21 +38,21 @@ const LoginPage: React.FC = () => {
   return (
     <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-primary-500 via-secondary-500 to-primary-600 p-4">
       <div className="w-full max-w-md">
-        <div className="bg-white/95 backdrop-blur-sm rounded-2xl p-8 shadow-2xl">
+        <div className="bg-white/95 dark:bg-gray-800/95 backdrop-blur-sm rounded-2xl p-8 shadow-2xl">
           {/* Header */}
           <div className="text-center mb-8">
             <div className="w-16 h-16 bg-gradient-to-r from-primary-500 to-secondary-500 rounded-full flex items-center justify-center mx-auto mb-4">
               <LogIn className="w-8 h-8 text-white" />
             </div>
-            <h1 className="text-3xl font-bold text-gray-900 mb-2">OpticApp</h1>
-            <p className="text-gray-600">Sistema de Gestión Óptica</p>
+            <h1 className="text-3xl font-bold text-gray-900 dark:text-white mb-2">OpticApp</h1>
+            <p className="text-gray-600 dark:text-gray-400">Sistema de Gestión Óptica</p>
           </div>
 
           {/* Login Form */}
           <form onSubmit={handleSubmit(onSubmit)} className="space-y-6">
             {/* Username Field */}
             <div>
-              <label htmlFor="username" className="block text-sm font-medium text-gray-700 mb-2">
+              <label htmlFor="username" className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
                 Nombre de Usuario
               </label>
               <div className="relative">
@@ -63,7 +63,7 @@ const LoginPage: React.FC = () => {
                   {...register('username')}
                   type="text"
                   id="username"
-                  className="w-full pl-10 pr-4 py-3 bg-gray-50 border border-gray-300 rounded-lg text-gray-900 placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-transparent transition-all duration-200"
+                  className="w-full pl-10 pr-4 py-3 bg-gray-50 dark:bg-gray-700 border border-gray-300 dark:border-gray-600 rounded-lg text-gray-900 dark:text-white placeholder-gray-500 dark:placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-transparent transition-all duration-200"
                   placeholder="Ingresa tu nombre de usuario"
                 />
               </div>
@@ -74,7 +74,7 @@ const LoginPage: React.FC = () => {
 
             {/* Password Field */}
             <div>
-              <label htmlFor="password" className="block text-sm font-medium text-gray-700 mb-2">
+              <label htmlFor="password" className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
                 Contraseña
               </label>
               <div className="relative">
@@ -85,7 +85,7 @@ const LoginPage: React.FC = () => {
                   {...register('password')}
                   type={showPassword ? 'text' : 'password'}
                   id="password"
-                  className="w-full pl-10 pr-12 py-3 bg-gray-50 border border-gray-300 rounded-lg text-gray-900 placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-transparent transition-all duration-200"
+                  className="w-full pl-10 pr-12 py-3 bg-gray-50 dark:bg-gray-700 border border-gray-300 dark:border-gray-600 rounded-lg text-gray-900 dark:text-white placeholder-gray-500 dark:placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-transparent transition-all duration-200"
                   placeholder="Ingresa tu contraseña"
                 />
                 <button
@@ -124,11 +124,11 @@ const LoginPage: React.FC = () => {
 
           {/* Register Link */}
           <div className="mt-6 text-center">
-            <p className="text-gray-600">
+            <p className="text-gray-600 dark:text-gray-400">
               ¿No tienes una cuenta?{' '}
               <Link
                 to="/register"
-                className="text-primary-600 font-semibold hover:text-primary-700 transition-colors"
+                className="text-primary-600 dark:text-primary-400 font-semibold hover:text-primary-700 dark:hover:text-primary-300 transition-colors"
               >
                 Regístrate aquí
               </Link>

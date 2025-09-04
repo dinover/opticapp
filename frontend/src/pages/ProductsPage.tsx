@@ -84,9 +84,9 @@ const ProductsPage: React.FC = () => {
   };
 
   const getStockStatus = (quantity: number) => {
-    if (quantity === 0) return { text: 'Sin stock', color: 'text-red-600 bg-red-50' };
-    if (quantity <= 5) return { text: 'Bajo stock', color: 'text-yellow-600 bg-yellow-50' };
-    return { text: 'En stock', color: 'text-green-600 bg-green-50' };
+    if (quantity === 0) return { text: 'Sin stock', color: 'text-red-600 bg-red-50 dark:bg-red-900/20' };
+    if (quantity <= 5) return { text: 'Bajo stock', color: 'text-yellow-600 bg-yellow-50 dark:bg-yellow-900/20' };
+    return { text: 'En stock', color: 'text-green-600 bg-green-50 dark:bg-green-900/20' };
   };
 
   const handleViewProduct = (product: Product) => {
@@ -132,8 +132,8 @@ const ProductsPage: React.FC = () => {
       {/* Header */}
       <div className="flex items-center justify-between">
         <div>
-          <h1 className="text-2xl font-bold text-gray-900">Productos</h1>
-          <p className="text-gray-600">Gestiona el inventario de gafas</p>
+          <h1 className="text-2xl font-bold text-gray-900 dark:text-white">Productos</h1>
+          <p className="text-gray-600 dark:text-gray-400">Gestiona el inventario de gafas</p>
         </div>
         <button 
           onClick={() => setShowAddModal(true)}
@@ -156,7 +156,7 @@ const ProductsPage: React.FC = () => {
                 value={searchTerm}
                 onChange={(e) => setSearchTerm(e.target.value)}
                 onKeyPress={(e) => e.key === 'Enter' && handleSearch()}
-                className="w-full pl-10 pr-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-transparent"
+                className="w-full pl-10 pr-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-transparent bg-white dark:bg-gray-700 text-gray-900 dark:text-white placeholder-gray-500 dark:placeholder-gray-400"
               />
             </div>
           </div>
@@ -185,8 +185,8 @@ const ProductsPage: React.FC = () => {
         <div className="overflow-x-auto">
           <table className="w-full">
             <thead>
-              <tr className="border-b border-gray-200">
-                <th className="text-left py-3 px-4 font-semibold text-gray-900">
+              <tr className="border-b border-gray-200 dark:border-gray-700">
+                <th className="text-left py-3 px-4 font-semibold text-gray-900 dark:text-white">
                   <button
                     onClick={() => handleSort('name')}
                     className="flex items-center space-x-1 hover:text-primary-600 transition-colors"
@@ -197,7 +197,7 @@ const ProductsPage: React.FC = () => {
                     )}
                   </button>
                 </th>
-                <th className="text-left py-3 px-4 font-semibold text-gray-900">
+                <th className="text-left py-3 px-4 font-semibold text-gray-900 dark:text-white">
                   <button
                     onClick={() => handleSort('brand')}
                     className="flex items-center space-x-1 hover:text-primary-600 transition-colors"
@@ -208,10 +208,10 @@ const ProductsPage: React.FC = () => {
                     )}
                   </button>
                 </th>
-                <th className="text-left py-3 px-4 font-semibold text-gray-900">Modelo</th>
-                <th className="text-left py-3 px-4 font-semibold text-gray-900">Color</th>
-                <th className="text-left py-3 px-4 font-semibold text-gray-900">Tamaño</th>
-                <th className="text-left py-3 px-4 font-semibold text-gray-900">
+                <th className="text-left py-3 px-4 font-semibold text-gray-900 dark:text-white">Modelo</th>
+                <th className="text-left py-3 px-4 font-semibold text-gray-900 dark:text-white">Color</th>
+                <th className="text-left py-3 px-4 font-semibold text-gray-900 dark:text-white">Tamaño</th>
+                <th className="text-left py-3 px-4 font-semibold text-gray-900 dark:text-white">
                   <button
                     onClick={() => handleSort('price')}
                     className="flex items-center space-x-1 hover:text-primary-600 transition-colors"
@@ -222,7 +222,7 @@ const ProductsPage: React.FC = () => {
                     )}
                   </button>
                 </th>
-                                 <th className="text-left py-3 px-4 font-semibold text-gray-900">
+                                 <th className="text-left py-3 px-4 font-semibold text-gray-900 dark:text-white">
                    <button
                      onClick={() => handleSort('stock_quantity')}
                      className="flex items-center space-x-1 hover:text-primary-600 transition-colors"
@@ -233,14 +233,14 @@ const ProductsPage: React.FC = () => {
                      )}
                    </button>
                  </th>
-                <th className="text-right py-3 px-4 font-semibold text-gray-900">Acciones</th>
+                <th className="text-right py-3 px-4 font-semibold text-gray-900 dark:text-white">Acciones</th>
               </tr>
             </thead>
             <tbody>
               {currentProducts.length === 0 ? (
                 <tr>
-                  <td colSpan={8} className="text-center py-8 text-gray-500">
-                    <Package className="w-12 h-12 mx-auto mb-3 text-gray-300" />
+                  <td colSpan={8} className="text-center py-8 text-gray-500 dark:text-gray-400">
+                    <Package className="w-12 h-12 mx-auto mb-3 text-gray-300 dark:text-gray-600" />
                     <p>No se encontraron productos</p>
                   </td>
                 </tr>
@@ -248,7 +248,7 @@ const ProductsPage: React.FC = () => {
                 currentProducts.map((product) => {
                   const stockStatus = getStockStatus(product.stock_quantity);
                   return (
-                    <tr key={product.id} className="border-b border-gray-100 hover:bg-gray-50">
+                    <tr key={product.id} className="border-b border-gray-100 dark:border-gray-700 hover:bg-gray-50 dark:hover:bg-gray-700">
                       <td className="py-4 px-4">
                         <div className="flex items-center space-x-3">
                           <ProductImage
@@ -257,20 +257,20 @@ const ProductsPage: React.FC = () => {
                             className="w-12 h-12 object-cover rounded-lg"
                           />
                           <div>
-                            <p className="font-medium text-gray-900">{product.name}</p>
+                            <p className="font-medium text-gray-900 dark:text-white">{product.name}</p>
                             {product.description && (
-                              <p className="text-sm text-gray-500 truncate max-w-xs">
+                              <p className="text-sm text-gray-500 dark:text-gray-400 truncate max-w-xs">
                                 {product.description}
                               </p>
                             )}
                           </div>
                         </div>
                       </td>
-                      <td className="py-4 px-4 text-gray-900">{product.brand}</td>
-                      <td className="py-4 px-4 text-gray-900">{product.model}</td>
-                      <td className="py-4 px-4 text-gray-900">{product.color}</td>
-                      <td className="py-4 px-4 text-gray-900">{product.size}</td>
-                      <td className="py-4 px-4 text-gray-900 font-medium">
+                      <td className="py-4 px-4 text-gray-900 dark:text-white">{product.brand}</td>
+                      <td className="py-4 px-4 text-gray-900 dark:text-white">{product.model}</td>
+                      <td className="py-4 px-4 text-gray-900 dark:text-white">{product.color}</td>
+                      <td className="py-4 px-4 text-gray-900 dark:text-white">{product.size}</td>
+                      <td className="py-4 px-4 text-gray-900 dark:text-white font-medium">
                         {formatCurrency(product.price)}
                       </td>
                       <td className="py-4 px-4">
