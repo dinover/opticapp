@@ -27,8 +27,8 @@ ChartJS.register(
 
 interface RevenueData {
   date: string;
-  revenue: number;
-  sales_count: number;
+  revenue: string | number;
+  sales_count: string | number;
 }
 
 const RevenueChart: React.FC = () => {
@@ -61,6 +61,16 @@ const RevenueChart: React.FC = () => {
   };
 
   const formatCurrency = (amount: number) => {
+    // Handle NaN and invalid numbers
+    if (isNaN(amount) || !isFinite(amount)) {
+      return new Intl.NumberFormat('es-AR', {
+        style: 'currency',
+        currency: 'ARS',
+        minimumFractionDigits: 0,
+        maximumFractionDigits: 0,
+      }).format(0);
+    }
+    
     return new Intl.NumberFormat('es-AR', {
       style: 'currency',
       currency: 'ARS',
@@ -69,12 +79,17 @@ const RevenueChart: React.FC = () => {
     }).format(amount);
   };
 
+
+
   const chartData = {
     labels: data.map(item => formatDate(item.date)),
     datasets: [
       {
         label: 'Ingresos',
-        data: data.map(item => item.revenue),
+        data: data.map(item => {
+          const revenue = typeof item.revenue === 'string' ? parseFloat(item.revenue) || 0 : item.revenue || 0;
+          return revenue;
+        }),
         borderColor: 'rgb(59, 130, 246)',
         backgroundColor: 'rgba(59, 130, 246, 0.1)',
         borderWidth: 2,
@@ -144,8 +159,14 @@ const RevenueChart: React.FC = () => {
     },
   };
 
-  const totalRevenue = data.reduce((sum, item) => sum + item.revenue, 0);
-  const totalSales = data.reduce((sum, item) => sum + item.sales_count, 0);
+  const totalRevenue = data.reduce((sum, item) => {
+    const revenue = typeof item.revenue === 'string' ? parseFloat(item.revenue) || 0 : item.revenue || 0;
+    return sum + revenue;
+  }, 0);
+  const totalSales = data.reduce((sum, item) => {
+    const sales = typeof item.sales_count === 'string' ? parseInt(item.sales_count) || 0 : item.sales_count || 0;
+    return sum + sales;
+  }, 0);
 
   if (loading) {
     return (

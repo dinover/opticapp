@@ -15,9 +15,10 @@ router.get('/stats', authenticateToken, async (req: AuthenticatedRequest, res) =
         COALESCE(SUM(s.total_amount), 0) as total_revenue,
         COALESCE(AVG(s.total_amount), 0) as average_sale
       FROM sales s
-      LEFT JOIN clients c ON s.optic_id = c.optic_id
-      LEFT JOIN products p ON s.optic_id = p.optic_id
-      WHERE s.optic_id = $1
+      LEFT JOIN clients c ON s.optic_id = c.optic_id AND c.deleted_at IS NULL
+      LEFT JOIN products p ON s.optic_id = p.optic_id AND p.deleted_at IS NULL
+      WHERE s.optic_id = $1 
+        AND s.deleted_at IS NULL
     `, [req.user?.optic_id]);
 
     res.json({
@@ -43,7 +44,8 @@ router.get('/activity', authenticateToken, async (req: AuthenticatedRequest, res
         s.total_amount as amount,
         s.created_at
       FROM sales s
-      WHERE s.optic_id = $1
+      WHERE s.optic_id = $1 
+        AND s.deleted_at IS NULL
       ORDER BY s.created_at DESC
       LIMIT 10
     `, [req.user?.optic_id]);
@@ -107,7 +109,9 @@ router.get('/revenue', authenticateToken, async (req: AuthenticatedRequest, res)
         COALESCE(SUM(s.total_amount), 0) as revenue,
         COUNT(s.id) as sales_count
       FROM sales s
-      WHERE s.optic_id = $1 ${dateFilter}
+      WHERE s.optic_id = $1 
+        AND s.deleted_at IS NULL 
+        ${dateFilter}
       GROUP BY ${groupBy}
       ORDER BY date ASC
     `, [req.user?.optic_id]);
