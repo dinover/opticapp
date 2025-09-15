@@ -1,6 +1,7 @@
 import { pool } from './init';
 import bcrypt from 'bcryptjs';
 import { cleanupDatabase } from './cleanup';
+import { addPasswordResetFields } from './add-password-reset-fields';
 
 export async function migrateDatabase(): Promise<void> {
   console.log('Starting PostgreSQL database migration...');
@@ -36,6 +37,33 @@ export async function migrateDatabase(): Promise<void> {
         console.log('ℹ️  total_amount column already exists');
       } else {
         console.error('Error adding total_amount column:', error);
+      }
+    }
+    
+    // Add password reset fields to users table if they don't exist
+    try {
+      await client.query(`
+        ALTER TABLE users ADD COLUMN reset_token VARCHAR(255)
+      `);
+      console.log('✅ Added reset_token column to users table');
+    } catch (error: any) {
+      if (error.code === '42701') { // column already exists
+        console.log('ℹ️  reset_token column already exists');
+      } else {
+        console.error('Error adding reset_token column:', error);
+      }
+    }
+    
+    try {
+      await client.query(`
+        ALTER TABLE users ADD COLUMN reset_token_expiry TIMESTAMP
+      `);
+      console.log('✅ Added reset_token_expiry column to users table');
+    } catch (error: any) {
+      if (error.code === '42701') { // column already exists
+        console.log('ℹ️  reset_token_expiry column already exists');
+      } else {
+        console.error('Error adding reset_token_expiry column:', error);
       }
     }
     

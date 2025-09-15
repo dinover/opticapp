@@ -1,3 +1,4 @@
+import { migrateDatabase } from './database/migrate';
 import { fixTotalPriceIssue } from './database/fix-total-price-issue';
 import { fixSalesSchema } from './database/fix-sales-schema';
 import { fixClientsSchema } from './database/fix-clients-schema';
@@ -7,6 +8,9 @@ import { verifySalesStructure } from './database/verify-sales-structure';
 export async function runStartupTasks() {
   try {
     console.log('🚀 Running startup tasks...');
+    
+    // Run the main database migration (includes password reset fields)
+    await migrateDatabase();
     
     // Run the sales schema fix migration
     await fixSalesSchema();

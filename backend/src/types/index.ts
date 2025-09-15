@@ -6,6 +6,8 @@ export interface User {
   optic_id: number;
   role: 'admin' | 'user';
   is_approved: boolean;
+  reset_token?: string;
+  reset_token_expiry?: string;
   created_at: string;
   updated_at: string;
 }
