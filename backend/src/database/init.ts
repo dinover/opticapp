@@ -74,6 +74,8 @@ export async function initializeDatabase(): Promise<void> {
         optic_id INTEGER NOT NULL REFERENCES optics(id),
         role VARCHAR(50) DEFAULT 'user',
         is_approved BOOLEAN DEFAULT false,
+        reset_token VARCHAR(255),
+        reset_token_expiry TIMESTAMP,
         created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
         updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
       )
