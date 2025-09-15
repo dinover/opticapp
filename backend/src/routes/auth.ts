@@ -6,6 +6,7 @@ import { body, validationResult } from 'express-validator';
 import { authenticateToken } from '../middleware/auth';
 import { LoginRequest, RegisterRequest, AuthResponse } from '../types';
 import { executeQuery, executeQuerySingle, executeInsert, executeUpdate, insertOptic, insertUser } from '../database/query';
+import { EmailService } from '../services/email';
 
 const router = Router();
 
@@ -291,6 +292,21 @@ router.put('/registration-requests/:id', authenticateToken, [
         'UPDATE users SET is_approved = $1 WHERE id = $2',
         [true, request.user_id]
       );
+      
+      // Send welcome email to the approved user
+      try {
+        const user = await executeQuerySingle(
+          'SELECT u.*, o.name as optic_name FROM users u JOIN optics o ON u.optic_id = o.id WHERE u.id = $1',
+          [request.user_id]
+        );
+        
+        if (user) {
+          await EmailService.sendWelcomeEmail(user.email, user.username, user.optic_name);
+        }
+      } catch (emailError) {
+        console.error('Error sending welcome email:', emailError);
+        // Don't fail the approval process if email fails
+      }
     }
     
     res.json({ message: `Registration request ${status} successfully` });
@@ -392,14 +408,17 @@ router.post('/forgot-password', [
       [resetToken, resetTokenExpiry, email]
     );
 
-    // TODO: Send email with reset link
-    // For now, we'll return the token (in production, send via email)
-    console.log(`Password reset token for ${email}: ${resetToken}`);
+    // Send email with reset link
+    const frontendUrl = process.env.FRONTEND_URL || 'http://localhost:5173';
+    const emailSent = await EmailService.sendPasswordResetEmail(email, resetToken, frontendUrl);
+    
+    if (!emailSent) {
+      console.error(`Failed to send password reset email to ${email}`);
+      // Don't fail the request, just log the error
+    }
     
     res.json({ 
-      message: 'If the email exists, a reset link has been sent',
-      // Remove this in production - only for development/testing
-      resetToken: process.env.NODE_ENV === 'development' ? resetToken : undefined
+      message: 'If the email exists, a reset link has been sent'
     });
 
   } catch (error) {
