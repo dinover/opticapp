@@ -106,6 +106,16 @@ export const authAPI = {
     const response = await api.put(`/auth/registration-requests/${requestId}`, data);
     return response.data;
   },
+
+  forgotPassword: async (email: string): Promise<any> => {
+    const response = await api.post('/auth/forgot-password', { email });
+    return response.data;
+  },
+
+  resetPassword: async (token: string, password: string): Promise<any> => {
+    const response = await api.post('/auth/reset-password', { token, password });
+    return response.data;
+  },
 };
 
 // Products endpoints

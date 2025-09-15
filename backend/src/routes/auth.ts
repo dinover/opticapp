@@ -27,6 +27,30 @@ router.post('/register', [
   const { username, email, password, optic_name, optic_address, optic_phone, optic_email }: RegisterRequest = req.body;
 
   try {
+    // Check if username already exists
+    const existingUser = await executeQuerySingle(
+      'SELECT id FROM users WHERE username = $1',
+      [username]
+    );
+    
+    if (existingUser) {
+      return res.status(400).json({ 
+        error: 'Username already exists. Please choose a different username.' 
+      });
+    }
+
+    // Check if email already exists
+    const existingEmail = await executeQuerySingle(
+      'SELECT id FROM users WHERE email = $1',
+      [email]
+    );
+    
+    if (existingEmail) {
+      return res.status(400).json({ 
+        error: 'Email already exists. Please use a different email address.' 
+      });
+    }
+
     // Hash password
     const hashedPassword = await bcrypt.hash(password, 10);
 
@@ -56,8 +80,23 @@ router.post('/register', [
       },
       optic 
     });
-  } catch (error) {
+  } catch (error: any) {
     console.error('Registration error:', error);
+    
+    // Handle database constraint violations
+    if (error.code === '23505') { // PostgreSQL unique violation error code
+      if (error.constraint?.includes('username')) {
+        return res.status(400).json({ 
+          error: 'Username already exists. Please choose a different username.' 
+        });
+      }
+      if (error.constraint?.includes('email')) {
+        return res.status(400).json({ 
+          error: 'Email already exists. Please use a different email address.' 
+        });
+      }
+    }
+    
     res.status(500).json({ error: 'Registration failed' });
   }
 });
