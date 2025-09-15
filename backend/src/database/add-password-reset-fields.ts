@@ -1,9 +1,8 @@
 import { Pool } from 'pg';
-import { getDatabaseConfig } from '../config/database';
+import { databaseConfig } from '../config/database';
 
 export async function addPasswordResetFields(): Promise<void> {
-  const config = getDatabaseConfig();
-  const client = new Pool(config);
+  const client = new Pool(databaseConfig);
 
   try {
     console.log('🔄 Adding password reset fields to users table...');
