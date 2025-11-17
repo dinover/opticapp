@@ -127,7 +127,7 @@ Para una guía completa y detallada paso a paso, consulta **[DEPLOY.md](DEPLOY.m
 - `NODE_ENV=production`
 - `PORT=10000` (o el puerto que Render asigne)
 - `JWT_SECRET`: Secreto seguro (mínimo 32 caracteres)
-- `DATABASE_URL`: URL de PostgreSQL (proporcionada por Render)
+- `DATABASE_URL`: URL de PostgreSQL (ya configurada en `render.yaml`)
 
 **Frontend:**
 - `VITE_API_URL`: URL completa del backend (ej: `https://tu-backend.onrender.com/api`)
@@ -140,7 +140,7 @@ Para una guía completa y detallada paso a paso, consulta **[DEPLOY.md](DEPLOY.m
 - Node.js
 - Express
 - TypeScript
-- SQLite3 (PostgreSQL para producción)
+- PostgreSQL (con pg driver)
 - JWT para autenticación
 - bcryptjs para hash de contraseñas
 

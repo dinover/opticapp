@@ -252,7 +252,8 @@ router.post('/', authenticateToken, async (req: AuthRequest, res: Response) => {
         od_esf, od_cil, od_eje, od_add,
         oi_esf, oi_cil, oi_eje, oi_add,
         notes, total_price
-      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+      RETURNING id`,
       [
         opticsId,
         client_id,

@@ -15,6 +15,6 @@ services:
         value: 10000
       - key: JWT_SECRET
         generateValue: true
-      # DATABASE_URL no es necesario para SQLite local
-      # Para PostgreSQL, descomenta la sección de databases abajo y ajusta este valor
+      - key: DATABASE_URL
+        value: postgresql://opticapp_database_user:fSnX6LmogG58c0ecbqaIYumc17FkTFZx@dpg-d4dpejfdiees73bp2sl0-a/opticapp_database
 

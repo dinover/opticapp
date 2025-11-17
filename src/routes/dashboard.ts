@@ -72,7 +72,7 @@ router.get('/stats', authenticateToken, async (req: AuthRequest, res: Response) 
     const monthEndStr = `${nextYear}-${String(nextMonth).padStart(2, '0')}-01`;
     
     // Usar rango de fechas: desde el inicio del mes actual hasta antes del inicio del próximo mes
-    // Esto funciona con cualquier formato de fecha que SQLite pueda parsear
+    // PostgreSQL usa ::date para convertir a fecha y comparar correctamente
     const monthSalesParams: any[] = opticsId !== null 
       ? [opticsId, monthStartStr, monthEndStr] 
       : [monthStartStr, monthEndStr];
@@ -82,8 +82,8 @@ router.get('/stats', authenticateToken, async (req: AuthRequest, res: Response) 
        FROM sales s 
        WHERE s.is_active = 1 
          ${salesCondition}
-         AND date(s.sale_date) >= date(?) 
-         AND date(s.sale_date) < date(?)`,
+         AND s.sale_date::date >= ?::date 
+         AND s.sale_date::date < ?::date`,
       monthSalesParams
     );
     const monthSales = monthSalesResult?.count || 0;
@@ -94,8 +94,8 @@ router.get('/stats', authenticateToken, async (req: AuthRequest, res: Response) 
        FROM sales s 
        WHERE s.is_active = 1 
          ${salesCondition}
-         AND date(s.sale_date) >= date(?) 
-         AND date(s.sale_date) < date(?)`,
+         AND s.sale_date::date >= ?::date 
+         AND s.sale_date::date < ?::date`,
       monthSalesParams
     );
     const monthRevenue = monthRevenueResult?.total || 0;

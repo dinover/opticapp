@@ -76,11 +76,11 @@ Si necesitas reinicializarla manualmente:
 
 Esto creará todas las tablas necesarias y el usuario admin inicial.
 
-**Nota sobre SQLite vs PostgreSQL:**
-- El código actual usa **SQLite** que funciona perfectamente en Render para proyectos pequeños
-- SQLite se inicializa automáticamente en el sistema de archivos de Render
-- ⚠️ **Importante**: En el plan gratuito, los datos se perderán si el servicio se apaga o se hace redeploy sin persistencia
-- Para producción con datos permanentes, considera migrar a PostgreSQL (ver sección más abajo)
+**Nota sobre PostgreSQL:**
+- El código está configurado para usar **PostgreSQL** en producción
+- PostgreSQL proporciona persistencia de datos permanente
+- La URL de la base de datos ya está configurada en `render.yaml`
+- La base de datos se inicializa automáticamente durante el build
 
 ### Paso 6: Acceder a la Aplicación
 
@@ -95,47 +95,26 @@ Esto creará todas las tablas necesarias y el usuario admin inicial.
 
 ---
 
-## 📊 Migración a PostgreSQL (Opcional pero Recomendado)
+## 📊 Configuración de PostgreSQL
 
-Si quieres usar PostgreSQL para persistencia de datos permanente:
+✅ **El código ya está configurado para PostgreSQL.** 
 
-1. **Crear Base de Datos PostgreSQL en Render:**
-   - Click en **"New +"** → **"PostgreSQL"**
-   - Name: `opticapp-database`
-   - Plan: Free (o pago según tus necesidades)
-   - Click en **"Create Database"**
+La URL de la base de datos está configurada en `render.yaml` con la siguiente conexión:
+```
+postgresql://opticapp_database_user:fSnX6LmogG58c0ecbqaIYumc17FkTFZx@dpg-d4dpejfdiees73bp2sl0-a/opticapp_database
+```
 
-2. **Actualizar `render.yaml`:**
+### Si necesitas cambiar la URL de la base de datos:
+
+1. Obtén la nueva URL de conexión de Render (Internal Database URL)
+2. Actualiza `render.yaml` con la nueva URL:
    ```yaml
-   services:
-     - type: web
-       name: opticapp-backend
-       # ... configuración existente ...
-       envVars:
-         - key: DATABASE_URL
-           fromDatabase:
-             name: opticapp-database
-             property: connectionString
-
-   databases:
-     - name: opticapp-database
-       databaseName: opticapp
-       user: opticapp_user
-       plan: free
-       postgresMajorVersion: 15
+   envVars:
+     - key: DATABASE_URL
+       value: postgresql://usuario:contraseña@host/database
    ```
 
-3. **Instalar pg (driver de PostgreSQL):**
-   ```bash
-   npm install pg
-   npm install --save-dev @types/pg
-   ```
-
-4. **Actualizar `src/config/database.ts`** para usar PostgreSQL en lugar de SQLite
-
-5. **Ajustar las queries SQL** para compatibilidad PostgreSQL (principalmente cambiar `AUTOINCREMENT` por `SERIAL`)
-
-Para más detalles sobre esta migración, consulta la documentación de PostgreSQL.
+Para más detalles sobre la migración, consulta **[MIGRATION_NOTES.md](MIGRATION_NOTES.md)**.
 
 ---
 
@@ -170,12 +149,12 @@ Para más detalles sobre esta migración, consulta la documentación de PostgreS
    JWT_SECRET=tu_secreto_seguro_mínimo_32_caracteres_aqui
    ```
    
-   **Nota**: `DATABASE_URL` no es necesario si usas SQLite. Si prefieres PostgreSQL, crea la base de datos primero y agrega `DATABASE_URL` con la Internal Database URL.
+   **Nota**: `DATABASE_URL` ya está configurada en `render.yaml`. Si necesitas cambiarla, actualiza el valor con tu Internal Database URL de Render.
 
 4. Click en **"Create Web Service"**
 
 5. **Verificar Inicialización de Base de Datos:**
-   - La base de datos SQLite se inicializa automáticamente durante el build
+   - La base de datos PostgreSQL se inicializa automáticamente durante el build
    - Si necesitas reinicializarla, ve a la pestaña **"Shell"** y ejecuta: `npm run db:init`
 
 ### Frontend (Static Site)
