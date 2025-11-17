@@ -192,7 +192,7 @@ async function initializeDatabase() {
 }
 
 // Ejecutar si se llama directamente
-if (import.meta.url === `file://${process.argv[1]}` || require.main === module) {
+if (require.main === module) {
   initializeDatabase()
     .then(() => {
       console.log('Inicialización completada');

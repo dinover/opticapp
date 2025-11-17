@@ -173,7 +173,6 @@ router.post('/', authenticateToken, async (req: AuthRequest, res: Response) => {
 
     const {
       client_id,
-      optics_id,
       sale_date,
       od_esf,
       od_cil,
@@ -185,7 +184,8 @@ router.post('/', authenticateToken, async (req: AuthRequest, res: Response) => {
       oi_add,
       notes,
       products,
-    } = req.body as SaleCreate;
+      optics_id, // Puede venir del body aunque no esté en el tipo
+    } = req.body as SaleCreate & { optics_id?: number };
 
     if (!client_id) {
       return res.status(400).json({ error: 'El cliente es requerido' });

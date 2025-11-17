@@ -34,8 +34,8 @@ router.get('/:id', authenticateToken, async (req: AuthRequest, res: Response) =>
     }
 
     // Solo admin puede ver cualquier óptica, usuarios solo la suya
-    if (user?.role !== 'admin' && user && user.id && user.optics_id !== id) {
-      const userOptics = await getRow<Optics>(
+    if (user?.role !== 'admin' && user && user.id) {
+      const userOptics = await getRow<{ optics_id: number | null }>(
         'SELECT optics_id FROM users WHERE id = ?',
         [user.id]
       );

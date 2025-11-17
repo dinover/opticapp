@@ -251,6 +251,9 @@ router.post('/admin/requests/:id/approve', authenticateToken, requireAdmin, asyn
          VALUES (?, 1)`,
         [request.optics_name]
       );
+      if (!result.lastID) {
+        return res.status(500).json({ error: 'Error al crear la óptica' });
+      }
       opticsId = result.lastID;
     } else {
       opticsId = optics.id;

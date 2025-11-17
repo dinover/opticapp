@@ -43,9 +43,11 @@ router.get('/drive', async (req: Request, res: Response) => {
       if (redirectCount > 5) {
         if (!isRetry && method === 'thumbnail') {
           const altUrl = `https://drive.google.com/uc?export=view&id=${fileId}`;
-          return makeRequest(altUrl, true, 0);
+          makeRequest(altUrl, true, 0);
+          return;
         }
-        return res.status(500).json({ error: 'Demasiadas redirecciones' });
+        res.status(500).json({ error: 'Demasiadas redirecciones' });
+        return;
       }
 
       https.get(url, (driveRes) => {
@@ -73,7 +75,8 @@ router.get('/drive', async (req: Request, res: Response) => {
         } else if (!isRetry && method === 'thumbnail') {
           // Si falla con thumbnail, intentar con uc?export=view
           const altUrl = `https://drive.google.com/uc?export=view&id=${fileId}`;
-          return makeRequest(altUrl, true, 0);
+          makeRequest(altUrl, true, 0);
+          return;
         } else {
           res.status(driveRes.statusCode || 500).json({ error: 'Error al obtener la imagen de Google Drive' });
         }
@@ -81,7 +84,8 @@ router.get('/drive', async (req: Request, res: Response) => {
         if (!isRetry && method === 'thumbnail') {
           // Si hay error, intentar con método alternativo
           const altUrl = `https://drive.google.com/uc?export=view&id=${fileId}`;
-          return makeRequest(altUrl, true, 0);
+          makeRequest(altUrl, true, 0);
+          return;
         }
         console.error('Error al obtener imagen de Google Drive:', err);
         res.status(500).json({ error: 'Error al obtener la imagen de Google Drive' });
