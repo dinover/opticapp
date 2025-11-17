@@ -1,20 +1,66 @@
-import React, { createContext, useContext, useState, useEffect, ReactNode } from 'react';
-import { User, Optic, AuthResponse } from '../types';
-import { authAPI } from '../services/api';
-import toast from 'react-hot-toast';
+import React, { createContext, useContext, useState, useEffect } from 'react';
+import { User } from '../types';
+import { authService } from '../services/auth';
 
 interface AuthContextType {
   user: User | null;
-  optic: Optic | null;
   token: string | null;
-  login: (username: string, password: string) => Promise<void>;
-  register: (data: any) => Promise<void>;
+  login: (token: string, user: User) => void;
   logout: () => void;
   loading: boolean;
-  isAuthenticated: boolean;
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
+
+export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
+  const [user, setUser] = useState<User | null>(null);
+  const [token, setToken] = useState<string | null>(null);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    const storedToken = localStorage.getItem('token');
+    const storedUser = localStorage.getItem('user');
+
+    if (storedToken && storedUser) {
+      setToken(storedToken);
+      setUser(JSON.parse(storedUser));
+      // Verificar que el token sigue siendo válido
+      authService.getMe()
+        .then((userData) => {
+          setUser(userData);
+          localStorage.setItem('user', JSON.stringify(userData));
+        })
+        .catch(() => {
+          logout();
+        })
+        .finally(() => {
+          setLoading(false);
+        });
+    } else {
+      setLoading(false);
+    }
+  }, []);
+
+  const login = (newToken: string, newUser: User) => {
+    setToken(newToken);
+    setUser(newUser);
+    localStorage.setItem('token', newToken);
+    localStorage.setItem('user', JSON.stringify(newUser));
+  };
+
+  const logout = () => {
+    setToken(null);
+    setUser(null);
+    localStorage.removeItem('token');
+    localStorage.removeItem('user');
+  };
+
+  return (
+    <AuthContext.Provider value={{ user, token, login, logout, loading }}>
+      {children}
+    </AuthContext.Provider>
+  );
+};
 
 export const useAuth = () => {
   const context = useContext(AuthContext);
@@ -24,120 +70,3 @@ export const useAuth = () => {
   return context;
 };
 
-interface AuthProviderProps {
-  children: ReactNode;
-}
-
-export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
-  const [user, setUser] = useState<User | null>(null);
-  const [optic, setOptic] = useState<Optic | null>(null);
-  const [token, setToken] = useState<string | null>(null);
-  const [loading, setLoading] = useState(true);
-
-  useEffect(() => {
-    const initializeAuth = async () => {
-      const storedToken = localStorage.getItem('token');
-      const storedUser = localStorage.getItem('user');
-      const storedOptic = localStorage.getItem('optic');
-
-      if (storedToken && storedUser && storedOptic) {
-        try {
-          setToken(storedToken);
-          setUser(JSON.parse(storedUser));
-          setOptic(JSON.parse(storedOptic));
-          
-          // Verify token is still valid
-          await authAPI.getProfile();
-        } catch (error) {
-          // Token is invalid, clear storage
-          localStorage.removeItem('token');
-          localStorage.removeItem('user');
-          localStorage.removeItem('optic');
-          setToken(null);
-          setUser(null);
-          setOptic(null);
-        }
-      }
-      setLoading(false);
-    };
-
-    initializeAuth();
-  }, []);
-
-  const login = async (username: string, password: string) => {
-    try {
-      setLoading(true);
-      console.log('AuthContext: Attempting login with username:', username);
-      console.log('AuthContext: API URL being used:', import.meta.env.VITE_API_URL);
-      
-      const response: AuthResponse = await authAPI.login({ username, password });
-      
-      console.log('AuthContext: Login successful, response:', response);
-      
-      setToken(response.token);
-      setUser(response.user);
-      setOptic(response.optic);
-      
-      localStorage.setItem('token', response.token);
-      localStorage.setItem('user', JSON.stringify(response.user));
-      localStorage.setItem('optic', JSON.stringify(response.optic));
-      
-      toast.success('¡Inicio de sesión exitoso!');
-    } catch (error: any) {
-      console.error('AuthContext: Login error:', error);
-      console.error('AuthContext: Error response:', error.response?.data);
-      console.error('AuthContext: Error status:', error.response?.status);
-      const message = error.response?.data?.error || 'Error al iniciar sesión';
-      toast.error(message);
-      throw error;
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  const register = async (data: any) => {
-    try {
-      setLoading(true);
-      const response = await authAPI.register(data);
-      
-      // Don't automatically log in the user since they need approval
-      toast.success('¡Registro enviado exitosamente! Tu cuenta será revisada por un administrador antes de poder iniciar sesión.');
-      
-      // Return the response so the component can handle it
-      return response;
-    } catch (error: any) {
-      const message = error.response?.data?.error || 'Error al registrar';
-      toast.error(message);
-      throw error;
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  const logout = () => {
-    setToken(null);
-    setUser(null);
-    setOptic(null);
-    localStorage.removeItem('token');
-    localStorage.removeItem('user');
-    localStorage.removeItem('optic');
-    toast.success('Sesión cerrada');
-  };
-
-  const value: AuthContextType = {
-    user,
-    optic,
-    token,
-    login,
-    register,
-    logout,
-    loading,
-    isAuthenticated: !!token,
-  };
-
-  return (
-    <AuthContext.Provider value={value}>
-      {children}
-    </AuthContext.Provider>
-  );
-}; 

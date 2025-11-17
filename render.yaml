@@ -1,0 +1,20 @@
+services:
+  # Backend - Web Service
+  - type: web
+    name: opticapp-backend
+    env: node
+    region: oregon
+    plan: free
+    buildCommand: npm install && npm run build && npm run db:init
+    startCommand: npm start
+    healthCheckPath: /health
+    envVars:
+      - key: NODE_ENV
+        value: production
+      - key: PORT
+        value: 10000
+      - key: JWT_SECRET
+        generateValue: true
+      # DATABASE_URL no es necesario para SQLite local
+      # Para PostgreSQL, descomenta la sección de databases abajo y ajusta este valor
+

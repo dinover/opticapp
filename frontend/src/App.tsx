@@ -1,92 +1,115 @@
 import React from 'react';
-import { Routes, Route, Navigate } from 'react-router-dom';
+import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-dom';
 import { AuthProvider, useAuth } from './contexts/AuthContext';
+import { ThemeProvider } from './contexts/ThemeContext';
 import { DashboardConfigProvider } from './contexts/DashboardConfigContext';
 import LoginPage from './pages/LoginPage';
-import RegisterPage from './pages/RegisterPage';
-import ForgotPasswordPage from './pages/ForgotPasswordPage';
-import ResetPasswordPage from './pages/ResetPasswordPage';
+import RequestUserPage from './pages/RequestUserPage';
+import AdminRequestsPage from './pages/AdminRequestsPage';
 import DashboardPage from './pages/DashboardPage';
-import ProductsPage from './pages/ProductsPage';
 import ClientsPage from './pages/ClientsPage';
+import ProductsPage from './pages/ProductsPage';
 import SalesPage from './pages/SalesPage';
-import AdminRegistrationRequestsPage from './pages/AdminRegistrationRequestsPage';
-import Layout from './components/Layout';
-import LoadingSpinner from './components/LoadingSpinner';
 
-const PrivateRoute: React.FC<{ children: React.ReactNode }> = ({ children }) => {
-  const { isAuthenticated, loading } = useAuth();
-
-  if (loading) {
-    return <LoadingSpinner />;
-  }
-
-  return isAuthenticated ? <>{children}</> : <Navigate to="/login" replace />;
-};
-
-const PublicRoute: React.FC<{ children: React.ReactNode }> = ({ children }) => {
-  const { isAuthenticated, loading } = useAuth();
+const PrivateRoute: React.FC<{ children: React.ReactNode; requireAdmin?: boolean }> = ({
+  children,
+  requireAdmin = false,
+}) => {
+  const { user, loading } = useAuth();
 
   if (loading) {
-    return <LoadingSpinner />;
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-gray-50">
+        <div className="text-center">
+          <div className="inline-block animate-spin rounded-full h-8 w-8 border-b-2 border-indigo-600"></div>
+          <p className="mt-2 text-gray-600">Cargando...</p>
+        </div>
+      </div>
+    );
   }
 
-  return !isAuthenticated ? <>{children}</> : <Navigate to="/dashboard" replace />;
+  if (!user) {
+    return <Navigate to="/login" replace />;
+  }
+
+  if (requireAdmin && user.role !== 'admin') {
+    return <Navigate to="/dashboard" replace />;
+  }
+
+  return <>{children}</>;
 };
 
 const AppRoutes: React.FC = () => {
+  const { user } = useAuth();
+
   return (
     <Routes>
-      {/* Public routes */}
-      <Route path="/login" element={
-        <PublicRoute>
-          <LoginPage />
-        </PublicRoute>
-      } />
-      <Route path="/register" element={
-        <PublicRoute>
-          <RegisterPage />
-        </PublicRoute>
-      } />
-      <Route path="/forgot-password" element={
-        <PublicRoute>
-          <ForgotPasswordPage />
-        </PublicRoute>
-      } />
-      <Route path="/reset-password" element={
-        <PublicRoute>
-          <ResetPasswordPage />
-        </PublicRoute>
-      } />
-
-      {/* Private routes */}
-      <Route path="/" element={
-        <PrivateRoute>
-          <Layout />
-        </PrivateRoute>
-      }>
-        <Route index element={<Navigate to="/dashboard" replace />} />
-        <Route path="dashboard" element={<DashboardPage />} />
-        <Route path="products" element={<ProductsPage />} />
-        <Route path="clients" element={<ClientsPage />} />
-        <Route path="sales" element={<SalesPage />} />
-        <Route path="admin/registration-requests" element={<AdminRegistrationRequestsPage />} />
-      </Route>
-
-      {/* Catch all */}
-      <Route path="*" element={<Navigate to="/dashboard" replace />} />
+      <Route
+        path="/login"
+        element={user ? <Navigate to={user.role === 'admin' ? '/admin' : '/dashboard'} replace /> : <LoginPage />}
+      />
+      <Route
+        path="/request-user"
+        element={user ? <Navigate to={user.role === 'admin' ? '/admin' : '/dashboard'} replace /> : <RequestUserPage />}
+      />
+      <Route
+        path="/dashboard"
+        element={
+          <PrivateRoute>
+            <DashboardPage />
+          </PrivateRoute>
+        }
+      />
+      <Route
+        path="/admin"
+        element={
+          <PrivateRoute requireAdmin>
+            <AdminRequestsPage />
+          </PrivateRoute>
+        }
+      />
+      <Route
+        path="/clients"
+        element={
+          <PrivateRoute>
+            <ClientsPage />
+          </PrivateRoute>
+        }
+      />
+      <Route
+        path="/products"
+        element={
+          <PrivateRoute>
+            <ProductsPage />
+          </PrivateRoute>
+        }
+      />
+      <Route
+        path="/sales"
+        element={
+          <PrivateRoute>
+            <SalesPage />
+          </PrivateRoute>
+        }
+      />
+      <Route path="/" element={<Navigate to={user ? (user.role === 'admin' ? '/admin' : '/dashboard') : '/login'} replace />} />
     </Routes>
   );
 };
 
 const App: React.FC = () => {
   return (
-    <AuthProvider>
-      <DashboardConfigProvider>
-        <AppRoutes />
-      </DashboardConfigProvider>
-    </AuthProvider>
+    <Router>
+      <ThemeProvider>
+        <AuthProvider>
+          <DashboardConfigProvider>
+            <AppRoutes />
+          </DashboardConfigProvider>
+        </AuthProvider>
+      </ThemeProvider>
+    </Router>
   );
 };
 
-export default App; 
+export default App;
+

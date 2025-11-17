@@ -1,315 +1,360 @@
 import React, { useState, useEffect } from 'react';
-import { 
-  Users, 
-  Plus, 
-  Search, 
-  Eye, 
-  Edit,
-  Trash2,
-  Phone,
-  Mail
-} from 'lucide-react';
-import { clientsAPI } from '../services/api';
-import { Client } from '../types';
-import AddClientModal from '../components/modals/AddClientModal';
-import EditClientModal from '../components/modals/EditClientModal';
-import ViewClientModal from '../components/modals/ViewClientModal';
-import DeleteClientModal from '../components/modals/DeleteClientModal';
+import Layout from '../components/Layout';
 import Pagination from '../components/Pagination';
+import { clientsService } from '../services/clients';
+import { Client, PaginatedResponse } from '../types';
+import {
+  MagnifyingGlassIcon,
+  PlusIcon,
+  PencilIcon,
+  TrashIcon,
+  EyeIcon,
+} from '@heroicons/react/24/outline';
 
 const ClientsPage: React.FC = () => {
-  const [clients, setClients] = useState<Client[]>([]);
+  const [clients, setClients] = useState<PaginatedResponse<Client> | null>(null);
   const [loading, setLoading] = useState(true);
-  const [searchTerm, setSearchTerm] = useState('');
-  const [showAddModal, setShowAddModal] = useState(false);
-  const [showEditModal, setShowEditModal] = useState(false);
-  const [showViewModal, setShowViewModal] = useState(false);
-  const [showDeleteModal, setShowDeleteModal] = useState(false);
-  const [selectedClient, setSelectedClient] = useState<Client | null>(null);
-  
-  // Pagination state
-  const [currentPage, setCurrentPage] = useState(1);
-  const [itemsPerPage, setItemsPerPage] = useState(10);
+  const [error, setError] = useState('');
+  const [search, setSearch] = useState('');
+  const [page, setPage] = useState(1);
+  const [showModal, setShowModal] = useState(false);
+  const [editingClient, setEditingClient] = useState<Client | null>(null);
+  const [formData, setFormData] = useState({
+    name: '',
+    document_id: '',
+    email: '',
+    phone: '',
+    address: '',
+    birth_date: '',
+    notes: '',
+  });
 
   useEffect(() => {
-    fetchClients();
-  }, []);
+    loadClients();
+  }, [page, search]);
 
-  const fetchClients = async () => {
+  const loadClients = async () => {
     try {
       setLoading(true);
-      const data = await clientsAPI.getAll();
+      const data = await clientsService.getAll({
+        page,
+        limit: 10,
+        search: search || undefined,
+        sortBy: 'created_at',
+        sortOrder: 'DESC',
+      });
       setClients(data);
-    } catch (error) {
-      console.error('Error fetching clients:', error);
+    } catch (err: any) {
+      setError(err.response?.data?.error || 'Error al cargar clientes');
     } finally {
       setLoading(false);
     }
   };
 
-  const handleSearch = async () => {
-    if (!searchTerm.trim()) {
-      fetchClients();
-      return;
-    }
+  const handleSearch = (e: React.FormEvent) => {
+    e.preventDefault();
+    setPage(1);
+    loadClients();
+  };
 
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
     try {
-      setLoading(true);
-      const data = await clientsAPI.search(searchTerm);
-      setClients(data);
-    } catch (error) {
-      console.error('Error searching clients:', error);
-    } finally {
-      setLoading(false);
+      if (editingClient) {
+        await clientsService.update(editingClient.id, formData);
+      } else {
+        await clientsService.create(formData);
+      }
+      setShowModal(false);
+      setEditingClient(null);
+      resetForm();
+      loadClients();
+    } catch (err: any) {
+      alert(err.response?.data?.error || 'Error al guardar cliente');
     }
   };
 
-  const handleViewClient = (client: Client) => {
-    setSelectedClient(client);
-    setShowViewModal(true);
+  const handleEdit = (client: Client) => {
+    setEditingClient(client);
+    setFormData({
+      name: client.name,
+      document_id: client.document_id || '',
+      email: client.email || '',
+      phone: client.phone || '',
+      address: client.address || '',
+      birth_date: client.birth_date || '',
+      notes: client.notes || '',
+    });
+    setShowModal(true);
   };
 
-  const handleEditClient = (client: Client) => {
-    setSelectedClient(client);
-    setShowEditModal(true);
+  const handleDelete = async (id: number) => {
+    if (!confirm('¿Estás seguro de eliminar este cliente?')) return;
+    try {
+      await clientsService.delete(id);
+      loadClients();
+    } catch (err: any) {
+      alert(err.response?.data?.error || 'Error al eliminar cliente');
+    }
   };
 
-  const handleDeleteClient = (client: Client) => {
-    setSelectedClient(client);
-    setShowDeleteModal(true);
+  const resetForm = () => {
+    setFormData({
+      name: '',
+      document_id: '',
+      email: '',
+      phone: '',
+      address: '',
+      birth_date: '',
+      notes: '',
+    });
   };
-
-  // Pagination functions
-  const totalPages = Math.ceil(clients.length / itemsPerPage);
-  const startIndex = (currentPage - 1) * itemsPerPage;
-  const endIndex = startIndex + itemsPerPage;
-  const currentClients = clients.slice(startIndex, endIndex);
-
-  const handlePageChange = (page: number) => {
-    setCurrentPage(page);
-  };
-
-  const handleItemsPerPageChange = (newItemsPerPage: number) => {
-    setItemsPerPage(newItemsPerPage);
-    setCurrentPage(1); // Reset to first page when changing items per page
-  };
-
-  if (loading) {
-    return (
-      <div className="flex items-center justify-center h-64">
-        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary-500"></div>
-      </div>
-    );
-  }
 
   return (
-    <div className="space-y-6">
-      {/* Header */}
-      <div className="flex items-center justify-between">
-        <div>
-          <h1 className="text-2xl font-bold text-gray-900 dark:text-white">Clientes</h1>
-          <p className="text-gray-600 dark:text-gray-400">Gestiona la base de datos de clientes</p>
+    <Layout>
+      <div className="space-y-6">
+        {/* Header */}
+        <div className="flex justify-between items-center">
+          <div>
+            <h2 className="text-3xl font-bold text-gray-900 dark:text-white">Clientes</h2>
+            <p className="mt-1 text-sm text-gray-600 dark:text-gray-400">
+              Gestiona tu base de clientes
+            </p>
+          </div>
+          <button
+            onClick={() => {
+              setEditingClient(null);
+              resetForm();
+              setShowModal(true);
+            }}
+            className="inline-flex items-center px-4 py-2 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-indigo-600 hover:bg-indigo-700 dark:bg-indigo-500 dark:hover:bg-indigo-600 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500 dark:focus:ring-offset-gray-800 transition-colors cursor-pointer"
+          >
+            <PlusIcon className="w-5 h-5 mr-2" />
+            Nuevo Cliente
+          </button>
         </div>
-        <button 
-          onClick={() => setShowAddModal(true)}
-          className="btn-primary flex items-center space-x-2"
-        >
-          <Plus className="w-5 h-5" />
-          <span>Agregar Cliente</span>
-        </button>
-      </div>
 
-      {/* Search */}
-      <div className="card">
-        <div className="flex flex-col md:flex-row gap-4">
-          <div className="flex-1">
-            <div className="relative">
-              <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 w-5 h-5" />
-              <input
-                type="text"
-                placeholder="Buscar clientes por DNI, nombre o email..."
-                value={searchTerm}
-                onChange={(e) => setSearchTerm(e.target.value)}
-                onKeyPress={(e) => e.key === 'Enter' && handleSearch()}
-                className="w-full pl-10 pr-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-transparent bg-white dark:bg-gray-700 text-gray-900 dark:text-white placeholder-gray-500 dark:placeholder-gray-400"
+        {/* Search */}
+        <form onSubmit={handleSearch} className="max-w-md">
+          <div className="relative">
+            <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none z-10">
+              <MagnifyingGlassIcon className="h-5 w-5 text-gray-400 dark:text-gray-500" />
+            </div>
+            <input
+              type="text"
+              value={search}
+              onChange={(e) => setSearch(e.target.value)}
+              placeholder="Buscar..."
+              className="search-input relative block w-full pl-20 pr-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md leading-5 bg-white dark:bg-gray-800 text-gray-900 dark:text-white placeholder-gray-500 dark:placeholder-gray-400 focus:outline-none focus:ring-1 focus:ring-indigo-500 dark:focus:ring-indigo-400 focus:border-indigo-500 dark:focus:border-indigo-400 cursor-text"
+            />
+          </div>
+        </form>
+
+        {error && (
+          <div className="bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 rounded-md p-4">
+            <p className="text-red-800 dark:text-red-200">{error}</p>
+          </div>
+        )}
+
+        {/* Table */}
+        {loading ? (
+          <div className="text-center py-8">
+              <div className="inline-block animate-spin rounded-full h-8 w-8 border-b-2 border-indigo-600 dark:border-indigo-400"></div>
+          </div>
+        ) : (
+          <>
+            <div className="bg-white dark:bg-gray-800 shadow overflow-hidden sm:rounded-md">
+              <table className="min-w-full divide-y divide-gray-200 dark:divide-gray-700">
+                <thead className="bg-gray-50 dark:bg-gray-700">
+                  <tr>
+                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">
+                      Nombre
+                    </th>
+                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">
+                      Documento
+                    </th>
+                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">
+                      Email
+                    </th>
+                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">
+                      Teléfono
+                    </th>
+                    <th className="px-6 py-3 text-right text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">
+                      Acciones
+                    </th>
+                  </tr>
+                </thead>
+                <tbody className="bg-white dark:bg-gray-800 divide-y divide-gray-200 dark:divide-gray-700">
+                  {clients?.data && clients.data.length > 0 ? (
+                    clients.data.map((client) => (
+                      <tr key={client.id} className="hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors">
+                        <td className="px-6 py-4 whitespace-nowrap">
+                          <div className="text-sm font-medium text-gray-900 dark:text-white">{client.name}</div>
+                          {client.birth_date && (
+                            <div className="text-sm text-gray-500 dark:text-gray-400">
+                              {new Date(client.birth_date).toLocaleDateString('es-ES')}
+                            </div>
+                          )}
+                        </td>
+                        <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500 dark:text-gray-400">
+                          {client.document_id || '-'}
+                        </td>
+                        <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500 dark:text-gray-400">
+                          {client.email || '-'}
+                        </td>
+                        <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500 dark:text-gray-400">
+                          {client.phone || '-'}
+                        </td>
+                        <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
+                          <div className="flex justify-end space-x-2">
+                            <button
+                              onClick={() => handleEdit(client)}
+                              className="text-indigo-600 dark:text-indigo-400 hover:text-indigo-900 dark:hover:text-indigo-300 transition-colors cursor-pointer"
+                              title="Editar"
+                            >
+                              <PencilIcon className="w-5 h-5" />
+                            </button>
+                            <button
+                              onClick={() => handleDelete(client.id)}
+                              className="text-red-600 dark:text-red-400 hover:text-red-900 dark:hover:text-red-300 transition-colors cursor-pointer"
+                              title="Eliminar"
+                            >
+                              <TrashIcon className="w-5 h-5" />
+                            </button>
+                          </div>
+                        </td>
+                      </tr>
+                    ))
+                  ) : (
+                    <tr>
+                      <td colSpan={5} className="px-6 py-4 text-center text-sm text-gray-500 dark:text-gray-400">
+                        No hay clientes registrados
+                      </td>
+                    </tr>
+                  )}
+                </tbody>
+              </table>
+            </div>
+
+            {/* Pagination */}
+            {clients && clients.pagination.totalPages > 1 && (
+              <Pagination
+                page={clients.pagination.page}
+                totalPages={clients.pagination.totalPages}
+                onPageChange={setPage}
               />
+            )}
+          </>
+        )}
+
+        {/* Modal */}
+        {showModal && (
+          <div className="fixed inset-0 bg-gray-600 bg-opacity-50 dark:bg-opacity-70 overflow-y-auto h-full w-full z-50">
+            <div className="relative top-20 mx-auto p-5 border border-gray-300 dark:border-gray-600 w-full max-w-2xl shadow-lg rounded-md bg-white dark:bg-gray-800">
+              <div className="mt-3">
+                <h3 className="text-lg font-medium text-gray-900 dark:text-white mb-4">
+                  {editingClient ? 'Editar Cliente' : 'Nuevo Cliente'}
+                </h3>
+                <form onSubmit={handleSubmit} className="space-y-4">
+                  <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+                    <div className="sm:col-span-2">
+                      <label className="block text-sm font-medium text-gray-700 dark:text-gray-100">
+                        Nombre *
+                      </label>
+                      <input
+                        type="text"
+                        required
+                        value={formData.name}
+                        onChange={(e) => setFormData({ ...formData, name: e.target.value })}
+                        className="mt-1 block w-full rounded-md border-gray-300 dark:border-gray-600 shadow-sm bg-white dark:bg-gray-900 text-gray-900 dark:text-white focus:border-indigo-500 dark:focus:border-indigo-400 focus:ring-indigo-500 dark:focus:ring-indigo-400 cursor-text"
+                      />
+                    </div>
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 dark:text-gray-100">
+                        Documento de Identidad
+                      </label>
+                      <input
+                        type="text"
+                        value={formData.document_id}
+                        onChange={(e) => setFormData({ ...formData, document_id: e.target.value })}
+                        className="mt-1 block w-full rounded-md border-gray-300 dark:border-gray-600 shadow-sm bg-white dark:bg-gray-900 text-gray-900 dark:text-white focus:border-indigo-500 dark:focus:border-indigo-400 focus:ring-indigo-500 dark:focus:ring-indigo-400 cursor-text"
+                      />
+                    </div>
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 dark:text-gray-100">
+                        Fecha de Nacimiento
+                      </label>
+                      <input
+                        type="date"
+                        value={formData.birth_date}
+                        onChange={(e) => setFormData({ ...formData, birth_date: e.target.value })}
+                        className="mt-1 block w-full rounded-md border-gray-300 dark:border-gray-600 shadow-sm bg-white dark:bg-gray-900 text-gray-900 dark:text-white focus:border-indigo-500 dark:focus:border-indigo-400 focus:ring-indigo-500 dark:focus:ring-indigo-400 cursor-text"
+                      />
+                    </div>
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 dark:text-gray-100">Email</label>
+                      <input
+                        type="email"
+                        value={formData.email}
+                        onChange={(e) => setFormData({ ...formData, email: e.target.value })}
+                        className="mt-1 block w-full rounded-md border-gray-300 dark:border-gray-600 shadow-sm bg-white dark:bg-gray-900 text-gray-900 dark:text-white focus:border-indigo-500 dark:focus:border-indigo-400 focus:ring-indigo-500 dark:focus:ring-indigo-400 cursor-text"
+                      />
+                    </div>
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 dark:text-gray-100">Teléfono</label>
+                      <input
+                        type="text"
+                        value={formData.phone}
+                        onChange={(e) => setFormData({ ...formData, phone: e.target.value })}
+                        className="mt-1 block w-full rounded-md border-gray-300 dark:border-gray-600 shadow-sm bg-white dark:bg-gray-900 text-gray-900 dark:text-white focus:border-indigo-500 dark:focus:border-indigo-400 focus:ring-indigo-500 dark:focus:ring-indigo-400 cursor-text"
+                      />
+                    </div>
+                    <div className="sm:col-span-2">
+                      <label className="block text-sm font-medium text-gray-700 dark:text-gray-100">Dirección</label>
+                      <input
+                        type="text"
+                        value={formData.address}
+                        onChange={(e) => setFormData({ ...formData, address: e.target.value })}
+                        className="mt-1 block w-full rounded-md border-gray-300 dark:border-gray-600 shadow-sm bg-white dark:bg-gray-900 text-gray-900 dark:text-white focus:border-indigo-500 dark:focus:border-indigo-400 focus:ring-indigo-500 dark:focus:ring-indigo-400 cursor-text"
+                      />
+                    </div>
+                    <div className="sm:col-span-2">
+                      <label className="block text-sm font-medium text-gray-700 dark:text-gray-100">Notas</label>
+                      <textarea
+                        value={formData.notes}
+                        onChange={(e) => setFormData({ ...formData, notes: e.target.value })}
+                        rows={3}
+                        className="mt-1 block w-full rounded-md border-gray-300 dark:border-gray-600 shadow-sm bg-white dark:bg-gray-900 text-gray-900 dark:text-white focus:border-indigo-500 dark:focus:border-indigo-400 focus:ring-indigo-500 dark:focus:ring-indigo-400 cursor-text"
+                      />
+                    </div>
+                  </div>
+                  <div className="flex justify-end space-x-3 pt-4 border-t border-gray-200 dark:border-gray-700">
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setShowModal(false);
+                        setEditingClient(null);
+                        resetForm();
+                      }}
+                      className="px-4 py-2 bg-gray-300 dark:bg-gray-600 text-gray-800 dark:text-gray-200 rounded-md hover:bg-gray-400 dark:hover:bg-gray-500 transition-colors cursor-pointer"
+                    >
+                      Cancelar
+                    </button>
+                    <button
+                      type="submit"
+                      className="px-4 py-2 bg-indigo-600 dark:bg-indigo-500 text-white rounded-md hover:bg-indigo-700 dark:hover:bg-indigo-600 transition-colors cursor-pointer"
+                    >
+                      Guardar
+                    </button>
+                  </div>
+                </form>
+              </div>
             </div>
           </div>
-          <div className="flex items-center space-x-2">
-            <button
-              onClick={handleSearch}
-              className="btn-primary"
-            >
-              Buscar
-            </button>
-            <button
-              onClick={() => {
-                setSearchTerm('');
-                fetchClients();
-              }}
-              className="btn-outline"
-            >
-              Limpiar
-            </button>
-          </div>
-        </div>
+        )}
       </div>
-
-      {/* Clients Table */}
-      <div className="card">
-        <div className="overflow-x-auto">
-          <table className="w-full">
-            <thead>
-              <tr className="border-b border-gray-200 dark:border-gray-700">
-                <th className="text-left py-3 px-4 font-semibold text-gray-900 dark:text-white">
-                  <span>Cliente</span>
-                </th>
-                <th className="text-left py-3 px-4 font-semibold text-gray-900 dark:text-white">
-                  <span>DNI</span>
-                </th>
-                <th className="text-left py-3 px-4 font-semibold text-gray-900 dark:text-white">Contacto</th>
-                <th className="text-left py-3 px-4 font-semibold text-gray-900 dark:text-white">Notas</th>
-                <th className="text-right py-3 px-4 font-semibold text-gray-900 dark:text-white">Acciones</th>
-              </tr>
-            </thead>
-            <tbody>
-              {currentClients.length === 0 ? (
-                <tr>
-                  <td colSpan={5} className="text-center py-8 text-gray-500 dark:text-gray-400">
-                    <Users className="w-12 h-12 mx-auto mb-3 text-gray-300 dark:text-gray-600" />
-                    <p>No se encontraron clientes</p>
-                  </td>
-                </tr>
-              ) : (
-                currentClients.map((client) => (
-                  <tr key={client.id} className="border-b border-gray-100 dark:border-gray-700 hover:bg-gray-50 dark:hover:bg-gray-700">
-                    <td className="py-4 px-4">
-                      <div>
-                        <p className="font-medium text-gray-900 dark:text-white">
-                          {client.first_name} {client.last_name}
-                        </p>
-                        <p className="text-sm text-gray-500 dark:text-gray-400">
-                          Cliente #{client.id}
-                        </p>
-                      </div>
-                    </td>
-                    <td className="py-4 px-4">
-                      <p className="font-mono text-gray-900 dark:text-white">{client.dni}</p>
-                    </td>
-                    <td className="py-4 px-4">
-                      <div className="space-y-1">
-                        {client.phone && (
-                          <div className="flex items-center space-x-2 text-sm text-gray-600 dark:text-gray-400">
-                            <Phone className="w-4 h-4" />
-                            <span>{client.phone}</span>
-                          </div>
-                        )}
-                        {client.email && (
-                          <div className="flex items-center space-x-2 text-sm text-gray-600 dark:text-gray-400">
-                            <Mail className="w-4 h-4" />
-                            <span>{client.email}</span>
-                          </div>
-                        )}
-                      </div>
-                    </td>
-                    <td className="py-4 px-4">
-                      {client.notes ? (
-                        <p className="text-sm text-gray-600 dark:text-gray-400 truncate max-w-xs">
-                          {client.notes}
-                        </p>
-                      ) : (
-                        <span className="text-sm text-gray-400 dark:text-gray-500">Sin notas</span>
-                      )}
-                    </td>
-                    <td className="py-4 px-4 text-right">
-                      <div className="flex items-center justify-end space-x-2">
-                        <button 
-                          onClick={() => handleViewClient(client)}
-                          className="p-2 text-blue-600 hover:bg-blue-50 rounded-lg transition-colors"
-                          title="Ver detalles"
-                        >
-                          <Eye className="w-4 h-4" />
-                        </button>
-                        <button 
-                          onClick={() => handleEditClient(client)}
-                          className="p-2 text-green-600 hover:bg-green-50 rounded-lg transition-colors"
-                          title="Editar"
-                        >
-                          <Edit className="w-4 h-4" />
-                        </button>
-                        <button 
-                          onClick={() => handleDeleteClient(client)}
-                          className="p-2 text-red-600 hover:bg-red-50 rounded-lg transition-colors"
-                          title="Eliminar"
-                        >
-                          <Trash2 className="w-4 h-4" />
-                        </button>
-                      </div>
-                    </td>
-                  </tr>
-                ))
-              )}
-            </tbody>
-          </table>
-        </div>
-      </div>
-
-      {/* Pagination */}
-      <Pagination
-        currentPage={currentPage}
-        totalPages={totalPages}
-        onPageChange={handlePageChange}
-        totalItems={clients.length}
-        itemsPerPage={itemsPerPage}
-        onItemsPerPageChange={handleItemsPerPageChange}
-      />
-
-      {/* Summary */}
-      <div className="flex items-center justify-between text-sm text-gray-600 dark:text-gray-400">
-        <p>Total de clientes: {clients.length}</p>
-        <p>Clientes con email: {clients.filter(c => c.email).length}</p>
-      </div>
-
-      {/* Add Client Modal */}
-      <AddClientModal
-        isOpen={showAddModal}
-        onClose={() => setShowAddModal(false)}
-        onSuccess={fetchClients}
-      />
-
-      {/* View Client Modal */}
-      <ViewClientModal
-        isOpen={showViewModal}
-        onClose={() => {
-          setShowViewModal(false);
-          setSelectedClient(null);
-        }}
-        client={selectedClient}
-      />
-
-      {/* Edit Client Modal */}
-      <EditClientModal
-        isOpen={showEditModal}
-        onClose={() => {
-          setShowEditModal(false);
-          setSelectedClient(null);
-        }}
-        onSuccess={fetchClients}
-        client={selectedClient}
-      />
-
-      {/* Delete Client Modal */}
-      <DeleteClientModal
-        isOpen={showDeleteModal}
-        onClose={() => {
-          setShowDeleteModal(false);
-          setSelectedClient(null);
-        }}
-        onSuccess={fetchClients}
-        client={selectedClient}
-      />
-    </div>
+    </Layout>
   );
 };
 
-export default ClientsPage; 
+export default ClientsPage;

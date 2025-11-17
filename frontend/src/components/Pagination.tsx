@@ -1,135 +1,92 @@
 import React from 'react';
-import { ChevronLeft, ChevronRight } from 'lucide-react';
+import {
+  ChevronLeftIcon,
+  ChevronRightIcon,
+} from '@heroicons/react/24/outline';
 
 interface PaginationProps {
-  currentPage: number;
+  page: number;
   totalPages: number;
   onPageChange: (page: number) => void;
-  totalItems: number;
-  itemsPerPage: number;
-  onItemsPerPageChange: (itemsPerPage: number) => void;
 }
 
-const Pagination: React.FC<PaginationProps> = ({
-  currentPage,
-  totalPages,
-  onPageChange,
-  totalItems,
-  itemsPerPage,
-  onItemsPerPageChange
-}) => {
-  const startItem = (currentPage - 1) * itemsPerPage + 1;
-  const endItem = Math.min(currentPage * itemsPerPage, totalItems);
+const Pagination: React.FC<PaginationProps> = ({ page, totalPages, onPageChange }) => {
+  const pages = [];
+  const maxPages = 5;
 
-  const getPageNumbers = () => {
-    const pages = [];
-    const maxVisiblePages = 5;
-    
-    if (totalPages <= maxVisiblePages) {
-      for (let i = 1; i <= totalPages; i++) {
-        pages.push(i);
-      }
-    } else {
-      if (currentPage <= 3) {
-        for (let i = 1; i <= 4; i++) {
-          pages.push(i);
-        }
-        pages.push('...');
-        pages.push(totalPages);
-      } else if (currentPage >= totalPages - 2) {
-        pages.push(1);
-        pages.push('...');
-        for (let i = totalPages - 3; i <= totalPages; i++) {
-          pages.push(i);
-        }
-      } else {
-        pages.push(1);
-        pages.push('...');
-        for (let i = currentPage - 1; i <= currentPage + 1; i++) {
-          pages.push(i);
-        }
-        pages.push('...');
-        pages.push(totalPages);
-      }
-    }
-    
-    return pages;
-  };
+  let startPage = Math.max(1, page - Math.floor(maxPages / 2));
+  let endPage = Math.min(totalPages, startPage + maxPages - 1);
 
-  const handleItemsPerPageChange = (event: React.ChangeEvent<HTMLSelectElement>) => {
-    const newItemsPerPage = parseInt(event.target.value);
-    onItemsPerPageChange(newItemsPerPage);
-  };
-
-  if (totalPages <= 1) {
-    return null;
+  if (endPage - startPage < maxPages - 1) {
+    startPage = Math.max(1, endPage - maxPages + 1);
   }
 
+  for (let i = startPage; i <= endPage; i++) {
+    pages.push(i);
+  }
+
+  if (totalPages <= 1) return null;
+
   return (
-    <div className="flex items-center justify-between px-4 py-3 bg-white border-t border-gray-200">
-      <div className="flex items-center space-x-4 text-sm text-gray-700">
-        <span>
-          Mostrando {startItem} a {endItem} de {totalItems} resultados
-        </span>
-        <div className="flex items-center space-x-2">
-          <span>Mostrar:</span>
-          <select
-            value={itemsPerPage}
-            onChange={handleItemsPerPageChange}
-            className="px-2 py-1 border border-gray-300 rounded text-sm focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-transparent"
-          >
-            <option value={10}>10</option>
-            <option value={20}>20</option>
-            <option value={50}>50</option>
-          </select>
-          <span>por página</span>
-        </div>
+    <div className="flex items-center justify-between border-t border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 px-4 py-3 sm:px-6">
+      <div className="flex flex-1 justify-between sm:hidden">
+        <button
+          onClick={() => onPageChange(page - 1)}
+          disabled={page === 1}
+          className="relative inline-flex items-center rounded-md border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-800 px-4 py-2 text-sm font-medium text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-700 disabled:opacity-50 disabled:cursor-not-allowed cursor-pointer"
+        >
+          Anterior
+        </button>
+        <button
+          onClick={() => onPageChange(page + 1)}
+          disabled={page === totalPages}
+          className="relative ml-3 inline-flex items-center rounded-md border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-800 px-4 py-2 text-sm font-medium text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-700 disabled:opacity-50 disabled:cursor-not-allowed cursor-pointer"
+        >
+          Siguiente
+        </button>
       </div>
-      
-      <div className="flex items-center space-x-2">
-        <button
-          onClick={() => onPageChange(currentPage - 1)}
-          disabled={currentPage === 1}
-          className={`p-2 rounded-lg border ${
-            currentPage === 1
-              ? 'text-gray-400 cursor-not-allowed'
-              : 'text-gray-600 hover:bg-gray-50 hover:text-gray-900'
-          }`}
-        >
-          <ChevronLeft className="w-4 h-4" />
-        </button>
-        
-        {getPageNumbers().map((page, index) => (
-          <button
-            key={index}
-            onClick={() => typeof page === 'number' && onPageChange(page)}
-            disabled={page === '...'}
-            className={`px-3 py-2 rounded-lg border text-sm ${
-              page === currentPage
-                ? 'bg-primary-600 text-white border-primary-600'
-                : page === '...'
-                ? 'text-gray-400 cursor-default'
-                : 'text-gray-600 hover:bg-gray-50 hover:text-gray-900'
-            }`}
-          >
-            {page}
-          </button>
-        ))}
-        
-        <button
-          onClick={() => onPageChange(currentPage + 1)}
-          disabled={currentPage === totalPages}
-          className={`p-2 rounded-lg border ${
-            currentPage === totalPages
-              ? 'text-gray-400 cursor-not-allowed'
-              : 'text-gray-600 hover:bg-gray-50 hover:text-gray-900'
-          }`}
-        >
-          <ChevronRight className="w-4 h-4" />
-        </button>
+      <div className="hidden sm:flex sm:flex-1 sm:items-center sm:justify-between">
+        <div>
+          <p className="text-sm text-gray-700 dark:text-gray-300">
+            Página <span className="font-medium">{page}</span> de{' '}
+            <span className="font-medium">{totalPages}</span>
+          </p>
+        </div>
+        <div>
+          <nav className="isolate inline-flex -space-x-px rounded-md shadow-sm" aria-label="Pagination">
+            <button
+              onClick={() => onPageChange(page - 1)}
+              disabled={page === 1}
+              className="relative inline-flex items-center rounded-l-md px-2 py-2 text-gray-400 dark:text-gray-500 ring-1 ring-inset ring-gray-300 dark:ring-gray-600 hover:bg-gray-50 dark:hover:bg-gray-700 focus:z-20 focus:outline-offset-0 disabled:opacity-50 disabled:cursor-not-allowed cursor-pointer"
+            >
+              <ChevronLeftIcon className="h-5 w-5" />
+            </button>
+            {pages.map((p) => (
+              <button
+                key={p}
+                onClick={() => onPageChange(p)}
+                className={`relative inline-flex items-center px-4 py-2 text-sm font-semibold cursor-pointer ${
+                  p === page
+                    ? 'z-10 bg-indigo-600 dark:bg-indigo-500 text-white focus:z-20 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-indigo-600'
+                    : 'text-gray-900 dark:text-gray-300 ring-1 ring-inset ring-gray-300 dark:ring-gray-600 hover:bg-gray-50 dark:hover:bg-gray-700 focus:z-20 focus:outline-offset-0'
+                }`}
+              >
+                {p}
+              </button>
+            ))}
+            <button
+              onClick={() => onPageChange(page + 1)}
+              disabled={page === totalPages}
+              className="relative inline-flex items-center rounded-r-md px-2 py-2 text-gray-400 dark:text-gray-500 ring-1 ring-inset ring-gray-300 dark:ring-gray-600 hover:bg-gray-50 dark:hover:bg-gray-700 focus:z-20 focus:outline-offset-0 disabled:opacity-50 disabled:cursor-not-allowed cursor-pointer"
+            >
+              <ChevronRightIcon className="h-5 w-5" />
+            </button>
+          </nav>
+        </div>
       </div>
     </div>
   );
 };
 
 export default Pagination;
+
