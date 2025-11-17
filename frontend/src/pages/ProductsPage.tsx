@@ -189,7 +189,7 @@ const ProductsPage: React.FC = () => {
                             const img = e.target as HTMLImageElement;
                             const currentSrc = img.src;
                             // Si falla con thumbnail, intentar con uc?export=view
-                            if (currentSrc.includes('thumbnail')) {
+                            if (currentSrc.includes('thumbnail') && product.image_url) {
                               const fileId = product.image_url.match(/\/d\/([a-zA-Z0-9_-]+)/)?.[1];
                               if (fileId) {
                                 img.src = `https://drive.google.com/uc?export=view&id=${fileId}`;

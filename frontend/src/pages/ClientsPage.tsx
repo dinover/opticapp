@@ -8,7 +8,6 @@ import {
   PlusIcon,
   PencilIcon,
   TrashIcon,
-  EyeIcon,
 } from '@heroicons/react/24/outline';
 
 const ClientsPage: React.FC = () => {

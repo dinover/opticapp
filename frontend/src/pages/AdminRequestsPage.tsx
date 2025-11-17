@@ -1,13 +1,11 @@
 import React, { useState, useEffect } from 'react';
 import { useAuth } from '../contexts/AuthContext';
 import { adminService } from '../services/admin';
-import { opticsService } from '../services/optics';
-import { UserRequest, Optics } from '../types';
+import { UserRequest } from '../types';
 
 const AdminRequestsPage: React.FC = () => {
   const { user, logout } = useAuth();
   const [requests, setRequests] = useState<UserRequest[]>([]);
-  const [optics, setOptics] = useState<Optics[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
   const [actionLoading, setActionLoading] = useState<number | null>(null);
@@ -18,17 +16,7 @@ const AdminRequestsPage: React.FC = () => {
       return;
     }
     loadRequests();
-    loadOptics();
   }, [user]);
-
-  const loadOptics = async () => {
-    try {
-      const data = await opticsService.getAll();
-      setOptics(data);
-    } catch (err: any) {
-      console.error('Error al cargar ópticas:', err);
-    }
-  };
 
   const loadRequests = async () => {
     try {
@@ -47,7 +35,6 @@ const AdminRequestsPage: React.FC = () => {
       setActionLoading(id);
       // Aprobar sin necesidad de seleccionar óptica - se crea automáticamente con el nombre de la solicitud
       await adminService.approveRequest(id);
-      await loadOptics(); // Recargar las ópticas por si se creó una nueva
       await loadRequests();
       setShowOpticsModal(null);
     } catch (err: any) {
@@ -55,10 +42,6 @@ const AdminRequestsPage: React.FC = () => {
     } finally {
       setActionLoading(null);
     }
-  };
-
-  const openOpticsModal = (id: number) => {
-    setShowOpticsModal(id);
   };
 
   const handleReject = async (id: number) => {

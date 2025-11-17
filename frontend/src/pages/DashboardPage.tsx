@@ -1,7 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import Layout from '../components/Layout';
 import DashboardSettings from '../components/DashboardSettings';
-import { useAuth } from '../contexts/AuthContext';
 import { useDashboardConfig } from '../contexts/DashboardConfigContext';
 import { dashboardService } from '../services/dashboard';
 import { DashboardStats } from '../types';
@@ -14,7 +13,6 @@ import {
 } from '@heroicons/react/24/outline';
 
 const DashboardPage: React.FC = () => {
-  const { user } = useAuth();
   const { sections } = useDashboardConfig();
   const [stats, setStats] = useState<DashboardStats | null>(null);
   const [loading, setLoading] = useState(true);

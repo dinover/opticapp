@@ -236,7 +236,7 @@ const SalesPage: React.FC = () => {
         oi_cil: formData.oi_cil ? parseFloat(formData.oi_cil) : null,
         oi_eje: formData.oi_eje ? parseInt(formData.oi_eje) : null,
         oi_add: formData.oi_add ? parseFloat(formData.oi_add) : null,
-        notes: formData.notes || null,
+        notes: formData.notes || undefined,
         products: saleProducts.map(sp => ({
           product_id: sp.product_id,
           quantity: sp.quantity,
