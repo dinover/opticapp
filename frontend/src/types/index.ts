@@ -1,126 +1,175 @@
-export interface User {
+export interface Optics {
   id: number;
-  username: string;
-  email: string;
-  optic_id: number;
-  role: 'admin' | 'user';
-  is_approved: boolean;
+  name: string;
+  address?: string;
+  phone?: string;
+  email?: string;
+  is_active: number;
   created_at: string;
   updated_at: string;
 }
 
-export interface Optic {
+export interface User {
   id: number;
-  name: string;
-  address: string;
-  phone: string;
+  username: string;
   email: string;
+  role: 'admin' | 'user';
+  optics_id?: number | null;
+  created_at?: string;
+}
+
+export interface Client {
+  id: number;
+  optics_id: number;
+  name: string;
+  document_id?: string;
+  email?: string;
+  phone?: string;
+  address?: string;
+  birth_date?: string;
+  notes?: string;
+  is_active: number;
   created_at: string;
   updated_at: string;
 }
 
 export interface Product {
   id: number;
-  optic_id: number;
+  optics_id: number;
   name: string;
+  price?: number;
+  quantity?: number;
   description?: string;
-  brand?: string;
-  model?: string;
-  color?: string;
-  size?: string;
-  price: number;
-  stock_quantity: number;
   image_url?: string;
+  is_active: number;
   created_at: string;
   updated_at: string;
 }
 
-export interface Client {
-  id: number;
-  optic_id: number;
-  first_name: string;
-  last_name: string;
-  dni: string;
-  phone?: string;
-  email?: string;
-  notes?: string;
-  created_at: string;
-  updated_at: string;
-}
-
-// Nuevos tipos para el sistema de ventas mejorado
-export interface SaleItem {
+export interface SaleProduct {
   id: number;
   sale_id: number;
-  product_id?: number;
-  unregistered_product_name?: string;
+  product_id: number;
   quantity: number;
   unit_price: number;
   total_price: number;
-  od_esf?: number; // Ojo derecho - Esfera
-  od_cil?: number; // Ojo derecho - Cilindro
-  od_eje?: number; // Ojo derecho - Eje
-  od_add?: number; // Ojo derecho - Adición
-  oi_esf?: number; // Ojo izquierdo - Esfera
-  oi_cil?: number; // Ojo izquierdo - Cilindro
-  oi_eje?: number; // Ojo izquierdo - Eje
-  oi_add?: number; // Ojo izquierdo - Adición
-  notes?: string;
   created_at: string;
-  // Campos del producto (vienen del JOIN)
+  product?: Product;
   product_name?: string;
-  product_price?: number;
-  brand?: string;
-  model?: string;
-  color?: string;
+  base_price?: number;
+}
+
+export interface SaleProductCreate {
+  product_id: number;
+  quantity: number;
+  unit_price: number;
+}
+
+export interface SaleCreate {
+  client_id: number;
+  sale_date?: string;
+  od_esf?: number | null;
+  od_cil?: number | null;
+  od_eje?: number | null;
+  od_add?: number | null;
+  oi_esf?: number | null;
+  oi_cil?: number | null;
+  oi_eje?: number | null;
+  oi_add?: number | null;
+  notes?: string;
+  products: SaleProductCreate[];
+}
+
+export interface PaginationParams {
+  page?: number;
+  limit?: number;
+  search?: string;
+  sortBy?: string;
+  sortOrder?: 'ASC' | 'DESC';
+}
+
+export interface PaginatedResponse<T> {
+  data: T[];
+  pagination: {
+    page: number;
+    limit: number;
+    total: number;
+    totalPages: number;
+  };
+}
+
+export interface DashboardStats {
+  totalSales: number;
+  totalRevenue: number;
+  totalClients: number;
+  totalProducts: number;
+  monthSales: number;
+  monthRevenue: number;
+  topProducts: Array<{
+    id: number;
+    name: string;
+    base_price: number;
+    total_quantity_sold: number;
+    total_revenue: number;
+  }>;
+  recentSales: Sale[];
+}
+
+export interface DashboardConfig {
+  id: number;
+  user_id: number;
+  optics_id: number;
+  sections_visible?: string;
+  created_at: string;
+  updated_at: string;
 }
 
 export interface Sale {
   id: number;
-  optic_id: number;
-  client_id?: number;
-  product_id?: number;
-  quantity?: number;
-  total_amount: string;
+  optics_id: number;
+  client_id: number;
+  user_id: number;
   sale_date: string;
+  client_name?: string;
+  user_name?: string;
+  optics_name?: string;
+  
+  // OD (Ojo Derecho) - 4 campos
+  od_esf?: number | null;
+  od_cil?: number | null;
+  od_eje?: number | null;
+  od_add?: number | null;
+  
+  // OI (Ojo Izquierdo) - 4 campos
+  oi_esf?: number | null;
+  oi_cil?: number | null;
+  oi_eje?: number | null;
+  oi_add?: number | null;
+  
+  // Notas
   notes?: string;
-  unregistered_client_name?: string;
-  unregistered_product_name?: string;
-  od_esf?: string;
-  od_cil?: string;
-  od_eje?: string;
-  od_add?: string;
-  oi_esf?: string;
-  oi_cil?: string;
-  oi_eje?: string;
-  oi_add?: string;
+  
+  // Total
+  total_price: number;
+  
+  // Productos
+  products?: SaleProduct[];
+  
+  is_active: number;
   created_at: string;
   updated_at: string;
-  // Campos del cliente (vienen del JOIN)
-  first_name?: string;
-  last_name?: string;
 }
 
-export interface SaleWithDetails extends Sale {
-  client?: Client;
-  items: SaleItem[];
-}
-
-export interface CartItem {
-  product?: Product;
-  unregistered_product_name?: string;
-  quantity: number;
-  unit_price: number;
-  total_price: number;
-  od_esf?: number;
-  od_cil?: number;
-  od_eje?: number;
-  od_add?: number;
-  oi_esf?: number;
-  oi_cil?: number;
-  oi_eje?: number;
-  oi_add?: number;
-  notes?: string;
+export interface UserRequest {
+  id: number;
+  username: string;
+  email: string;
+  optics_name: string;
+  status: 'pending' | 'approved' | 'rejected';
+  requested_at: string;
+  reviewed_at: string | null;
+  reviewed_by: number | null;
+  reviewer_username?: string | null;
 }
 
 export interface LoginRequest {
@@ -128,72 +177,15 @@ export interface LoginRequest {
   password: string;
 }
 
-export interface RegisterRequest {
-  username: string;
-  email: string;
-  password: string;
-  optic_name: string;
-  optic_address: string;
-  optic_phone: string;
-  optic_email: string;
-}
-
-export interface RegistrationRequest {
-  id: number;
-  user_id: number;
-  optic_id: number;
-  username: string;
-  email: string;
-  optic_name: string;
-  optic_address: string;
-  optic_phone: string;
-  optic_email: string;
-  status: 'pending' | 'approved' | 'rejected';
-  admin_notes?: string;
-  created_at: string;
-  updated_at: string;
-}
-
-export interface ApproveRegistrationRequest {
-  requestId: number;
-  approved: boolean;
-  notes?: string;
-}
-
 export interface AuthResponse {
   token: string;
   user: User;
-  optic: Optic;
 }
 
-export interface ApiResponse<T = any> {
-  success: boolean;
-  data?: T;
-  message?: string;
-  error?: string;
+export interface UserRequestCreate {
+  username: string;
+  email: string;
+  password: string;
+  optics_name: string;
 }
 
-export interface OpticStats {
-  total_products: number;
-  total_clients: number;
-  total_sales: number;
-  total_revenue: number;
-}
-
-export interface ActivityItem {
-  id: number;
-  type: 'sale' | 'client' | 'product';
-  description: string;
-  client_name: string;
-  amount?: number;
-  created_at: string;
-}
-
-export interface TopProduct {
-  name: string;
-  brand: string;
-  model: string;
-  total_sold: number;
-  total_revenue: number;
-  sale_count: number;
-} 

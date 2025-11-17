@@ -1,149 +1,162 @@
-# OpticApp - Sistema de Gestión Óptica
+# OpticApp - Sistema de Gestión de Óptica
 
-Sistema web completo para gestión de stock, clientes y ventas de ópticas. Desarrollado con React, TypeScript, Node.js y SQLite.
+Sistema completo para gestión de una óptica con sistema de autenticación y solicitudes de usuario.
 
-## 🚀 Características Principales
+## Estructura del Proyecto
 
-### ✅ **Gestión Completa**
-- **Productos**: CRUD completo con imágenes, stock, precios
-- **Clientes**: Registro con DNI, contacto, notas
-- **Ventas**: Registro con prescripción óptica (8 campos)
-- **Usuarios**: Sistema multi-óptica con autenticación
-
-### 🎯 **Funcionalidades Avanzadas**
-- **Cliente/Producto no registrado**: Venta sin registro previo
-- **Prescripción óptica**: 8 campos (OD/OI Esf, Cil, Eje, Add)
-- **Stock inteligente**: Alertas de bajo stock
-- **Interfaz moderna**: Diseño Slack-like con gradientes
-- **Responsive**: Funciona en desktop, tablet y móvil
-
-### 🔧 **Tecnologías**
-- **Frontend**: React + TypeScript + Vite + Tailwind CSS
-- **Backend**: Node.js + Express + SQLite
-- **Autenticación**: JWT
-- **Validación**: Zod + React Hook Form
-
-## 📦 Instalación Rápida
-
-### **Opción 1: Script Automático (Recomendado)**
-```bash
-# En Windows, simplemente ejecuta:
-start.bat
+```
+opticapp/
+├── backend/          # Backend Node.js + Express + TypeScript
+├── frontend/         # Frontend React + TypeScript + Vite
+└── README.md
 ```
 
-### **Opción 2: Instalación Manual**
+## Características
+
+### Backend
+- Sistema de solicitud de usuarios
+- Panel de administración para aprobar/rechazar solicitudes
+- Autenticación con JWT
+- Base de datos SQLite (configurable para PostgreSQL en producción)
+- API REST completa
+
+### Frontend
+- Pantalla de login
+- Pantalla de solicitud de usuario
+- Panel de administración para gestionar solicitudes
+- Dashboard principal
+- Diseño moderno con Tailwind CSS
+- Navegación protegida con rutas privadas
+
+## Instalación
+
+### Backend
+
 ```bash
-# 1. Clonar el repositorio
-git clone [URL_DEL_REPO]
-cd opticapp
-
-# 2. Instalar dependencias
+cd backend
 npm install
-cd frontend && npm install && cd ..
-cd backend && npm install && cd ..
-
-# 3. Configurar variables de entorno
-copy backend\env.example backend\.env
-
-# 4. Iniciar la aplicación
+npm run db:init
 npm run dev
 ```
 
-## 🌐 Acceso a la Aplicación
+El servidor estará disponible en `http://localhost:3001`
 
-Una vez iniciada, accede a:
-- **Frontend**: http://localhost:5173
-- **Backend API**: http://localhost:3001
+**Usuario admin por defecto:**
+- Username: `admin`
+- Password: `admin123`
 
-## 👤 Primer Uso
+⚠️ **IMPORTANTE**: Cambia la contraseña del admin en producción
 
-1. **Registrar nueva óptica**: Crea una cuenta con datos de la óptica
-2. **Iniciar sesión**: Usa las credenciales creadas
-3. **Agregar productos**: Comienza con el inventario
-4. **Registrar clientes**: Crea la base de datos de clientes
-5. **Realizar ventas**: Registra las primeras ventas
+### Frontend
 
-## 📋 Funcionalidades por Sección
-
-### **Dashboard**
-- Resumen de ventas, productos, clientes
-- Gráficos de rendimiento
-- Alertas de stock bajo
-
-### **Productos**
-- ✅ Ver detalles completos
-- ✅ Editar información
-- ✅ Eliminar productos
-- ✅ Subir imágenes
-- ✅ Control de stock
-
-### **Clientes**
-- ✅ Ver perfil completo
-- ✅ Editar información
-- ✅ Eliminar clientes
-- ✅ Historial de ventas
-
-### **Ventas**
-- ✅ Ver detalles completos con prescripción
-- ✅ Cliente/Producto no registrado
-- ✅ 8 campos de prescripción óptica
-- ✅ Notas y observaciones
-
-## 🔐 Seguridad
-
-- **Autenticación JWT**: Tokens seguros
-- **Validación**: Frontend y backend
-- **Multi-óptica**: Cada óptica ve solo sus datos
-- **CORS**: Configurado para desarrollo
-
-## 📱 Compatibilidad
-
-- ✅ **Desktop**: Chrome, Firefox, Safari, Edge
-- ✅ **Tablet**: iPad, Android tablets
-- ✅ **Móvil**: iPhone, Android phones
-
-## 🛠️ Desarrollo
-
-### **Estructura del Proyecto**
-```
-opticapp/
-├── frontend/          # React + TypeScript
-├── backend/           # Node.js + Express
-├── package.json       # Scripts principales
-└── README.md         # Este archivo
-```
-
-### **Scripts Disponibles**
 ```bash
-npm run dev          # Inicia frontend + backend
-npm run dev:frontend # Solo frontend
-npm run dev:backend  # Solo backend
-npm run build        # Build de producción
+cd frontend
+npm install
+npm run dev
 ```
 
-## 🚀 Despliegue
+El frontend estará disponible en `http://localhost:5173`
 
-### **Para Demostración Local**
-1. Ejecuta `start.bat` (Windows)
-2. Abre http://localhost:5173
-3. Registra una nueva óptica
-4. ¡Listo para usar!
+## Desarrollo
 
-### **Para Producción**
-- **Frontend**: Vercel, Netlify, o servidor estático
-- **Backend**: Railway, Heroku, o VPS
-- **Base de datos**: PostgreSQL (migración desde SQLite)
+### Backend
 
-## 📞 Soporte
+```bash
+# Inicializar base de datos
+npm run db:init
 
-Para soporte técnico o consultas:
-- **Email**: [tu-email@ejemplo.com]
-- **Documentación**: [URL_DOCUMENTACION]
+# Modo desarrollo (con watch)
+npm run dev
 
-## 📄 Licencia
+# Compilar TypeScript
+npm run build
 
-Este proyecto es propiedad de [Tu Empresa] y está destinado para uso interno.
+# Ejecutar producción
+npm start
+```
 
----
+### Frontend
 
-**OpticApp v1.0** - Sistema completo de gestión óptica 🕶️ 
+```bash
+# Modo desarrollo
+npm run dev
+
+# Compilar para producción
+npm run build
+
+# Preview de producción
+npm run preview
+```
+
+## API Endpoints
+
+### Autenticación
+
+- `POST /api/auth/request-user` - Solicitar creación de usuario
+- `GET /api/auth/request-status/:username` - Verificar estado de solicitud
+- `POST /api/auth/login` - Login
+- `GET /api/auth/me` - Obtener perfil (requiere autenticación)
+
+### Administración (requiere rol admin)
+
+- `GET /api/auth/admin/requests` - Listar todas las solicitudes
+- `POST /api/auth/admin/requests/:id/approve` - Aprobar solicitud
+- `POST /api/auth/admin/requests/:id/reject` - Rechazar solicitud
+
+## Flujo de Usuario
+
+1. **Solicitar cuenta**: Los nuevos usuarios pueden solicitar una cuenta completando el formulario
+2. **Aprobación**: Un administrador revisa y aprueba/rechaza la solicitud
+3. **Login**: Una vez aprobado, el usuario puede iniciar sesión con sus credenciales
+4. **Dashboard**: Acceso a las funcionalidades del sistema según su rol
+
+## Despliegue en Render
+
+Para una guía completa y detallada paso a paso, consulta **[DEPLOY.md](DEPLOY.md)**.
+
+### Resumen Rápido
+
+1. **Sube tu código a GitHub** (si aún no lo has hecho)
+2. **Conecta tu repositorio a Render**
+3. **Usa el archivo `render.yaml`** incluido para despliegue automático, o sigue la guía manual en DEPLOY.md
+4. **Inicializa la base de datos** usando la Shell de Render: `npm run db:init`
+
+### Variables de Entorno Requeridas
+
+**Backend:**
+- `NODE_ENV=production`
+- `PORT=10000` (o el puerto que Render asigne)
+- `JWT_SECRET`: Secreto seguro (mínimo 32 caracteres)
+- `DATABASE_URL`: URL de PostgreSQL (proporcionada por Render)
+
+**Frontend:**
+- `VITE_API_URL`: URL completa del backend (ej: `https://tu-backend.onrender.com/api`)
+
+📖 **Ver [DEPLOY.md](DEPLOY.md) para instrucciones completas**
+
+## Tecnologías
+
+### Backend
+- Node.js
+- Express
+- TypeScript
+- SQLite3 (PostgreSQL para producción)
+- JWT para autenticación
+- bcryptjs para hash de contraseñas
+
+### Frontend
+- React 18
+- TypeScript
+- Vite
+- React Router
+- Tailwind CSS
+- Axios
+
+## Estado del Proyecto
+
+✅ Sistema de autenticación completo
+✅ Solicitudes de usuario
+✅ Panel de administración
+✅ Dashboard básico
+
+🚧 Próximamente: Funcionalidades de gestión de la óptica (clientes, productos, ventas, etc.)
