@@ -1,8 +1,5 @@
 import { Pool, Client, QueryResult } from 'pg';
 
-// Detectar si estamos en producción (usando PostgreSQL) o desarrollo (SQLite opcional)
-const isProduction = process.env.NODE_ENV === 'production' || process.env.DATABASE_URL?.startsWith('postgres');
-
 let pool: Pool | null = null;
 let client: Client | null = null;
 
@@ -13,9 +10,6 @@ interface RunResult {
 }
 
 export function getDatabase(): Pool {
-  if (!isProduction) {
-    throw new Error('PostgreSQL está configurado como única opción. Usa DATABASE_URL.');
-  }
 
   if (!pool) {
     const connectionString = process.env.DATABASE_URL;
