@@ -1,6 +1,6 @@
 import React, { createContext, useContext, useState } from 'react';
 
-type Currency = 'ARS' | 'USD';
+type Currency = 'UYU' | 'USD';
 
 interface CurrencyContextType {
   currency: Currency;
@@ -12,17 +12,17 @@ const CurrencyContext = createContext<CurrencyContextType | undefined>(undefined
 
 export const CurrencyProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   const [currency, setCurrency] = useState<Currency>(
-    () => (localStorage.getItem('currency') as Currency) || 'ARS'
+    () => (localStorage.getItem('currency') as Currency) || 'UYU'
   );
 
   const toggleCurrency = () => {
-    const next: Currency = currency === 'ARS' ? 'USD' : 'ARS';
+    const next: Currency = currency === 'UYU' ? 'USD' : 'UYU';
     setCurrency(next);
     localStorage.setItem('currency', next);
   };
 
   const fmt = (n: number) =>
-    new Intl.NumberFormat('es-AR', { style: 'currency', currency }).format(n);
+    new Intl.NumberFormat('es-UY', { style: 'currency', currency }).format(n);
 
   return (
     <CurrencyContext.Provider value={{ currency, toggleCurrency, fmt }}>
