@@ -151,15 +151,6 @@ const SalesPage: React.FC = () => {
     setSelProductId(''); setSelQty('1'); setSelPrice('');
   };
 
-  const numInput = (val: string, field: string) => (
-    <input
-      type="number" step="0.01" value={(formData as any)[field]}
-      onChange={e => setFormData({ ...formData, [field]: e.target.value })}
-      placeholder="—"
-      style={{ textAlign: 'center', padding: '.5rem .375rem !important', fontSize: '.8rem' }}
-    />
-  );
-
   return (
     <Layout>
       <div className="fade-in">
