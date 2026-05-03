@@ -3,6 +3,7 @@ import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-d
 import { AuthProvider, useAuth } from './contexts/AuthContext';
 import { ThemeProvider } from './contexts/ThemeContext';
 import { DashboardConfigProvider } from './contexts/DashboardConfigContext';
+import { CurrencyProvider } from './contexts/CurrencyContext';
 import LoginPage from './pages/LoginPage';
 import RequestUserPage from './pages/RequestUserPage';
 import AdminRequestsPage from './pages/AdminRequestsPage';
@@ -101,11 +102,13 @@ const App: React.FC = () => {
   return (
     <Router>
       <ThemeProvider>
-        <AuthProvider>
-          <DashboardConfigProvider>
-            <AppRoutes />
-          </DashboardConfigProvider>
-        </AuthProvider>
+        <CurrencyProvider>
+          <AuthProvider>
+            <DashboardConfigProvider>
+              <AppRoutes />
+            </DashboardConfigProvider>
+          </AuthProvider>
+        </CurrencyProvider>
       </ThemeProvider>
     </Router>
   );

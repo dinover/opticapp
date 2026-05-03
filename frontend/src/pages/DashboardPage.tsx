@@ -12,6 +12,7 @@ import {
   ChartBarIcon,
   CalendarDaysIcon,
 } from '@heroicons/react/24/outline';
+import { useCurrency } from '../contexts/CurrencyContext';
 import { ArrowTrendingUpIcon } from '@heroicons/react/24/solid';
 
 const DashboardPage: React.FC = () => {
@@ -34,7 +35,7 @@ const DashboardPage: React.FC = () => {
     }
   };
 
-  const fmt = (n: number) => new Intl.NumberFormat('es-US', { style: 'currency', currency: 'USD' }).format(n);
+  const { fmt } = useCurrency();
   const fmtDate = (d: string) => new Date(d).toLocaleDateString('es-ES', { day: 'numeric', month: 'short' });
 
   if (loading) return (
