@@ -1,147 +1,152 @@
 import React, { useState } from 'react';
 import { useDashboardConfig } from '../contexts/DashboardConfigContext';
 import { useTheme } from '../contexts/ThemeContext';
-import { Cog6ToothIcon, XMarkIcon } from '@heroicons/react/24/outline';
-import { SunIcon, MoonIcon } from '@heroicons/react/24/solid';
+import { Cog6ToothIcon, XMarkIcon, SunIcon, MoonIcon } from '@heroicons/react/24/outline';
 
-interface DashboardSettingsProps {
-  className?: string;
-}
-
-const DashboardSettings: React.FC<DashboardSettingsProps> = ({ className = '' }) => {
+const DashboardSettings: React.FC<{ className?: string }> = ({ className = '' }) => {
   const [isOpen, setIsOpen] = useState(false);
   const { sections, updateSection, resetSections } = useDashboardConfig();
   const { theme, toggleTheme } = useTheme();
 
-  const sectionLabels: Record<keyof typeof sections, string> = {
-    totalSales: 'Total Ventas',
-    totalRevenue: 'Total Ingresos',
-    totalClients: 'Total Clientes',
-    totalProducts: 'Total Productos',
-    topProducts: 'Productos Más Vendidos',
-    recentSales: 'Ventas Recientes',
+  const labels: Record<keyof typeof sections, string> = {
+    totalSales:    'Total ventas',
+    totalRevenue:  'Total ingresos',
+    totalClients:  'Total clientes',
+    totalProducts: 'Total productos',
+    topProducts:   'Productos más vendidos',
+    recentSales:   'Ventas recientes',
   };
 
-  const Switch: React.FC<{ enabled: boolean; onChange: () => void; label: string }> = ({
-    enabled,
-    onChange,
-    label,
-  }) => {
-    return (
-      <div className="flex items-center justify-between py-2">
-        <span className="text-sm font-medium text-gray-700 dark:text-gray-100">{label}</span>
-        <button
-          type="button"
-          className={`relative inline-flex h-6 w-11 flex-shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors duration-200 ease-in-out focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:ring-offset-2 ${
-            enabled ? 'bg-indigo-600' : 'bg-gray-200 dark:bg-gray-700'
-          }`}
-          onClick={onChange}
-          role="switch"
-          aria-checked={enabled}
-        >
-          <span
-            className={`pointer-events-none inline-block h-5 w-5 transform rounded-full bg-white shadow ring-0 transition duration-200 ease-in-out ${
-              enabled ? 'translate-x-5' : 'translate-x-0'
-            }`}
-          />
-        </button>
-      </div>
-    );
-  };
+  const Toggle: React.FC<{ enabled: boolean; onChange: () => void }> = ({ enabled, onChange }) => (
+    <button
+      type="button"
+      role="switch"
+      aria-checked={enabled}
+      onClick={onChange}
+      style={{
+        width: 40, height: 22, borderRadius: 99,
+        background: enabled ? '#4f46e5' : 'var(--surface-3)',
+        border: 'none', cursor: 'pointer', position: 'relative',
+        transition: 'background .2s', flexShrink: 0,
+      }}
+    >
+      <span style={{
+        position: 'absolute', top: 3,
+        left: enabled ? 21 : 3,
+        width: 16, height: 16, borderRadius: 99,
+        background: '#fff',
+        boxShadow: '0 1px 3px rgba(0,0,0,.2)',
+        transition: 'left .2s',
+        display: 'block',
+      }} />
+    </button>
+  );
 
   return (
     <>
       <button
         onClick={() => setIsOpen(true)}
-        className={`inline-flex items-center px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md shadow-sm text-sm font-medium text-gray-700 dark:text-gray-300 bg-white dark:bg-gray-800 hover:bg-gray-50 dark:hover:bg-gray-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500 transition-colors ${className}`}
-        title="Configuración del Dashboard"
+        className={`btn btn-ghost ${className}`}
+        style={{ fontSize: '.8rem' }}
       >
-        <Cog6ToothIcon className="h-5 w-5 mr-2" />
+        <Cog6ToothIcon className="w-4 h-4" />
         Configuración
       </button>
 
       {isOpen && (
-        <div className="fixed inset-0 bg-gray-600 bg-opacity-50 overflow-y-auto h-full w-full z-50 flex items-center justify-center">
-          <div className="relative bg-white dark:bg-gray-800 rounded-lg shadow-xl max-w-md w-full mx-4 my-8">
-            <div className="flex items-center justify-between px-6 py-4 border-b border-gray-200 dark:border-gray-700">
-              <h3 className="text-lg font-medium text-gray-900 dark:text-white">
-                Configuración del Dashboard
-              </h3>
+        <div
+          className="modal-overlay"
+          onClick={e => e.target === e.currentTarget && setIsOpen(false)}
+        >
+          <div className="modal-box" style={{ maxWidth: 380 }}>
+            {/* Header */}
+            <div style={{
+              padding: '1.25rem 1.5rem',
+              borderBottom: '1px solid var(--border)',
+              display: 'flex', alignItems: 'center', justifyContent: 'space-between',
+            }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                <Cog6ToothIcon style={{ width: 16, height: 16, color: 'var(--text-muted)' }} />
+                <h3 style={{ margin: 0, fontWeight: 700, fontSize: '1rem', color: 'var(--text-primary)' }}>
+                  Configuración
+                </h3>
+              </div>
               <button
                 onClick={() => setIsOpen(false)}
-                className="text-gray-400 hover:text-gray-500 dark:hover:text-gray-300 transition-colors"
+                style={{
+                  padding: '.3rem', borderRadius: 6,
+                  background: 'var(--surface-3)', border: 'none',
+                  cursor: 'pointer', color: 'var(--text-muted)', display: 'flex',
+                }}
               >
-                <XMarkIcon className="h-6 w-6" />
+                <XMarkIcon className="w-4 h-4" />
               </button>
             </div>
 
-            <div className="px-6 py-4 space-y-4">
-              {/* Modo Oscuro/Claro */}
-              <div className="pb-4 border-b border-gray-200 dark:border-gray-700">
-                <h4 className="text-sm font-semibold text-gray-900 dark:text-white mb-3">
+            {/* Body */}
+            <div style={{ padding: '1.25rem 1.5rem', display: 'flex', flexDirection: 'column', gap: '1.25rem' }}>
+              {/* Apariencia */}
+              <div>
+                <p style={{ margin: '0 0 .75rem', fontSize: '.7rem', fontWeight: 700, letterSpacing: '.06em', textTransform: 'uppercase', color: 'var(--text-muted)' }}>
                   Apariencia
-                </h4>
-                <div className="flex items-center justify-between py-2">
-                  <div className="flex items-center">
-                    {theme === 'dark' ? (
-                      <MoonIcon className="h-5 w-5 text-gray-700 dark:text-gray-100 mr-2" />
-                    ) : (
-                      <SunIcon className="h-5 w-5 text-gray-700 dark:text-gray-100 mr-2" />
-                    )}
-                    <span className="text-sm font-medium text-gray-700 dark:text-gray-100">
-                      Modo Oscuro
+                </p>
+                <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '.625rem .875rem', background: 'var(--surface-2)', borderRadius: 10, border: '1px solid var(--border)' }}>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                    {theme === 'dark'
+                      ? <MoonIcon style={{ width: 16, height: 16, color: '#a5b4fc' }} />
+                      : <SunIcon style={{ width: 16, height: 16, color: '#f59e0b' }} />}
+                    <span style={{ fontSize: '.875rem', fontWeight: 600, color: 'var(--text-primary)' }}>
+                      Modo {theme === 'dark' ? 'oscuro' : 'claro'}
                     </span>
                   </div>
-                  <button
-                    type="button"
-                    className={`relative inline-flex h-6 w-11 flex-shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors duration-200 ease-in-out focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:ring-offset-2 ${
-                      theme === 'dark' ? 'bg-indigo-600' : 'bg-gray-200 dark:bg-gray-700'
-                    }`}
-                    onClick={toggleTheme}
-                    role="switch"
-                    aria-checked={theme === 'dark'}
-                  >
-                    <span
-                      className={`pointer-events-none inline-block h-5 w-5 transform rounded-full bg-white shadow ring-0 transition duration-200 ease-in-out ${
-                        theme === 'dark' ? 'translate-x-5' : 'translate-x-0'
-                      }`}
-                    />
-                  </button>
+                  <Toggle enabled={theme === 'dark'} onChange={toggleTheme} />
                 </div>
               </div>
 
-              {/* Secciones del Dashboard */}
+              {/* Secciones */}
               <div>
-                <div className="flex items-center justify-between mb-3">
-                  <h4 className="text-sm font-semibold text-gray-900 dark:text-white">
-                    Secciones Visibles
-                  </h4>
+                <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '.75rem' }}>
+                  <p style={{ margin: 0, fontSize: '.7rem', fontWeight: 700, letterSpacing: '.06em', textTransform: 'uppercase', color: 'var(--text-muted)' }}>
+                    Secciones visibles
+                  </p>
                   <button
                     onClick={resetSections}
-                    className="text-xs text-indigo-600 dark:text-indigo-400 hover:text-indigo-800 dark:hover:text-indigo-300"
+                    style={{ fontSize: '.75rem', fontWeight: 600, color: '#4f46e5', background: 'none', border: 'none', cursor: 'pointer' }}
                   >
                     Restablecer
                   </button>
                 </div>
-                <div className="space-y-1">
-                  {(Object.keys(sections) as Array<keyof typeof sections>).map((section) => (
-                    <Switch
-                      key={section}
-                      enabled={sections[section]}
-                      onChange={() => updateSection(section, !sections[section])}
-                      label={sectionLabels[section]}
-                    />
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '.375rem' }}>
+                  {(Object.keys(sections) as Array<keyof typeof sections>).map(key => (
+                    <div
+                      key={key}
+                      style={{
+                        display: 'flex', alignItems: 'center', justifyContent: 'space-between',
+                        padding: '.625rem .875rem', background: 'var(--surface-2)',
+                        borderRadius: 8, border: '1px solid var(--border)',
+                      }}
+                    >
+                      <span style={{ fontSize: '.875rem', fontWeight: 500, color: 'var(--text-primary)' }}>
+                        {labels[key]}
+                      </span>
+                      <Toggle
+                        enabled={sections[key]}
+                        onChange={() => updateSection(key, !sections[key])}
+                      />
+                    </div>
                   ))}
                 </div>
               </div>
             </div>
 
-            <div className="px-6 py-4 bg-gray-50 dark:bg-gray-900 border-t border-gray-200 dark:border-gray-700 rounded-b-lg">
+            {/* Footer */}
+            <div style={{ padding: '1rem 1.5rem', borderTop: '1px solid var(--border)' }}>
               <button
                 onClick={() => setIsOpen(false)}
-                className="w-full inline-flex justify-center items-center px-4 py-2 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-indigo-600 hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500 transition-colors"
+                className="btn btn-primary"
+                style={{ width: '100%', justifyContent: 'center' }}
               >
-                Cerrar
+                Listo
               </button>
             </div>
           </div>
@@ -152,4 +157,3 @@ const DashboardSettings: React.FC<DashboardSettingsProps> = ({ className = '' })
 };
 
 export default DashboardSettings;
-

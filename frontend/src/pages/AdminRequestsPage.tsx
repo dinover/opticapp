@@ -2,29 +2,32 @@ import React, { useState, useEffect } from 'react';
 import { useAuth } from '../contexts/AuthContext';
 import { adminService } from '../services/admin';
 import { UserRequest } from '../types';
+import {
+  ShieldCheckIcon,
+  ArrowRightOnRectangleIcon,
+  CheckCircleIcon,
+  XCircleIcon,
+  ClockIcon,
+  ArrowPathIcon,
+} from '@heroicons/react/24/outline';
 
 const AdminRequestsPage: React.FC = () => {
   const { user, logout } = useAuth();
-  const [requests, setRequests] = useState<UserRequest[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState('');
+  const [requests, setRequests]       = useState<UserRequest[]>([]);
+  const [loading, setLoading]         = useState(true);
+  const [error, setError]             = useState('');
   const [actionLoading, setActionLoading] = useState<number | null>(null);
-  const [showOpticsModal, setShowOpticsModal] = useState<number | null>(null);
 
-  useEffect(() => {
-    if (user?.role !== 'admin') {
-      return;
-    }
-    loadRequests();
-  }, [user]);
+  useEffect(() => { loadRequests(); }, []);
 
   const loadRequests = async () => {
     try {
       setLoading(true);
+      setError('');
       const data = await adminService.getRequests();
       setRequests(data);
     } catch (err: any) {
-      setError(err.response?.data?.error || 'Error al cargar las solicitudes');
+      setError(err.response?.data?.error || 'Error al cargar solicitudes');
     } finally {
       setLoading(false);
     }
@@ -33,263 +36,251 @@ const AdminRequestsPage: React.FC = () => {
   const handleApprove = async (id: number) => {
     try {
       setActionLoading(id);
-      // Aprobar sin necesidad de seleccionar óptica - se crea automáticamente con el nombre de la solicitud
       await adminService.approveRequest(id);
       await loadRequests();
-      setShowOpticsModal(null);
     } catch (err: any) {
-      alert(err.response?.data?.error || 'Error al aprobar la solicitud');
+      alert(err.response?.data?.error || 'Error al aprobar');
     } finally {
       setActionLoading(null);
     }
   };
 
   const handleReject = async (id: number) => {
-    if (!confirm('¿Estás seguro de que deseas rechazar esta solicitud?')) {
-      return;
-    }
-
+    if (!confirm('¿Rechazar esta solicitud?')) return;
     try {
       setActionLoading(id);
       await adminService.rejectRequest(id);
       await loadRequests();
     } catch (err: any) {
-      alert(err.response?.data?.error || 'Error al rechazar la solicitud');
+      alert(err.response?.data?.error || 'Error al rechazar');
     } finally {
       setActionLoading(null);
     }
   };
 
-  const getStatusColor = (status: string) => {
-    switch (status) {
-      case 'approved':
-        return 'bg-green-100 text-green-800';
-      case 'rejected':
-        return 'bg-red-100 text-red-800';
-      default:
-        return 'bg-yellow-100 text-yellow-800';
-    }
-  };
-
-  const getStatusText = (status: string) => {
-    switch (status) {
-      case 'approved':
-        return 'Aprobada';
-      case 'rejected':
-        return 'Rechazada';
-      default:
-        return 'Pendiente';
-    }
-  };
-
-  if (user?.role !== 'admin') {
-    return (
-      <div className="min-h-screen flex items-center justify-center bg-gray-50">
-        <div className="text-center">
-          <h1 className="text-2xl font-bold text-gray-900">Acceso Denegado</h1>
-          <p className="mt-2 text-gray-600">No tienes permisos para acceder a esta página.</p>
-        </div>
-      </div>
-    );
-  }
+  const pending   = requests.filter(r => r.status === 'pending');
+  const processed = requests.filter(r => r.status !== 'pending');
 
   return (
-    <div className="min-h-screen bg-gray-50">
-      <nav className="bg-white shadow">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="flex justify-between h-16">
-            <div className="flex items-center">
-              <h1 className="text-xl font-bold text-gray-900">OpticApp - Panel de Administración</h1>
+    <div style={{ minHeight: '100vh', background: 'var(--surface-2)' }}>
+      {/* Topbar */}
+      <header style={{ background: 'var(--surface)', borderBottom: '1px solid var(--border)', position: 'sticky', top: 0, zIndex: 40 }}>
+        <div className="max-w-5xl mx-auto px-4 sm:px-6" style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', height: 56 }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+            <div style={{ width: 30, height: 30, borderRadius: 8, background: 'linear-gradient(135deg, #4f46e5, #7c3aed)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth="2.5">
+                <circle cx="12" cy="12" r="3"/><path d="M20.188 10.934c.388.472.388 1.16 0 1.632C18.768 14.35 15.636 18 12 18c-3.636 0-6.768-3.65-8.188-5.434a1.3 1.3 0 0 1 0-1.632C5.232 9.65 8.364 6 12 6c3.636 0 6.768 3.65 8.188 5.434z"/>
+              </svg>
             </div>
-            <div className="flex items-center space-x-4">
-              <span className="text-sm text-gray-700">Bienvenido, {user?.username}</span>
-              <button
-                onClick={logout}
-                className="bg-red-600 hover:bg-red-700 text-white px-4 py-2 rounded-md text-sm font-medium"
-              >
-                Cerrar Sesión
-              </button>
+            <div>
+              <span style={{ fontWeight: 800, fontSize: '.95rem', color: 'var(--text-primary)' }}>OpticApp</span>
+              <span style={{ marginLeft: 8, fontSize: '.75rem', fontWeight: 600, color: '#6366f1', background: '#eef2ff', padding: '1px 8px', borderRadius: 99 }}>Admin</span>
             </div>
           </div>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
+            <span style={{ fontSize: '.8rem', color: 'var(--text-secondary)' }}>{user?.username}</span>
+            <button onClick={logout} className="btn btn-ghost" style={{ fontSize: '.8rem', padding: '.4rem .75rem' }}>
+              <ArrowRightOnRectangleIcon className="w-4 h-4" />
+              Salir
+            </button>
+          </div>
         </div>
-      </nav>
+      </header>
 
-      <div className="max-w-7xl mx-auto py-6 sm:px-6 lg:px-8">
-        <div className="px-4 py-6 sm:px-0">
-          <div className="bg-white shadow rounded-lg">
-            <div className="px-4 py-5 sm:p-6">
-              <h2 className="text-lg font-medium text-gray-900 mb-4">
-                Solicitudes de Usuario
-              </h2>
+      <main className="max-w-5xl mx-auto px-4 sm:px-6 py-6 fade-in">
+        {/* Header */}
+        <div className="page-header">
+          <div>
+            <h1 className="page-title">Solicitudes de acceso</h1>
+            <p className="page-subtitle">
+              {pending.length} pendiente{pending.length !== 1 ? 's' : ''} · {processed.length} procesada{processed.length !== 1 ? 's' : ''}
+            </p>
+          </div>
+          <button className="btn btn-ghost" onClick={loadRequests} style={{ fontSize: '.8rem' }}>
+            <ArrowPathIcon className="w-4 h-4" />
+            Actualizar
+          </button>
+        </div>
 
-              {error && (
-                <div className="rounded-md bg-red-50 p-4 mb-4">
-                  <div className="text-sm text-red-800">{error}</div>
-                </div>
-              )}
+        {error && (
+          <div style={{ background: '#fef2f2', border: '1px solid #fecaca', borderRadius: 10, padding: '.75rem 1rem', marginBottom: '1.25rem', color: '#991b1b', fontSize: '.875rem' }}>
+            {error}
+          </div>
+        )}
 
-              {loading ? (
-                <div className="text-center py-8">
-                  <div className="inline-block animate-spin rounded-full h-8 w-8 border-b-2 border-indigo-600"></div>
-                  <p className="mt-2 text-gray-600">Cargando solicitudes...</p>
+        {loading ? (
+          <div style={{ display: 'flex', justifyContent: 'center', padding: '4rem' }}>
+            <div className="spinner" />
+          </div>
+        ) : requests.length === 0 ? (
+          <div className="card">
+            <div className="empty-state">
+              <ShieldCheckIcon style={{ width: 40, height: 40, margin: '0 auto 0.75rem' }} />
+              <p>No hay solicitudes</p>
+            </div>
+          </div>
+        ) : (
+          <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
+            {/* Pending */}
+            {pending.length > 0 && (
+              <div>
+                <div className="section-title">Pendientes</div>
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '.625rem' }}>
+                  {pending.map(req => (
+                    <RequestCard
+                      key={req.id}
+                      req={req}
+                      loading={actionLoading === req.id}
+                      onApprove={() => handleApprove(req.id)}
+                      onReject={() => handleReject(req.id)}
+                    />
+                  ))}
                 </div>
-              ) : requests.length === 0 ? (
-                <div className="text-center py-8">
-                  <p className="text-gray-600">No hay solicitudes pendientes.</p>
-                </div>
-              ) : (
-                <div className="overflow-x-auto">
-                  <table className="min-w-full divide-y divide-gray-200">
-                    <thead className="bg-gray-50">
+              </div>
+            )}
+
+            {/* Processed */}
+            {processed.length > 0 && (
+              <div>
+                <div className="section-title">Historial</div>
+                <div className="card" style={{ overflow: 'hidden' }}>
+                  <table className="tbl">
+                    <thead>
                       <tr>
-                        <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                          Usuario
-                        </th>
-                        <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                          Email
-                        </th>
-                        <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                          Nombre de la Óptica
-                        </th>
-                        <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                          Estado
-                        </th>
-                        <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                          Fecha de Solicitud
-                        </th>
-                        <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                          Revisado por
-                        </th>
-                        <th className="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">
-                          Acciones
-                        </th>
+                        <th>Usuario</th>
+                        <th>Óptica</th>
+                        <th>Solicitado</th>
+                        <th>Revisado por</th>
+                        <th>Estado</th>
                       </tr>
                     </thead>
-                    <tbody className="bg-white divide-y divide-gray-200">
-                      {requests.map((request) => (
-                        <tr key={request.id}>
-                          <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">
-                            {request.username}
+                    <tbody>
+                      {processed.map(req => (
+                        <tr key={req.id}>
+                          <td>
+                            <div style={{ fontWeight: 600, fontSize: '.875rem' }}>{req.username}</div>
+                            <div style={{ fontSize: '.75rem', color: 'var(--text-muted)' }}>{req.email}</div>
                           </td>
-                          <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                            {request.email}
+                          <td style={{ fontSize: '.875rem', color: 'var(--text-secondary)' }}>{req.optics_name}</td>
+                          <td style={{ fontSize: '.8rem', color: 'var(--text-muted)' }}>
+                            {new Date(req.requested_at).toLocaleDateString('es-ES', { day: '2-digit', month: 'short', year: 'numeric' })}
                           </td>
-                          <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">
-                            {request.optics_name}
+                          <td style={{ fontSize: '.8rem', color: 'var(--text-secondary)' }}>
+                            {req.reviewer_username || '—'}
                           </td>
-                          <td className="px-6 py-4 whitespace-nowrap">
-                            <span
-                              className={`inline-flex px-2 py-1 text-xs font-semibold rounded-full ${getStatusColor(
-                                request.status
-                              )}`}
-                            >
-                              {getStatusText(request.status)}
-                            </span>
-                          </td>
-                          <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                            {new Date(request.requested_at).toLocaleDateString('es-ES', {
-                              year: 'numeric',
-                              month: 'short',
-                              day: 'numeric',
-                              hour: '2-digit',
-                              minute: '2-digit',
-                            })}
-                          </td>
-                          <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                            {request.reviewer_username || '-'}
-                          </td>
-                          <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
-                            {request.status === 'pending' && (
-                              <div className="flex justify-end space-x-2">
-                                <button
-                                  onClick={() => handleApprove(request.id)}
-                                  disabled={actionLoading === request.id}
-                                  className="bg-green-600 hover:bg-green-700 text-white px-3 py-1 rounded text-sm disabled:opacity-50 disabled:cursor-not-allowed"
-                                >
-                                  {actionLoading === request.id ? '...' : 'Aprobar'}
-                                </button>
-                                <button
-                                  onClick={() => handleReject(request.id)}
-                                  disabled={actionLoading === request.id}
-                                  className="bg-red-600 hover:bg-red-700 text-white px-3 py-1 rounded text-sm disabled:opacity-50 disabled:cursor-not-allowed"
-                                >
-                                  {actionLoading === request.id ? '...' : 'Rechazar'}
-                                </button>
-                              </div>
-                            )}
-                            {request.status !== 'pending' && (
-                              <span className="text-gray-400 text-xs">Procesada</span>
-                            )}
+                          <td>
+                            <StatusBadge status={req.status} />
                           </td>
                         </tr>
                       ))}
                     </tbody>
                   </table>
                 </div>
-              )}
-
-              <div className="mt-4 flex justify-end">
-                <button
-                  onClick={loadRequests}
-                  className="bg-indigo-600 hover:bg-indigo-700 text-white px-4 py-2 rounded-md text-sm font-medium"
-                >
-                  Actualizar
-                </button>
               </div>
-            </div>
+            )}
           </div>
-        </div>
-      </div>
-
-      {/* Modal de confirmación para aprobar */}
-      {showOpticsModal && (
-        <div className="fixed inset-0 bg-gray-600 bg-opacity-50 dark:bg-opacity-70 overflow-y-auto h-full w-full z-50">
-          <div className="relative top-20 mx-auto p-5 border border-gray-300 dark:border-gray-600 w-96 shadow-lg rounded-md bg-white dark:bg-gray-800">
-            <div className="mt-3">
-              <h3 className="text-lg font-medium text-gray-900 dark:text-white mb-4">
-                Confirmar Aprobación
-              </h3>
-              {(() => {
-                const request = requests.find(r => r.id === showOpticsModal);
-                if (!request) return null;
-                
-                return (
-                  <div>
-                    <p className="text-sm text-gray-600 dark:text-gray-200 mb-4">
-                      Se aprobará la solicitud y se creará automáticamente la óptica <strong>"{request.optics_name}"</strong> si no existe.
-                    </p>
-                    <div className="bg-gray-50 dark:bg-gray-700 p-3 rounded mb-4">
-                      <p className="text-xs text-gray-600 dark:text-gray-200 mb-1"><strong>Usuario:</strong> {request.username}</p>
-                      <p className="text-xs text-gray-600 dark:text-gray-200 mb-1"><strong>Email:</strong> {request.email}</p>
-                      <p className="text-xs text-gray-600 dark:text-gray-200"><strong>Óptica:</strong> {request.optics_name}</p>
-                    </div>
-                    <div className="flex justify-end space-x-3">
-                      <button
-                        onClick={() => {
-                          setShowOpticsModal(null);
-                        }}
-                        className="px-4 py-2 bg-gray-300 dark:bg-gray-600 text-gray-800 dark:text-gray-200 rounded-md hover:bg-gray-400 dark:hover:bg-gray-500 transition-colors cursor-pointer"
-                      >
-                        Cancelar
-                      </button>
-                      <button
-                        onClick={() => handleApprove(showOpticsModal)}
-                        disabled={actionLoading === showOpticsModal}
-                        className="px-4 py-2 bg-green-600 dark:bg-green-500 text-white rounded-md hover:bg-green-700 dark:hover:bg-green-600 disabled:opacity-50 disabled:cursor-not-allowed transition-colors cursor-pointer"
-                      >
-                        {actionLoading === showOpticsModal ? 'Aprobando...' : 'Aprobar Solicitud'}
-                      </button>
-                    </div>
-                  </div>
-                );
-              })()}
-            </div>
-          </div>
-        </div>
-      )}
+        )}
+      </main>
     </div>
   );
 };
 
-export default AdminRequestsPage;
+const StatusBadge: React.FC<{ status: string }> = ({ status }) => {
+  if (status === 'approved') return (
+    <span className="badge badge-green" style={{ display: 'inline-flex', alignItems: 'center', gap: 4 }}>
+      <CheckCircleIcon style={{ width: 11, height: 11 }} /> Aprobada
+    </span>
+  );
+  if (status === 'rejected') return (
+    <span className="badge badge-red" style={{ display: 'inline-flex', alignItems: 'center', gap: 4 }}>
+      <XCircleIcon style={{ width: 11, height: 11 }} /> Rechazada
+    </span>
+  );
+  return (
+    <span className="badge badge-yellow" style={{ display: 'inline-flex', alignItems: 'center', gap: 4 }}>
+      <ClockIcon style={{ width: 11, height: 11 }} /> Pendiente
+    </span>
+  );
+};
 
+const RequestCard: React.FC<{
+  req: UserRequest;
+  loading: boolean;
+  onApprove: () => void;
+  onReject: () => void;
+}> = ({ req, loading, onApprove, onReject }) => (
+  <div style={{
+    background: 'var(--surface)',
+    border: '1px solid var(--border)',
+    borderRadius: 12,
+    padding: '1.125rem 1.25rem',
+    display: 'flex', alignItems: 'center', gap: '1rem',
+    boxShadow: '0 1px 4px rgba(15,23,42,.06)',
+  }}>
+    {/* Avatar */}
+    <div style={{
+      width: 42, height: 42, borderRadius: 99, flexShrink: 0,
+      background: 'linear-gradient(135deg, #e0e7ff, #c7d2fe)',
+      display: 'flex', alignItems: 'center', justifyContent: 'center',
+      fontWeight: 800, fontSize: '.9rem', color: '#4338ca',
+    }}>
+      {req.username.charAt(0).toUpperCase()}
+    </div>
+
+    {/* Info */}
+    <div style={{ flex: 1, minWidth: 0 }}>
+      <div style={{ display: 'flex', alignItems: 'baseline', gap: 8, flexWrap: 'wrap' }}>
+        <span style={{ fontWeight: 700, fontSize: '.9rem', color: 'var(--text-primary)' }}>{req.username}</span>
+        <span style={{ fontSize: '.75rem', color: 'var(--text-muted)' }}>{req.email}</span>
+      </div>
+      <div style={{ fontSize: '.8rem', color: 'var(--text-secondary)', marginTop: 2 }}>
+        Óptica: <strong style={{ color: 'var(--text-primary)' }}>{req.optics_name}</strong>
+        <span style={{ margin: '0 6px', color: 'var(--text-muted)' }}>·</span>
+        <span style={{ color: 'var(--text-muted)' }}>
+          {new Date(req.requested_at).toLocaleDateString('es-ES', { day: '2-digit', month: 'short', year: 'numeric' })}
+        </span>
+      </div>
+    </div>
+
+    {/* Actions */}
+    <div style={{ display: 'flex', gap: '.5rem', flexShrink: 0 }}>
+      <button
+        onClick={onReject}
+        disabled={loading}
+        style={{
+          padding: '.5rem .875rem',
+          background: '#fef2f2', color: '#dc2626',
+          border: '1px solid #fecaca', borderRadius: 8,
+          fontWeight: 600, fontSize: '.8rem', cursor: loading ? 'not-allowed' : 'pointer',
+          transition: 'all .15s', opacity: loading ? .6 : 1,
+          display: 'flex', alignItems: 'center', gap: 4,
+        }}
+      >
+        <XCircleIcon style={{ width: 14, height: 14 }} />
+        Rechazar
+      </button>
+      <button
+        onClick={onApprove}
+        disabled={loading}
+        style={{
+          padding: '.5rem .875rem',
+          background: loading ? '#d1fae5' : '#10b981', color: '#fff',
+          border: 'none', borderRadius: 8,
+          fontWeight: 600, fontSize: '.8rem', cursor: loading ? 'not-allowed' : 'pointer',
+          transition: 'all .15s',
+          display: 'flex', alignItems: 'center', gap: 4,
+          boxShadow: loading ? 'none' : '0 2px 8px rgba(16,185,129,.3)',
+        }}
+      >
+        {loading ? (
+          <div className="spinner" style={{ width: 14, height: 14, borderWidth: 2 }} />
+        ) : (
+          <CheckCircleIcon style={{ width: 14, height: 14 }} />
+        )}
+        Aprobar
+      </button>
+    </div>
+  </div>
+);
+
+export default AdminRequestsPage;

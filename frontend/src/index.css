@@ -2,21 +2,75 @@
 @tailwind components;
 @tailwind utilities;
 
-body {
-  margin: 0;
-  font-family: 'Nunito', -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Roboto', 'Oxygen',
-    'Ubuntu', 'Cantarell', 'Fira Sans', 'Droid Sans', 'Helvetica Neue',
-    sans-serif;
-  -webkit-font-smoothing: antialiased;
-  -moz-osx-font-smoothing: grayscale;
-  cursor: default; /* Cursor por defecto en todo el body */
+@import url('https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@300;400;500;600;700;800&family=DM+Mono:wght@400;500&display=swap');
+
+:root {
+  --brand: #4f46e5;
+  --brand-light: #6366f1;
+  --brand-dark: #3730a3;
+  --surface: #ffffff;
+  --surface-2: #f8fafc;
+  --surface-3: #f1f5f9;
+  --border: #e2e8f0;
+  --border-focus: #6366f1;
+  --text-primary: #0f172a;
+  --text-secondary: #64748b;
+  --text-muted: #94a3b8;
+  --success: #10b981;
+  --warning: #f59e0b;
+  --danger: #ef4444;
+  --radius: 10px;
+  --radius-lg: 16px;
+  --shadow-sm: 0 1px 3px rgba(15,23,42,.06), 0 1px 2px rgba(15,23,42,.04);
+  --shadow: 0 4px 12px rgba(15,23,42,.08), 0 2px 4px rgba(15,23,42,.04);
+  --shadow-lg: 0 12px 32px rgba(15,23,42,.12), 0 4px 8px rgba(15,23,42,.06);
+}
+
+.dark {
+  --surface: #111827;
+  --surface-2: #1f2937;
+  --surface-3: #374151;
+  --border: #374151;
+  --text-primary: #f1f5f9;
+  --text-secondary: #94a3b8;
+  --text-muted: #64748b;
+  --shadow-sm: 0 1px 3px rgba(0,0,0,.3);
+  --shadow: 0 4px 12px rgba(0,0,0,.4);
+  --shadow-lg: 0 12px 32px rgba(0,0,0,.5);
 }
 
 * {
-  font-family: 'Nunito', sans-serif;
+  font-family: 'Plus Jakarta Sans', sans-serif;
+  box-sizing: border-box;
 }
 
-/* Solo campos de texto deben tener cursor de texto */
+body {
+  margin: 0;
+  background: var(--surface-2);
+  color: var(--text-primary);
+  -webkit-font-smoothing: antialiased;
+  cursor: default;
+}
+
+/* ── Scrollbar ─────────────────────────────── */
+::-webkit-scrollbar { width: 6px; height: 6px; }
+::-webkit-scrollbar-track { background: transparent; }
+::-webkit-scrollbar-thumb { background: var(--border); border-radius: 99px; }
+::-webkit-scrollbar-thumb:hover { background: var(--text-muted); }
+
+/* ── User-select ────────────────────────────── */
+h1,h2,h3,h4,h5,h6,p,span,div,label,th,td,svg,img {
+  user-select: none;
+  -webkit-user-select: none;
+}
+
+input,textarea,select { user-select: text; -webkit-user-select: text; cursor: text; }
+
+button:not(:disabled),a,[role="button"]:not(:disabled) { cursor: pointer; }
+button:not(:disabled) *,a * { cursor: pointer; }
+button:disabled,[disabled] { cursor: not-allowed; }
+
+/* ── Form fields ────────────────────────────── */
 input[type="text"],
 input[type="email"],
 input[type="number"],
@@ -24,51 +78,250 @@ input[type="date"],
 input[type="url"],
 input[type="password"],
 input[type="tel"],
+select,
 textarea {
-  cursor: text !important;
-  user-select: text !important; /* Permite seleccionar texto en campos de entrada */
-  -webkit-user-select: text !important;
-  -moz-user-select: text !important;
-  -ms-user-select: text !important;
+  font-family: 'Plus Jakarta Sans', sans-serif !important;
+  font-size: 0.875rem !important;
+  font-weight: 500;
+  padding: 0.625rem 0.875rem !important;
+  min-height: 2.5rem !important;
+  line-height: 1.5 !important;
+  width: 100% !important;
+  background-color: var(--surface) !important;
+  border: 1.5px solid var(--border) !important;
+  border-radius: var(--radius) !important;
+  color: var(--text-primary) !important;
+  transition: border-color .15s, box-shadow .15s !important;
+  outline: none !important;
 }
 
-/* Títulos, labels, iconos, y otros elementos no interactivos no deben tener cursor de texto */
-h1, h2, h3, h4, h5, h6,
-p, span, div, label,
-th, td {
-  cursor: default !important;
-  user-select: none !important; /* Evita que aparezca el cursor de texto (I-beam) al pasar el mouse */
-  -webkit-user-select: none !important;
-  -moz-user-select: none !important;
-  -ms-user-select: none !important;
+input:focus, select:focus, textarea:focus {
+  border-color: var(--border-focus) !important;
+  box-shadow: 0 0 0 3px rgba(99,102,241,.12) !important;
 }
 
-/* Los SVGs e imágenes por defecto no deben tener cursor de texto */
-svg, img {
-  cursor: default !important;
-  user-select: none !important;
-  -webkit-user-select: none !important;
-  -moz-user-select: none !important;
-  -ms-user-select: none !important;
-}
+input::placeholder, textarea::placeholder { color: var(--text-muted) !important; }
 
-/* Botones y enlaces deben tener cursor pointer (esto sobrescribe el default anterior) */
-button:not(:disabled):not([disabled]),
-a,
-[role="button"]:not(:disabled):not([disabled]) {
+select {
+  padding-right: 2.5rem !important;
+  background-image: url("data:image/svg+xml,%3csvg xmlns='http://www.w3.org/2000/svg' fill='none' viewBox='0 0 20 20'%3e%3cpath stroke='%236366f1' stroke-linecap='round' stroke-linejoin='round' stroke-width='2' d='M6 8l4 4 4-4'/%3e%3c/svg%3e") !important;
+  background-position: right 0.75rem center !important;
+  background-repeat: no-repeat !important;
+  background-size: 1.25em !important;
+  appearance: none !important;
   cursor: pointer !important;
 }
 
-/* Elementos dentro de botones y enlaces también deben tener pointer */
-button:not(:disabled):not([disabled]) *,
-a * {
-  cursor: pointer !important;
+select option { background-color: var(--surface); color: var(--text-primary); }
+
+textarea { min-height: 6rem !important; resize: vertical; }
+
+label {
+  font-weight: 600 !important;
+  font-size: 0.8rem !important;
+  color: var(--text-secondary) !important;
+  letter-spacing: 0.03em;
+  text-transform: uppercase;
+  cursor: default !important;
 }
 
-/* Los botones deshabilitados deben tener cursor not-allowed */
-button:disabled,
-button[disabled],
-[disabled] {
-  cursor: not-allowed !important;
+/* ── Search input ───────────────────────────── */
+.search-wrap { position: relative; }
+.search-wrap svg {
+  position: absolute;
+  left: 0.875rem;
+  top: 50%;
+  transform: translateY(-50%);
+  color: var(--text-muted);
+  pointer-events: none;
+  z-index: 1;
+}
+.search-input { padding-left: 2.75rem !important; }
+
+/* ── Cards ─────────────────────────────────── */
+.card {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-lg);
+  box-shadow: var(--shadow-sm);
 }
 
+/* ── Stat cards ─────────────────────────────── */
+.stat-card {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-lg);
+  padding: 1.5rem;
+  box-shadow: var(--shadow-sm);
+  transition: transform .2s, box-shadow .2s;
+}
+.stat-card:hover { transform: translateY(-2px); box-shadow: var(--shadow); }
+
+/* ── Buttons ────────────────────────────────── */
+.btn {
+  display: inline-flex; align-items: center; gap: .5rem;
+  font-weight: 600; font-size: .875rem;
+  padding: .625rem 1.125rem;
+  border-radius: var(--radius);
+  border: none;
+  transition: all .15s;
+  white-space: nowrap;
+}
+.btn-primary {
+  background: var(--brand); color: #fff;
+}
+.btn-primary:hover { background: var(--brand-dark); transform: translateY(-1px); box-shadow: var(--shadow); }
+.btn-danger { background: #fef2f2; color: var(--danger); }
+.btn-danger:hover { background: var(--danger); color: #fff; }
+.btn-ghost { background: var(--surface-3); color: var(--text-secondary); }
+.btn-ghost:hover { background: var(--border); color: var(--text-primary); }
+
+/* ── Table ─────────────────────────────────── */
+.tbl { width: 100%; border-collapse: collapse; }
+.tbl th {
+  font-size: .7rem; font-weight: 700; letter-spacing: .06em;
+  text-transform: uppercase; color: var(--text-muted);
+  padding: .75rem 1rem; text-align: left;
+  background: var(--surface-2); border-bottom: 1px solid var(--border);
+}
+.tbl td {
+  padding: .875rem 1rem;
+  border-bottom: 1px solid var(--border);
+  font-size: .875rem; color: var(--text-primary);
+}
+.tbl tbody tr { transition: background .1s; }
+.tbl tbody tr:hover { background: var(--surface-2); }
+.tbl tbody tr:last-child td { border-bottom: none; }
+
+/* ── Badges ─────────────────────────────────── */
+.badge {
+  display: inline-flex; align-items: center;
+  font-size: .7rem; font-weight: 700; letter-spacing: .04em;
+  padding: .2rem .6rem; border-radius: 99px;
+}
+.badge-green { background: #dcfce7; color: #166534; }
+.badge-red   { background: #fee2e2; color: #991b1b; }
+.badge-yellow{ background: #fef9c3; color: #854d0e; }
+.badge-blue  { background: #dbeafe; color: #1e40af; }
+
+.dark .badge-green { background: #14532d40; color: #86efac; }
+.dark .badge-red   { background: #7f1d1d40; color: #fca5a5; }
+.dark .badge-yellow{ background: #78350f40; color: #fde68a; }
+.dark .badge-blue  { background: #1e3a5f40; color: #93c5fd; }
+
+/* ── Modal ─────────────────────────────────── */
+.modal-overlay {
+  position: fixed; inset: 0;
+  background: rgba(15,23,42,.6);
+  backdrop-filter: blur(4px);
+  z-index: 50;
+  display: flex; align-items: flex-start; justify-content: center;
+  padding: 2rem 1rem;
+  overflow-y: auto;
+}
+.modal-box {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-lg);
+  box-shadow: var(--shadow-lg);
+  width: 100%;
+  animation: modalIn .2s cubic-bezier(.16,1,.3,1);
+}
+@keyframes modalIn {
+  from { opacity:0; transform: translateY(12px) scale(.98); }
+  to   { opacity:1; transform: translateY(0) scale(1); }
+}
+
+/* ── Nav ────────────────────────────────────── */
+.nav-link {
+  display: inline-flex; align-items: center; gap: .5rem;
+  font-size: .875rem; font-weight: 600;
+  padding: .5rem .75rem; border-radius: 8px;
+  color: var(--text-secondary);
+  transition: all .15s; text-decoration: none;
+}
+.nav-link:hover { background: var(--surface-3); color: var(--text-primary); }
+.nav-link.active { background: #eef2ff; color: var(--brand); }
+.dark .nav-link.active { background: #3730a320; color: #a5b4fc; }
+
+/* ── Optics grid field ──────────────────────── */
+.optic-grid {
+  display: grid;
+  grid-template-columns: auto repeat(4, 1fr);
+  gap: .5rem;
+  align-items: center;
+}
+.optic-grid .eye-label {
+  font-size: .75rem; font-weight: 700; letter-spacing: .06em;
+  text-transform: uppercase; color: var(--text-secondary);
+  white-space: nowrap;
+}
+.optic-grid .col-header {
+  font-size: .65rem; font-weight: 700; letter-spacing: .06em;
+  text-transform: uppercase; color: var(--text-muted);
+  text-align: center;
+}
+
+/* ── Page header ────────────────────────────── */
+.page-header {
+  display: flex; align-items: center; justify-content: space-between;
+  margin-bottom: 1.5rem;
+}
+.page-title { font-size: 1.5rem; font-weight: 800; color: var(--text-primary); margin: 0; }
+.page-subtitle { font-size: .875rem; color: var(--text-muted); margin: .25rem 0 0; }
+
+/* ── Empty state ────────────────────────────── */
+.empty-state {
+  text-align: center; padding: 4rem 2rem;
+  color: var(--text-muted);
+}
+.empty-state svg { opacity: .3; margin-bottom: 1rem; }
+.empty-state p { font-size: .875rem; margin: 0; }
+
+/* ── Loading spinner ────────────────────────── */
+.spinner {
+  width: 2rem; height: 2rem;
+  border: 2.5px solid var(--border);
+  border-top-color: var(--brand);
+  border-radius: 50%;
+  animation: spin .6s linear infinite;
+}
+@keyframes spin { to { transform: rotate(360deg); } }
+
+/* ── Section divider ────────────────────────── */
+.section-title {
+  font-size: .7rem; font-weight: 700; letter-spacing: .08em;
+  text-transform: uppercase; color: var(--text-muted);
+  margin-bottom: .75rem;
+  display: flex; align-items: center; gap: .5rem;
+}
+.section-title::after {
+  content: ''; flex: 1; height: 1px; background: var(--border);
+}
+
+/* ── Mono font for numbers ──────────────────── */
+.mono { font-family: 'DM Mono', monospace; font-size: .875rem; }
+
+/* Dark mode form fields */
+.dark input, .dark select, .dark textarea {
+  background-color: #1f2937 !important;
+  border-color: #374151 !important;
+  color: #f1f5f9 !important;
+}
+.dark input:focus, .dark select:focus, .dark textarea:focus {
+  border-color: var(--border-focus) !important;
+}
+
+/* ── Product card ───────────────────────────── */
+.product-card {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-lg);
+  overflow: hidden;
+  transition: transform .2s, box-shadow .2s;
+}
+.product-card:hover { transform: translateY(-3px); box-shadow: var(--shadow); }
+
+/* Animations */
+@keyframes fadeIn { from { opacity:0; } to { opacity:1; } }
+.fade-in { animation: fadeIn .3s ease; }

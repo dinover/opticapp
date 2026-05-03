@@ -1,8 +1,5 @@
 import React from 'react';
-import {
-  ChevronLeftIcon,
-  ChevronRightIcon,
-} from '@heroicons/react/24/outline';
+import { ChevronLeftIcon, ChevronRightIcon } from '@heroicons/react/24/outline';
 
 interface PaginationProps {
   page: number;
@@ -11,82 +8,84 @@ interface PaginationProps {
 }
 
 const Pagination: React.FC<PaginationProps> = ({ page, totalPages, onPageChange }) => {
-  const pages = [];
-  const maxPages = 5;
-
-  let startPage = Math.max(1, page - Math.floor(maxPages / 2));
-  let endPage = Math.min(totalPages, startPage + maxPages - 1);
-
-  if (endPage - startPage < maxPages - 1) {
-    startPage = Math.max(1, endPage - maxPages + 1);
-  }
-
-  for (let i = startPage; i <= endPage; i++) {
-    pages.push(i);
-  }
-
   if (totalPages <= 1) return null;
 
+  const maxVisible = 5;
+  let start = Math.max(1, page - Math.floor(maxVisible / 2));
+  let end   = Math.min(totalPages, start + maxVisible - 1);
+  if (end - start < maxVisible - 1) start = Math.max(1, end - maxVisible + 1);
+
+  const pages = Array.from({ length: end - start + 1 }, (_, i) => start + i);
+
+  const btnBase: React.CSSProperties = {
+    display: 'inline-flex', alignItems: 'center', justifyContent: 'center',
+    width: 32, height: 32, borderRadius: 8,
+    border: '1px solid var(--border)',
+    background: 'var(--surface)',
+    color: 'var(--text-secondary)',
+    fontWeight: 600, fontSize: '.8rem',
+    cursor: 'pointer', transition: 'all .15s',
+  };
+
   return (
-    <div className="flex items-center justify-between border-t border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 px-4 py-3 sm:px-6">
-      <div className="flex flex-1 justify-between sm:hidden">
+    <div style={{
+      display: 'flex', alignItems: 'center', justifyContent: 'space-between',
+      padding: '.875rem 1rem',
+      borderTop: '1px solid var(--border)',
+    }}>
+      <span style={{ fontSize: '.8rem', color: 'var(--text-muted)' }}>
+        Página <strong style={{ color: 'var(--text-primary)' }}>{page}</strong> de <strong style={{ color: 'var(--text-primary)' }}>{totalPages}</strong>
+      </span>
+
+      <div style={{ display: 'flex', alignItems: 'center', gap: '.25rem' }}>
         <button
           onClick={() => onPageChange(page - 1)}
           disabled={page === 1}
-          className="relative inline-flex items-center rounded-md border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-800 px-4 py-2 text-sm font-medium text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-700 disabled:opacity-50 disabled:cursor-not-allowed cursor-pointer"
+          style={{ ...btnBase, opacity: page === 1 ? .4 : 1, cursor: page === 1 ? 'not-allowed' : 'pointer' }}
         >
-          Anterior
+          <ChevronLeftIcon className="w-4 h-4" />
         </button>
+
+        {start > 1 && (
+          <>
+            <button onClick={() => onPageChange(1)} style={btnBase}>1</button>
+            {start > 2 && <span style={{ color: 'var(--text-muted)', padding: '0 .25rem', fontSize: '.8rem' }}>…</span>}
+          </>
+        )}
+
+        {pages.map(p => (
+          <button
+            key={p}
+            onClick={() => onPageChange(p)}
+            style={{
+              ...btnBase,
+              background: p === page ? '#4f46e5' : 'var(--surface)',
+              color: p === page ? '#fff' : 'var(--text-secondary)',
+              borderColor: p === page ? '#4f46e5' : 'var(--border)',
+              boxShadow: p === page ? '0 2px 8px rgba(79,70,229,.3)' : 'none',
+            }}
+          >
+            {p}
+          </button>
+        ))}
+
+        {end < totalPages && (
+          <>
+            {end < totalPages - 1 && <span style={{ color: 'var(--text-muted)', padding: '0 .25rem', fontSize: '.8rem' }}>…</span>}
+            <button onClick={() => onPageChange(totalPages)} style={btnBase}>{totalPages}</button>
+          </>
+        )}
+
         <button
           onClick={() => onPageChange(page + 1)}
           disabled={page === totalPages}
-          className="relative ml-3 inline-flex items-center rounded-md border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-800 px-4 py-2 text-sm font-medium text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-700 disabled:opacity-50 disabled:cursor-not-allowed cursor-pointer"
+          style={{ ...btnBase, opacity: page === totalPages ? .4 : 1, cursor: page === totalPages ? 'not-allowed' : 'pointer' }}
         >
-          Siguiente
+          <ChevronRightIcon className="w-4 h-4" />
         </button>
-      </div>
-      <div className="hidden sm:flex sm:flex-1 sm:items-center sm:justify-between">
-        <div>
-          <p className="text-sm text-gray-700 dark:text-gray-300">
-            Página <span className="font-medium">{page}</span> de{' '}
-            <span className="font-medium">{totalPages}</span>
-          </p>
-        </div>
-        <div>
-          <nav className="isolate inline-flex -space-x-px rounded-md shadow-sm" aria-label="Pagination">
-            <button
-              onClick={() => onPageChange(page - 1)}
-              disabled={page === 1}
-              className="relative inline-flex items-center rounded-l-md px-2 py-2 text-gray-400 dark:text-gray-500 ring-1 ring-inset ring-gray-300 dark:ring-gray-600 hover:bg-gray-50 dark:hover:bg-gray-700 focus:z-20 focus:outline-offset-0 disabled:opacity-50 disabled:cursor-not-allowed cursor-pointer"
-            >
-              <ChevronLeftIcon className="h-5 w-5" />
-            </button>
-            {pages.map((p) => (
-              <button
-                key={p}
-                onClick={() => onPageChange(p)}
-                className={`relative inline-flex items-center px-4 py-2 text-sm font-semibold cursor-pointer ${
-                  p === page
-                    ? 'z-10 bg-indigo-600 dark:bg-indigo-500 text-white focus:z-20 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-indigo-600'
-                    : 'text-gray-900 dark:text-gray-300 ring-1 ring-inset ring-gray-300 dark:ring-gray-600 hover:bg-gray-50 dark:hover:bg-gray-700 focus:z-20 focus:outline-offset-0'
-                }`}
-              >
-                {p}
-              </button>
-            ))}
-            <button
-              onClick={() => onPageChange(page + 1)}
-              disabled={page === totalPages}
-              className="relative inline-flex items-center rounded-r-md px-2 py-2 text-gray-400 dark:text-gray-500 ring-1 ring-inset ring-gray-300 dark:ring-gray-600 hover:bg-gray-50 dark:hover:bg-gray-700 focus:z-20 focus:outline-offset-0 disabled:opacity-50 disabled:cursor-not-allowed cursor-pointer"
-            >
-              <ChevronRightIcon className="h-5 w-5" />
-            </button>
-          </nav>
-        </div>
       </div>
     </div>
   );
 };
 
 export default Pagination;
-

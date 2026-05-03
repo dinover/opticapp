@@ -15,97 +15,188 @@ const LoginPage: React.FC = () => {
     e.preventDefault();
     setError('');
     setLoading(true);
-
     try {
       const response = await authService.login({ username, password });
       login(response.token, response.user);
-      
-      // Redirigir según el rol
-      if (response.user.role === 'admin') {
-        navigate('/admin');
-      } else {
-        navigate('/dashboard');
-      }
+      navigate(response.user.role === 'admin' ? '/admin' : '/dashboard');
     } catch (err: any) {
-      setError(err.response?.data?.error || 'Error al iniciar sesión');
+      setError(err.response?.data?.error || 'Credenciales incorrectas');
     } finally {
       setLoading(false);
     }
   };
 
   return (
-    <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-blue-50 to-indigo-100 dark:from-gray-900 dark:to-gray-800">
-      <div className="max-w-md w-full space-y-8 p-8 bg-white dark:bg-gray-800 rounded-xl shadow-lg">
-        <div>
-          <h2 className="mt-6 text-center text-3xl font-extrabold text-gray-900 dark:text-white">
-            OpticApp
-          </h2>
-          <p className="mt-2 text-center text-sm text-gray-600 dark:text-gray-400">
-            Sistema de Gestión de Óptica
-          </p>
-        </div>
-        <form className="mt-8 space-y-6" onSubmit={handleSubmit}>
-          {error && (
-            <div className="rounded-md bg-red-50 dark:bg-red-900/20 p-4 border border-red-200 dark:border-red-800">
-              <div className="text-sm text-red-800 dark:text-red-200">{error}</div>
+    <div style={{
+      minHeight: '100vh',
+      display: 'flex',
+      background: '#f8fafc',
+      position: 'relative',
+      overflow: 'hidden',
+    }}>
+      {/* Background decoration */}
+      <div style={{
+        position: 'absolute', inset: 0, pointerEvents: 'none',
+        background: 'radial-gradient(ellipse 80% 60% at 60% -10%, #e0e7ff 0%, transparent 70%)',
+      }} />
+      <div style={{
+        position: 'absolute', bottom: '-10%', left: '-5%',
+        width: 400, height: 400, borderRadius: '50%',
+        background: 'radial-gradient(circle, #ede9fe 0%, transparent 70%)',
+        pointerEvents: 'none',
+      }} />
+
+      {/* Left panel - branding */}
+      <div className="hidden lg:flex" style={{
+        flex: '0 0 420px',
+        flexDirection: 'column',
+        justifyContent: 'center',
+        padding: '3rem',
+        position: 'relative',
+      }}>
+        <div style={{ position: 'relative', zIndex: 1 }}>
+          <div style={{
+            display: 'flex', alignItems: 'center', gap: 12, marginBottom: '3rem',
+          }}>
+            <div style={{
+              width: 44, height: 44, borderRadius: 12,
+              background: 'linear-gradient(135deg, #4f46e5, #7c3aed)',
+              display: 'flex', alignItems: 'center', justifyContent: 'center',
+              boxShadow: '0 8px 24px rgba(79,70,229,.35)',
+            }}>
+              <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth="2.5">
+                <circle cx="12" cy="12" r="3"/><path d="M20.188 10.934c.388.472.388 1.16 0 1.632C18.768 14.35 15.636 18 12 18c-3.636 0-6.768-3.65-8.188-5.434a1.3 1.3 0 0 1 0-1.632C5.232 9.65 8.364 6 12 6c3.636 0 6.768 3.65 8.188 5.434z"/>
+              </svg>
             </div>
-          )}
-          <div className="rounded-md shadow-sm -space-y-px">
-            <div>
-              <label htmlFor="username" className="sr-only">
-                Usuario
-              </label>
-              <input
-                id="username"
-                name="username"
-                type="text"
-                required
-                className="appearance-none rounded-none relative block w-full px-3 py-2 border border-gray-300 dark:border-gray-600 placeholder-gray-500 dark:placeholder-gray-400 text-gray-900 dark:text-white bg-white dark:bg-gray-700 rounded-t-md focus:outline-none focus:ring-indigo-500 dark:focus:ring-indigo-400 focus:border-indigo-500 dark:focus:border-indigo-400 focus:z-10 sm:text-sm cursor-text"
-                placeholder="Usuario"
-                value={username}
-                onChange={(e) => setUsername(e.target.value)}
-              />
-            </div>
-            <div>
-              <label htmlFor="password" className="sr-only">
-                Contraseña
-              </label>
-              <input
-                id="password"
-                name="password"
-                type="password"
-                required
-                className="appearance-none rounded-none relative block w-full px-3 py-2 border border-gray-300 dark:border-gray-600 placeholder-gray-500 dark:placeholder-gray-400 text-gray-900 dark:text-white bg-white dark:bg-gray-700 rounded-b-md focus:outline-none focus:ring-indigo-500 dark:focus:ring-indigo-400 focus:border-indigo-500 dark:focus:border-indigo-400 focus:z-10 sm:text-sm cursor-text"
-                placeholder="Contraseña"
-                value={password}
-                onChange={(e) => setPassword(e.target.value)}
-              />
-            </div>
+            <span style={{ fontWeight: 800, fontSize: '1.25rem', color: '#0f172a' }}>OpticApp</span>
           </div>
 
-          <div>
+          <h1 style={{
+            fontSize: '2.25rem', fontWeight: 800, color: '#0f172a',
+            lineHeight: 1.15, marginBottom: '1rem',
+          }}>
+            Gestión de óptica<br />
+            <span style={{ color: '#4f46e5' }}>simplificada.</span>
+          </h1>
+          <p style={{ color: '#64748b', fontSize: '1rem', lineHeight: 1.7 }}>
+            Clientes, productos, ventas y fichas ópticas en un solo lugar.
+          </p>
+
+          {/* Feature list */}
+          {['Fichas técnicas de cristales', 'Control de stock y ventas', 'Dashboard con métricas clave'].map(f => (
+            <div key={f} style={{ display: 'flex', alignItems: 'center', gap: 10, marginTop: '1rem' }}>
+              <div style={{
+                width: 20, height: 20, borderRadius: 99,
+                background: '#ede9fe', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0,
+              }}>
+                <svg width="10" height="10" viewBox="0 0 12 12" fill="none">
+                  <path d="M2 6l3 3 5-5" stroke="#4f46e5" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"/>
+                </svg>
+              </div>
+              <span style={{ fontSize: '.875rem', color: '#475569' }}>{f}</span>
+            </div>
+          ))}
+        </div>
+      </div>
+
+      {/* Right panel - form */}
+      <div style={{
+        flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center',
+        padding: '2rem',
+      }}>
+        <div style={{
+          width: '100%', maxWidth: 400,
+          background: '#fff',
+          border: '1px solid #e2e8f0',
+          borderRadius: 20,
+          padding: '2.5rem',
+          boxShadow: '0 8px 32px rgba(15,23,42,.08)',
+        }}>
+          {/* Logo mobile */}
+          <div className="flex lg:hidden items-center gap-2 mb-6">
+            <div style={{
+              width: 36, height: 36, borderRadius: 10,
+              background: 'linear-gradient(135deg, #4f46e5, #7c3aed)',
+              display: 'flex', alignItems: 'center', justifyContent: 'center',
+            }}>
+              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth="2.5">
+                <circle cx="12" cy="12" r="3"/><path d="M20.188 10.934c.388.472.388 1.16 0 1.632C18.768 14.35 15.636 18 12 18c-3.636 0-6.768-3.65-8.188-5.434a1.3 1.3 0 0 1 0-1.632C5.232 9.65 8.364 6 12 6c3.636 0 6.768 3.65 8.188 5.434z"/>
+              </svg>
+            </div>
+            <span style={{ fontWeight: 800, fontSize: '1rem', color: '#0f172a' }}>OpticApp</span>
+          </div>
+
+          <h2 style={{ fontWeight: 800, fontSize: '1.375rem', color: '#0f172a', margin: '0 0 .375rem' }}>
+            Iniciar sesión
+          </h2>
+          <p style={{ color: '#64748b', fontSize: '.875rem', marginBottom: '1.75rem' }}>
+            Ingresá tus credenciales para continuar
+          </p>
+
+          {error && (
+            <div style={{
+              background: '#fef2f2', border: '1px solid #fecaca',
+              borderRadius: 10, padding: '0.75rem 1rem',
+              marginBottom: '1.25rem', fontSize: '.875rem', color: '#991b1b',
+              display: 'flex', alignItems: 'center', gap: 8,
+            }}>
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                <circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/>
+              </svg>
+              {error}
+            </div>
+          )}
+
+          <form onSubmit={handleSubmit} style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
+            <div>
+              <label style={{ display: 'block', marginBottom: '.375rem' }}>Usuario</label>
+              <input
+                type="text"
+                required
+                placeholder="Nombre de usuario"
+                value={username}
+                onChange={e => setUsername(e.target.value)}
+              />
+            </div>
+            <div>
+              <label style={{ display: 'block', marginBottom: '.375rem' }}>Contraseña</label>
+              <input
+                type="password"
+                required
+                placeholder="Tu contraseña"
+                value={password}
+                onChange={e => setPassword(e.target.value)}
+              />
+            </div>
+
             <button
               type="submit"
               disabled={loading}
-              className="group relative w-full flex justify-center py-2 px-4 border border-transparent text-sm font-medium rounded-md text-white bg-indigo-600 hover:bg-indigo-700 dark:bg-indigo-500 dark:hover:bg-indigo-600 focus:outline-none focus:ring-2 focus:ring-offset-2 dark:focus:ring-offset-gray-800 focus:ring-indigo-500 disabled:opacity-50 disabled:cursor-not-allowed cursor-pointer transition-colors"
+              style={{
+                width: '100%', padding: '.75rem',
+                background: loading ? '#a5b4fc' : '#4f46e5',
+                color: '#fff', fontWeight: 700, fontSize: '.9rem',
+                border: 'none', borderRadius: 10, cursor: loading ? 'not-allowed' : 'pointer',
+                marginTop: '.25rem', transition: 'all .15s',
+                boxShadow: loading ? 'none' : '0 4px 12px rgba(79,70,229,.3)',
+                display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8,
+              }}
             >
-              {loading ? 'Iniciando sesión...' : 'Iniciar sesión'}
+              {loading && <div className="spinner" style={{ width: 16, height: 16, borderWidth: 2 }} />}
+              {loading ? 'Ingresando...' : 'Ingresar'}
             </button>
-          </div>
+          </form>
 
-          <div className="text-center">
-            <Link
-              to="/request-user"
-              className="font-medium text-indigo-600 dark:text-indigo-400 hover:text-indigo-500 dark:hover:text-indigo-300 transition-colors cursor-pointer"
-            >
-              ¿No tienes cuenta? Solicita una aquí
+          <p style={{ textAlign: 'center', marginTop: '1.5rem', fontSize: '.875rem', color: '#64748b' }}>
+            ¿No tenés cuenta?{' '}
+            <Link to="/request-user" style={{ color: '#4f46e5', fontWeight: 600, textDecoration: 'none' }}>
+              Solicitá acceso
             </Link>
-          </div>
-        </form>
+          </p>
+        </div>
       </div>
     </div>
   );
 };
 
 export default LoginPage;
-
