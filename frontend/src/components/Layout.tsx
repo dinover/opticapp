@@ -110,9 +110,9 @@ const Layout: React.FC<LayoutProps> = ({ children }) => {
                 onClick={toggleCurrency}
                 className="btn btn-ghost"
                 style={{ padding: '.35rem .6rem', fontSize: '.75rem', fontWeight: 700, fontFamily: 'DM Mono, monospace', minWidth: 52 }}
-                title={currency === 'ARS' ? 'Cambiar a dólares' : 'Cambiar a pesos'}
+                title={currency === 'UYU' ? 'Cambiar a dólares' : 'Cambiar a pesos'}
               >
-                {currency === 'ARS' ? '$ ARS' : 'USD'}
+                {currency === 'UYU' ? '$ UYU' : 'USD'}
               </button>
 
               <button
