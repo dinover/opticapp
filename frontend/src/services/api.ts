@@ -28,9 +28,14 @@ api.interceptors.response.use(
   (response) => response,
   (error) => {
     if (error.response?.status === 401 || error.response?.status === 403) {
+      const hadSession = !!localStorage.getItem('token');
       localStorage.removeItem('token');
       localStorage.removeItem('user');
-      window.location.href = '/login';
+      // Solo redirigir si había una sesión activa (token expirado, etc.)
+      // Si no había token, el error lo maneja el componente (ej: login con credenciales inválidas)
+      if (hadSession) {
+        window.location.href = '/login';
+      }
     }
     return Promise.reject(error);
   }
