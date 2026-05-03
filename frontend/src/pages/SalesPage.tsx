@@ -5,6 +5,7 @@ import { salesService } from '../services/sales';
 import { clientsService } from '../services/clients';
 import { productsService } from '../services/products';
 import { Sale, Client, Product, SaleProductCreate, PaginatedResponse } from '../types';
+import { useCurrency } from '../contexts/CurrencyContext';
 import {
   MagnifyingGlassIcon,
   PlusIcon,
@@ -49,7 +50,7 @@ const SalesPage: React.FC = () => {
   const loadClients  = async () => { try { const r = await clientsService.getAll({ limit: 1000 }); setClients(r.data); } catch {} };
   const loadProducts = async () => { try { const r = await productsService.getAll({ limit: 1000 }); setProducts(r.data); } catch {} };
 
-  const fmt = (n: number) => new Intl.NumberFormat('es-US', { style: 'currency', currency: 'USD' }).format(n);
+  const { fmt } = useCurrency();
   const fmtDate = (d: string) => new Date(d).toLocaleDateString('es-ES', { day: '2-digit', month: '2-digit', year: 'numeric' });
   const total = () => saleProducts.reduce((s, i) => s + (Number(i.quantity) || 0) * (Number(i.unit_price) || 0), 0);
 

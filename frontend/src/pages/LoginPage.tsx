@@ -30,6 +30,8 @@ const LoginPage: React.FC = () => {
     <div style={{
       minHeight: '100vh',
       display: 'flex',
+      alignItems: 'center',
+      justifyContent: 'center',
       background: '#f8fafc',
       position: 'relative',
       overflow: 'hidden',
@@ -46,15 +48,26 @@ const LoginPage: React.FC = () => {
         pointerEvents: 'none',
       }} />
 
+      {/* Content wrapper - constrains and centers both panels */}
+      <div style={{
+        display: 'flex',
+        alignItems: 'center',
+        justifyContent: 'center',
+        width: '100%',
+        maxWidth: 880,
+        padding: '2rem',
+        gap: '3rem',
+        position: 'relative',
+        zIndex: 1,
+      }}>
+
       {/* Left panel - branding */}
       <div className="hidden lg:flex" style={{
-        flex: '0 0 420px',
+        flex: '1 1 0',
         flexDirection: 'column',
         justifyContent: 'center',
-        padding: '3rem',
-        position: 'relative',
       }}>
-        <div style={{ position: 'relative', zIndex: 1 }}>
+        <div>
           <div style={{
             display: 'flex', alignItems: 'center', gap: 12, marginBottom: '3rem',
           }}>
@@ -101,17 +114,15 @@ const LoginPage: React.FC = () => {
 
       {/* Right panel - form */}
       <div style={{
-        flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center',
-        padding: '2rem',
+        flex: '0 0 auto',
+        width: '100%',
+        maxWidth: 400,
+        background: '#fff',
+        border: '1px solid #e2e8f0',
+        borderRadius: 20,
+        padding: '2.5rem',
+        boxShadow: '0 8px 32px rgba(15,23,42,.08)',
       }}>
-        <div style={{
-          width: '100%', maxWidth: 400,
-          background: '#fff',
-          border: '1px solid #e2e8f0',
-          borderRadius: 20,
-          padding: '2.5rem',
-          boxShadow: '0 8px 32px rgba(15,23,42,.08)',
-        }}>
           {/* Logo mobile */}
           <div className="flex lg:hidden items-center gap-2 mb-6">
             <div style={{
@@ -193,8 +204,8 @@ const LoginPage: React.FC = () => {
               Solicitá acceso
             </Link>
           </p>
-        </div>
       </div>
+      </div>{/* end content wrapper */}
     </div>
   );
 };

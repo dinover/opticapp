@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { Link, useLocation } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContext';
+import { useCurrency } from '../contexts/CurrencyContext';
 import {
   HomeIcon,
   UserGroupIcon,
@@ -18,6 +19,7 @@ interface LayoutProps {
 
 const Layout: React.FC<LayoutProps> = ({ children }) => {
   const { user, logout } = useAuth();
+  const { currency, toggleCurrency } = useCurrency();
   const location = useLocation();
   const [mobileOpen, setMobileOpen] = useState(false);
 
@@ -84,7 +86,7 @@ const Layout: React.FC<LayoutProps> = ({ children }) => {
             </div>
 
             {/* Right side */}
-            <div className="flex items-center gap-3">
+            <div className="flex items-center gap-2">
               {/* User pill */}
               <div className="hidden sm:flex items-center gap-2.5" style={{
                 background: 'var(--surface-3)',
@@ -102,6 +104,16 @@ const Layout: React.FC<LayoutProps> = ({ children }) => {
                   {user?.username}
                 </span>
               </div>
+
+              {/* Currency toggle */}
+              <button
+                onClick={toggleCurrency}
+                className="btn btn-ghost"
+                style={{ padding: '.35rem .6rem', fontSize: '.75rem', fontWeight: 700, fontFamily: 'DM Mono, monospace', minWidth: 52 }}
+                title={currency === 'ARS' ? 'Cambiar a dólares' : 'Cambiar a pesos'}
+              >
+                {currency === 'ARS' ? '$ ARS' : 'USD'}
+              </button>
 
               <button
                 onClick={logout}

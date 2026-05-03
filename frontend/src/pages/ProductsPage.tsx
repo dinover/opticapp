@@ -4,6 +4,7 @@ import Pagination from '../components/Pagination';
 import { productsService } from '../services/products';
 import { Product, PaginatedResponse } from '../types';
 import { getDirectImageUrl } from '../utils/imageUtils';
+import { useCurrency } from '../contexts/CurrencyContext';
 import {
   MagnifyingGlassIcon,
   PlusIcon,
@@ -64,7 +65,7 @@ const ProductsPage: React.FC = () => {
 
   const closeModal = () => { setShowModal(false); setEditingProduct(null); setFormData({ name: '', price: '', quantity: '', description: '', image_url: '' }); };
 
-  const fmt = (n: number) => new Intl.NumberFormat('es-US', { style: 'currency', currency: 'USD' }).format(n);
+  const { fmt } = useCurrency();
 
   return (
     <Layout>
@@ -187,7 +188,7 @@ const ProductsPage: React.FC = () => {
                 </div>
                 <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem' }}>
                   <div>
-                    <label style={{ display: 'block', marginBottom: '.375rem' }}>Precio (USD)</label>
+                    <label style={{ display: 'block', marginBottom: '.375rem' }}>Precio</label>
                     <input type="number" step="0.01" min="0" value={formData.price} onChange={e => setFormData({ ...formData, price: e.target.value })} placeholder="0.00" />
                   </div>
                   <div>
