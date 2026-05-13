@@ -90,10 +90,10 @@ router.post('/login', async (req: Request, res: Response) => {
       return res.status(400).json({ error: 'Username y password son requeridos' });
     }
 
-    // Buscar usuario activo
+    // Buscar usuario activo (trim para tolerar espacios accidentales)
     const user = await getRow<User>(
       'SELECT * FROM users WHERE username = ? AND is_active = 1',
-      [username]
+      [username.trim()]
     );
 
     if (!user) {
@@ -321,7 +321,7 @@ router.post('/admin/requests/:id/reject', authenticateToken, requireAdmin, async
 });
 
 // ADMIN: Listar usuarios activos
-router.get('/admin/users', authenticateToken, requireAdmin, async (req: AuthRequest, res: Response) => {
+router.get('/admin/users', authenticateToken, requireAdmin, async (_req: AuthRequest, res: Response) => {
   try {
     const users = await getRows<User>(
       `SELECT id, username, email, role, optics_id, created_at
@@ -334,27 +334,57 @@ router.get('/admin/users', authenticateToken, requireAdmin, async (req: AuthRequ
   }
 });
 
-// ADMIN: Resetear contraseña de un usuario
-router.put('/admin/users/:id/reset-password', authenticateToken, requireAdmin, async (req: AuthRequest, res: Response) => {
+// ADMIN: Editar usuario (username y/o contraseña)
+router.put('/admin/users/:id', authenticateToken, requireAdmin, async (req: AuthRequest, res: Response) => {
   try {
     const userId = parseInt(req.params.id);
-    const { password } = req.body;
+    const { username, password } = req.body;
 
-    if (!password || password.length < 6) {
+    const user = await getRow<User>('SELECT id, username FROM users WHERE id = ? AND is_active = 1', [userId]);
+    if (!user) return res.status(404).json({ error: 'Usuario no encontrado' });
+
+    const newUsername = username ? username.trim().replace(/\s+/g, '') : null;
+
+    if (newUsername) {
+      if (newUsername.length < 3) return res.status(400).json({ error: 'El nombre de usuario debe tener al menos 3 caracteres' });
+      const exists = await getRow<User>('SELECT id FROM users WHERE username = ? AND id != ?', [newUsername, userId]);
+      if (exists) return res.status(400).json({ error: 'Ese nombre de usuario ya está en uso' });
+    }
+
+    if (password && password.length < 6) {
       return res.status(400).json({ error: 'La contraseña debe tener al menos 6 caracteres' });
     }
 
-    const user = await getRow<User>('SELECT id, username FROM users WHERE id = ? AND is_active = 1', [userId]);
-    if (!user) {
-      return res.status(404).json({ error: 'Usuario no encontrado' });
+    if (newUsername) {
+      await runQuery('UPDATE users SET username = ?, updated_at = CURRENT_TIMESTAMP WHERE id = ?', [newUsername, userId]);
+    }
+    if (password) {
+      const hashed = await bcrypt.hash(password, 10);
+      await runQuery('UPDATE users SET password = ?, updated_at = CURRENT_TIMESTAMP WHERE id = ?', [hashed, userId]);
     }
 
-    const hashed = await bcrypt.hash(password, 10);
-    await runQuery('UPDATE users SET password = ?, updated_at = CURRENT_TIMESTAMP WHERE id = ?', [hashed, userId]);
-
-    res.json({ message: `Contraseña de "${user.username}" actualizada correctamente` });
+    res.json({ message: `Usuario "${newUsername || user.username}" actualizado correctamente` });
   } catch (error: any) {
-    console.error('Error al resetear contraseña:', error);
+    console.error('Error al editar usuario:', error);
+    res.status(500).json({ error: 'Error interno del servidor' });
+  }
+});
+
+// ADMIN: Eliminar usuario (soft delete)
+router.delete('/admin/users/:id', authenticateToken, requireAdmin, async (req: AuthRequest, res: Response) => {
+  try {
+    const userId = parseInt(req.params.id);
+    const adminId = req.user?.id;
+
+    if (userId === adminId) return res.status(400).json({ error: 'No podés eliminar tu propio usuario' });
+
+    const user = await getRow<User>('SELECT id, username FROM users WHERE id = ? AND is_active = 1', [userId]);
+    if (!user) return res.status(404).json({ error: 'Usuario no encontrado' });
+
+    await runQuery('UPDATE users SET is_active = 0, updated_at = CURRENT_TIMESTAMP WHERE id = ?', [userId]);
+    res.json({ message: `Usuario "${user.username}" eliminado correctamente` });
+  } catch (error: any) {
+    console.error('Error al eliminar usuario:', error);
     res.status(500).json({ error: 'Error interno del servidor' });
   }
 });

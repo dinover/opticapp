@@ -22,13 +22,15 @@ const AdminRequestsPage: React.FC = () => {
   const [error, setError]                 = useState('');
   const [actionLoading, setActionLoading] = useState<number | null>(null);
 
-  // Reset password modal
-  const [resetTarget, setResetTarget]     = useState<User | null>(null);
-  const [newPassword, setNewPassword]     = useState('');
+  // Edit user modal
+  const [editTarget, setEditTarget]       = useState<User | null>(null);
+  const [editUsername, setEditUsername]   = useState('');
+  const [editPassword, setEditPassword]   = useState('');
   const [showPass, setShowPass]           = useState(false);
-  const [resetLoading, setResetLoading]   = useState(false);
-  const [resetSuccess, setResetSuccess]   = useState('');
-  const [resetError, setResetError]       = useState('');
+  const [editLoading, setEditLoading]     = useState(false);
+  const [editSuccess, setEditSuccess]     = useState('');
+  const [editError, setEditError]         = useState('');
+  const [deleteLoading, setDeleteLoading] = useState(false);
 
   useEffect(() => { loadAll(); }, []);
 
@@ -48,22 +50,53 @@ const AdminRequestsPage: React.FC = () => {
 
   const loadRequests = loadAll;
 
-  const openReset = (u: User) => { setResetTarget(u); setNewPassword(''); setShowPass(false); setResetSuccess(''); setResetError(''); };
-  const closeReset = () => { setResetTarget(null); setNewPassword(''); setResetSuccess(''); setResetError(''); };
+  const openEdit = (u: User) => {
+    setEditTarget(u);
+    setEditUsername(u.username);
+    setEditPassword('');
+    setShowPass(false);
+    setEditSuccess('');
+    setEditError('');
+  };
+  const closeEdit = () => { setEditTarget(null); setEditSuccess(''); setEditError(''); };
 
-  const handleReset = async (e: React.FormEvent) => {
+  const handleEdit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!resetTarget) return;
+    if (!editTarget) return;
+    const usernameChanged = editUsername.trim() !== editTarget.username;
+    if (!usernameChanged && !editPassword) {
+      setEditError('No hay cambios para guardar');
+      return;
+    }
     try {
-      setResetLoading(true);
-      setResetError('');
-      const res = await adminService.resetPassword(resetTarget.id, newPassword);
-      setResetSuccess(res.message);
-      setNewPassword('');
+      setEditLoading(true);
+      setEditError('');
+      const data: { username?: string; password?: string } = {};
+      if (usernameChanged) data.username = editUsername.trim();
+      if (editPassword) data.password = editPassword;
+      const res = await adminService.updateUser(editTarget.id, data);
+      setEditSuccess(res.message);
+      setEditPassword('');
+      if (usernameChanged) setEditTarget({ ...editTarget, username: editUsername.trim() });
+      loadAll();
     } catch (err: any) {
-      setResetError(err.response?.data?.error || 'Error al cambiar la contraseña');
+      setEditError(err.response?.data?.error || 'Error al actualizar usuario');
     } finally {
-      setResetLoading(false);
+      setEditLoading(false);
+    }
+  };
+
+  const handleDelete = async (u: User) => {
+    if (!confirm(`¿Eliminar el usuario "${u.username}"? Esta acción no se puede deshacer.`)) return;
+    try {
+      setDeleteLoading(true);
+      await adminService.deleteUser(u.id);
+      closeEdit();
+      loadAll();
+    } catch (err: any) {
+      setEditError(err.response?.data?.error || 'Error al eliminar usuario');
+    } finally {
+      setDeleteLoading(false);
     }
   };
 
@@ -250,11 +283,11 @@ const AdminRequestsPage: React.FC = () => {
                       </td>
                       <td style={{ textAlign: 'right' }}>
                         <button
-                          onClick={() => openReset(u)}
+                          onClick={() => openEdit(u)}
                           style={{ display: 'inline-flex', alignItems: 'center', gap: 5, padding: '.4rem .75rem', borderRadius: 8, border: '1px solid var(--border)', background: 'var(--surface)', color: 'var(--text-secondary)', fontSize: '.8rem', fontWeight: 600, cursor: 'pointer' }}
                         >
                           <KeyIcon style={{ width: 13, height: 13 }} />
-                          Cambiar contraseña
+                          Editar
                         </button>
                       </td>
                     </tr>
@@ -266,36 +299,46 @@ const AdminRequestsPage: React.FC = () => {
         )}
       </main>
 
-      {/* Modal reset password */}
-      {resetTarget && (
-        <div className="modal-overlay" onClick={e => e.target === e.currentTarget && closeReset()}>
-          <div className="modal-box" style={{ maxWidth: 420 }}>
+      {/* Modal editar usuario */}
+      {editTarget && (
+        <div className="modal-overlay" onClick={e => e.target === e.currentTarget && closeEdit()}>
+          <div className="modal-box" style={{ maxWidth: 440 }}>
             <div style={{ padding: '1.25rem 1.5rem', borderBottom: '1px solid var(--border)', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
               <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
                 <KeyIcon style={{ width: 18, height: 18, color: '#4f46e5' }} />
                 <h3 style={{ margin: 0, fontWeight: 700, fontSize: '1rem', color: 'var(--text-primary)' }}>
-                  Cambiar contraseña
+                  Editar usuario
                 </h3>
               </div>
-              <button onClick={closeReset} style={{ padding: '.3rem', borderRadius: 6, background: 'var(--surface-3)', border: 'none', cursor: 'pointer', color: 'var(--text-muted)', display: 'flex' }}>
+              <button onClick={closeEdit} style={{ padding: '.3rem', borderRadius: 6, background: 'var(--surface-3)', border: 'none', cursor: 'pointer', color: 'var(--text-muted)', display: 'flex' }}>
                 <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><path d="M18 6 6 18M6 6l12 12"/></svg>
               </button>
             </div>
-            <form onSubmit={handleReset}>
+
+            <form onSubmit={handleEdit}>
               <div style={{ padding: '1.5rem', display: 'flex', flexDirection: 'column', gap: '1rem' }}>
-                <p style={{ margin: 0, fontSize: '.875rem', color: 'var(--text-secondary)' }}>
-                  Establecé una nueva contraseña para <strong style={{ color: 'var(--text-primary)' }}>{resetTarget.username}</strong>.
-                </p>
                 <div>
-                  <label style={{ display: 'block', marginBottom: '.375rem', fontSize: '.875rem', fontWeight: 600 }}>Nueva contraseña *</label>
+                  <label style={{ display: 'block', marginBottom: '.375rem', fontSize: '.875rem', fontWeight: 600 }}>Nombre de usuario</label>
+                  <input
+                    type="text"
+                    required
+                    minLength={3}
+                    value={editUsername}
+                    onChange={e => { setEditUsername(e.target.value.replace(/\s/g, '')); setEditSuccess(''); setEditError(''); }}
+                    placeholder="Sin espacios"
+                  />
+                  <p style={{ margin: '.25rem 0 0', fontSize: '.75rem', color: 'var(--text-muted)' }}>Los espacios se eliminan automáticamente.</p>
+                </div>
+
+                <div>
+                  <label style={{ display: 'block', marginBottom: '.375rem', fontSize: '.875rem', fontWeight: 600 }}>Nueva contraseña <span style={{ fontWeight: 400, color: 'var(--text-muted)' }}>(opcional)</span></label>
                   <div style={{ position: 'relative' }}>
                     <input
                       type={showPass ? 'text' : 'password'}
-                      required
                       minLength={6}
-                      value={newPassword}
-                      onChange={e => { setNewPassword(e.target.value); setResetSuccess(''); setResetError(''); }}
-                      placeholder="Mínimo 6 caracteres"
+                      value={editPassword}
+                      onChange={e => { setEditPassword(e.target.value); setEditSuccess(''); setEditError(''); }}
+                      placeholder="Dejar vacío para no cambiar"
                       style={{ paddingRight: '2.5rem' }}
                     />
                     <button
@@ -308,26 +351,41 @@ const AdminRequestsPage: React.FC = () => {
                   </div>
                 </div>
 
-                {resetError && (
+                {editError && (
                   <div style={{ display: 'flex', alignItems: 'center', gap: 6, background: '#fef2f2', border: '1px solid #fecaca', borderRadius: 8, padding: '.625rem .875rem', fontSize: '.8rem', color: '#991b1b' }}>
-                    <XCircleIcon style={{ width: 14, height: 14, flexShrink: 0 }} />
-                    {resetError}
+                    <XCircleIcon style={{ width: 14, height: 14, flexShrink: 0 }} />{editError}
                   </div>
                 )}
-                {resetSuccess && (
+                {editSuccess && (
                   <div style={{ display: 'flex', alignItems: 'center', gap: 6, background: '#f0fdf4', border: '1px solid #bbf7d0', borderRadius: 8, padding: '.625rem .875rem', fontSize: '.8rem', color: '#15803d' }}>
-                    <CheckCircleIcon style={{ width: 14, height: 14, flexShrink: 0 }} />
-                    {resetSuccess}
+                    <CheckCircleIcon style={{ width: 14, height: 14, flexShrink: 0 }} />{editSuccess}
                   </div>
                 )}
               </div>
-              <div style={{ padding: '1rem 1.5rem', borderTop: '1px solid var(--border)', display: 'flex', justifyContent: 'flex-end', gap: '.75rem' }}>
-                <button type="button" className="btn btn-ghost" onClick={closeReset}>Cerrar</button>
-                <button type="submit" className="btn btn-primary" disabled={resetLoading || !newPassword}>
-                  {resetLoading ? (
-                    <><div className="spinner" style={{ width: 14, height: 14, borderWidth: 2 }} /> Guardando…</>
-                  ) : 'Cambiar contraseña'}
-                </button>
+
+              <div style={{ padding: '1rem 1.5rem', borderTop: '1px solid var(--border)', display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: '.75rem' }}>
+                {/* Eliminar usuario */}
+                {editTarget.role !== 'admin' && (
+                  <button
+                    type="button"
+                    onClick={() => handleDelete(editTarget)}
+                    disabled={deleteLoading}
+                    style={{ display: 'inline-flex', alignItems: 'center', gap: 5, padding: '.45rem .875rem', borderRadius: 8, border: '1px solid #fecaca', background: '#fef2f2', color: '#dc2626', fontSize: '.8rem', fontWeight: 600, cursor: deleteLoading ? 'not-allowed' : 'pointer' }}
+                  >
+                    {deleteLoading
+                      ? <div className="spinner" style={{ width: 13, height: 13, borderWidth: 2 }} />
+                      : <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6"/><path d="M10 11v6M14 11v6"/><path d="M9 6V4a1 1 0 0 1 1-1h4a1 1 0 0 1 1 1v2"/></svg>}
+                    Eliminar usuario
+                  </button>
+                )}
+                <div style={{ display: 'flex', gap: '.75rem', marginLeft: 'auto' }}>
+                  <button type="button" className="btn btn-ghost" onClick={closeEdit}>Cancelar</button>
+                  <button type="submit" className="btn btn-primary" disabled={editLoading}>
+                    {editLoading
+                      ? <><div className="spinner" style={{ width: 14, height: 14, borderWidth: 2 }} /> Guardando…</>
+                      : 'Guardar cambios'}
+                  </button>
+                </div>
               </div>
             </form>
           </div>
