@@ -36,9 +36,24 @@ export interface Client {
   updated_at: string;
 }
 
+export interface Supplier {
+  id: number;
+  optics_id: number;
+  name: string;
+  contact_name?: string;
+  phone?: string;
+  email?: string;
+  notes?: string;
+  is_active: number;
+  created_at: string;
+  updated_at: string;
+}
+
 export interface Product {
   id: number;
   optics_id: number;
+  supplier_id?: number | null;
+  supplier_name?: string;
   name: string;
   price?: number;
   quantity?: number;

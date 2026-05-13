@@ -11,6 +11,9 @@ import DashboardPage from './pages/DashboardPage';
 import ClientsPage from './pages/ClientsPage';
 import ProductsPage from './pages/ProductsPage';
 import SalesPage from './pages/SalesPage';
+import SuppliersPage from './pages/SuppliersPage';
+import ImportPage from './pages/ImportPage';
+import ReportsPage from './pages/ReportsPage';
 
 const PrivateRoute: React.FC<{ children: React.ReactNode; requireAdmin?: boolean }> = ({
   children,
@@ -90,6 +93,30 @@ const AppRoutes: React.FC = () => {
         element={
           <PrivateRoute>
             <SalesPage />
+          </PrivateRoute>
+        }
+      />
+      <Route
+        path="/suppliers"
+        element={
+          <PrivateRoute>
+            <SuppliersPage />
+          </PrivateRoute>
+        }
+      />
+      <Route
+        path="/import"
+        element={
+          <PrivateRoute>
+            <ImportPage />
+          </PrivateRoute>
+        }
+      />
+      <Route
+        path="/reports"
+        element={
+          <PrivateRoute>
+            <ReportsPage />
           </PrivateRoute>
         }
       />

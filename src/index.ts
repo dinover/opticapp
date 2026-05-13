@@ -9,6 +9,9 @@ import productsRoutes from './routes/products';
 import salesRoutes from './routes/sales';
 import dashboardRoutes from './routes/dashboard';
 import imagesRoutes from './routes/images';
+import suppliersRoutes from './routes/suppliers';
+import importRoutes from './routes/import';
+import reportsRoutes from './routes/reports';
 
 dotenv.config();
 
@@ -33,6 +36,9 @@ app.use('/api/products', productsRoutes);
 app.use('/api/sales', salesRoutes);
 app.use('/api/dashboard', dashboardRoutes);
 app.use('/api/images', imagesRoutes);
+app.use('/api/suppliers', suppliersRoutes);
+app.use('/api/import', importRoutes);
+app.use('/api/reports', reportsRoutes);
 
 // Inicializar base de datos y servidor
 async function startServer() {
