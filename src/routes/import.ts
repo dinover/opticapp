@@ -51,6 +51,7 @@ router.post('/products', authenticateToken, upload.single('file'), async (req: A
     const headers = Object.keys(firstRow).map(k => k.toLowerCase().trim());
     const articuloKey = Object.keys(firstRow).find(k => k.toLowerCase().trim() === 'articulo' || k.toLowerCase().trim() === 'artículo' || k.toLowerCase().trim() === 'nombre');
     const cantidadKey = Object.keys(firstRow).find(k => k.toLowerCase().trim() === 'cantidad' || k.toLowerCase().trim() === 'stock' || k.toLowerCase().trim() === 'qty');
+    const precioKey   = Object.keys(firstRow).find(k => k.toLowerCase().trim() === 'precio' || k.toLowerCase().trim() === 'price');
 
     if (!articuloKey) {
       return res.status(400).json({
@@ -61,6 +62,7 @@ router.post('/products', authenticateToken, upload.single('file'), async (req: A
 
     let created = 0;
     let skipped = 0;
+    let sinPrecio = 0;
     const errors: string[] = [];
 
     for (let i = 0; i < rows.length; i++) {
@@ -69,12 +71,15 @@ router.post('/products', authenticateToken, upload.single('file'), async (req: A
       if (!name) { skipped++; continue; }
 
       const quantity = cantidadKey ? parseInt(String(row[cantidadKey] || '0')) || 0 : 0;
+      const rawPrice = precioKey ? parseFloat(String(row[precioKey] || '').replace(',', '.')) : NaN;
+      const price    = !isNaN(rawPrice) && rawPrice > 0 ? rawPrice : 0;
+      if (price === 0) sinPrecio++;
 
       try {
         await runQuery(
           `INSERT INTO products (optics_id, supplier_id, name, quantity, price)
-           VALUES (?, ?, ?, ?, 0)`,
-          [opticsId, supplierId, name, quantity]
+           VALUES (?, ?, ?, ?, ?)`,
+          [opticsId, supplierId, name, quantity, price]
         );
         created++;
       } catch (err) {
@@ -82,10 +87,15 @@ router.post('/products', authenticateToken, upload.single('file'), async (req: A
       }
     }
 
+    const parts = [`${created} armazón${created !== 1 ? 'es' : ''} creado${created !== 1 ? 's' : ''}`];
+    if (skipped > 0)   parts.push(`${skipped} fila${skipped !== 1 ? 's' : ''} vacía${skipped !== 1 ? 's' : ''} omitida${skipped !== 1 ? 's' : ''}`);
+    if (sinPrecio > 0) parts.push(`${sinPrecio} sin precio`);
+
     res.json({
-      message: `Importación completada: ${created} armazones creados, ${skipped} filas vacías omitidas`,
+      message: `Importación completada: ${parts.join(', ')}.`,
       created,
       skipped,
+      sinPrecio,
       errors: errors.length > 0 ? errors : undefined,
     });
   } catch (error: any) {

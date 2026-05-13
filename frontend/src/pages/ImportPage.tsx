@@ -17,6 +17,7 @@ interface ImportResult {
   message: string;
   created: number;
   skipped: number;
+  sinPrecio: number;
   errors?: string[];
 }
 
@@ -108,8 +109,8 @@ const ImportPage: React.FC = () => {
             <div style={{ fontSize: '.85rem', color: 'var(--text-secondary)', lineHeight: 1.6 }}>
               <strong style={{ color: 'var(--text-primary)' }}>Formato esperado del Excel:</strong>{' '}
               el archivo debe tener al menos una columna llamada <code style={{ background: 'var(--surface-3)', borderRadius: 4, padding: '1px 5px', fontFamily: 'DM Mono, monospace', fontSize: '.8rem' }}>articulo</code> con el nombre del armazón.
-              Opcionalmente puede incluir una columna <code style={{ background: 'var(--surface-3)', borderRadius: 4, padding: '1px 5px', fontFamily: 'DM Mono, monospace', fontSize: '.8rem' }}>cantidad</code> con el stock.
-              El resto de los campos (precio, descripción, imagen) pueden completarse luego desde Productos.
+              Opcionalmente puede incluir columnas <code style={{ background: 'var(--surface-3)', borderRadius: 4, padding: '1px 5px', fontFamily: 'DM Mono, monospace', fontSize: '.8rem' }}>cantidad</code> y <code style={{ background: 'var(--surface-3)', borderRadius: 4, padding: '1px 5px', fontFamily: 'DM Mono, monospace', fontSize: '.8rem' }}>precio</code>.
+              Los armazones sin precio quedarán en $0 y podrás editarlos luego desde Productos.
             </div>
           </div>
         </div>
@@ -216,9 +217,14 @@ const ImportPage: React.FC = () => {
         {result && (
           <div style={{ marginTop: '1.25rem', background: '#f0fdf4', border: '1px solid #bbf7d0', borderRadius: 12, padding: '1rem 1.25rem' }}>
             <p style={{ margin: '0 0 .5rem', fontWeight: 700, color: '#065f46', fontSize: '.95rem' }}>{result.message}</p>
-            <div style={{ display: 'flex', gap: '1.5rem', fontSize: '.85rem', color: '#047857' }}>
+            <div style={{ display: 'flex', gap: '1.5rem', fontSize: '.85rem', color: '#047857', flexWrap: 'wrap' }}>
               <span>Creados: <strong>{result.created}</strong></span>
               {result.skipped > 0 && <span>Omitidos: <strong>{result.skipped}</strong></span>}
+              {result.sinPrecio > 0 && (
+                <span style={{ color: '#b45309' }}>
+                  Sin precio: <strong>{result.sinPrecio}</strong> — podés editarlos en Productos
+                </span>
+              )}
             </div>
             {result.errors && result.errors.length > 0 && (
               <details style={{ marginTop: '.75rem' }}>
