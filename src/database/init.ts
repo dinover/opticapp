@@ -69,11 +69,29 @@ async function initializeDatabase() {
       )
     `);
 
+    // Tabla de proveedores
+    await runQuery(`
+      CREATE TABLE IF NOT EXISTS suppliers (
+        id SERIAL PRIMARY KEY,
+        optics_id INTEGER NOT NULL,
+        name TEXT NOT NULL,
+        contact_name TEXT,
+        phone TEXT,
+        email TEXT,
+        notes TEXT,
+        is_active INTEGER NOT NULL DEFAULT 1,
+        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+        updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+        FOREIGN KEY (optics_id) REFERENCES optics(id)
+      )
+    `);
+
     // Tabla de productos
     await runQuery(`
       CREATE TABLE IF NOT EXISTS products (
         id SERIAL PRIMARY KEY,
         optics_id INTEGER NOT NULL,
+        supplier_id INTEGER,
         name TEXT NOT NULL,
         price NUMERIC(10, 2) DEFAULT 0,
         quantity INTEGER DEFAULT 0,
@@ -82,8 +100,22 @@ async function initializeDatabase() {
         is_active INTEGER NOT NULL DEFAULT 1,
         created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
         updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-        FOREIGN KEY (optics_id) REFERENCES optics(id)
+        FOREIGN KEY (optics_id) REFERENCES optics(id),
+        FOREIGN KEY (supplier_id) REFERENCES suppliers(id)
       )
+    `);
+
+    // Migración: agregar supplier_id a products si no existe
+    await runQuery(`
+      DO $$
+      BEGIN
+        IF NOT EXISTS (
+          SELECT FROM information_schema.columns
+          WHERE table_name = 'products' AND column_name = 'supplier_id'
+        ) THEN
+          ALTER TABLE products ADD COLUMN supplier_id INTEGER REFERENCES suppliers(id);
+        END IF;
+      END $$;
     `);
 
     // Tabla de ventas con ficha técnica de óptica

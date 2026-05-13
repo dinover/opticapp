@@ -11,6 +11,9 @@ import {
   Bars3Icon,
   XMarkIcon,
   ShieldCheckIcon,
+  TruckIcon,
+  ArrowUpTrayIcon,
+  DocumentChartBarIcon,
 } from '@heroicons/react/24/outline';
 
 interface LayoutProps {
@@ -26,10 +29,13 @@ const Layout: React.FC<LayoutProps> = ({ children }) => {
   const isActive = (path: string) => location.pathname === path;
 
   const navItems = [
-    { path: '/dashboard', label: 'Dashboard', icon: HomeIcon },
-    { path: '/clients',   label: 'Clientes',   icon: UserGroupIcon },
-    { path: '/products',  label: 'Productos',  icon: ShoppingBagIcon },
-    { path: '/sales',     label: 'Ventas',     icon: ChartBarIcon },
+    { path: '/dashboard', label: 'Dashboard',   icon: HomeIcon },
+    { path: '/clients',   label: 'Clientes',    icon: UserGroupIcon },
+    { path: '/products',  label: 'Productos',   icon: ShoppingBagIcon },
+    { path: '/sales',     label: 'Ventas',      icon: ChartBarIcon },
+    { path: '/suppliers', label: 'Proveedores', icon: TruckIcon },
+    { path: '/import',    label: 'Importar',    icon: ArrowUpTrayIcon },
+    { path: '/reports',   label: 'Reportes',    icon: DocumentChartBarIcon },
   ];
 
   return (
