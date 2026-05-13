@@ -12,7 +12,7 @@ services:
     env: node
     region: oregon
     plan: free
-    buildCommand: npm install --include=dev && cd frontend && npm install && npm run build && cd ..
+    buildCommand: npm install --include=dev && cd frontend && npm install && npm run build && cd .. && npm run build
     startCommand: npm start
     healthCheckPath: /health
     envVars:
