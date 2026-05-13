@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { useAuth } from '../contexts/AuthContext';
 import { adminService } from '../services/admin';
-import { UserRequest } from '../types';
+import { UserRequest, User } from '../types';
 import {
   ShieldCheckIcon,
   ArrowRightOnRectangleIcon,
@@ -9,27 +9,61 @@ import {
   XCircleIcon,
   ClockIcon,
   ArrowPathIcon,
+  KeyIcon,
+  EyeIcon,
+  EyeSlashIcon,
 } from '@heroicons/react/24/outline';
 
 const AdminRequestsPage: React.FC = () => {
   const { user, logout } = useAuth();
-  const [requests, setRequests]       = useState<UserRequest[]>([]);
-  const [loading, setLoading]         = useState(true);
-  const [error, setError]             = useState('');
+  const [requests, setRequests]           = useState<UserRequest[]>([]);
+  const [users, setUsers]                 = useState<User[]>([]);
+  const [loading, setLoading]             = useState(true);
+  const [error, setError]                 = useState('');
   const [actionLoading, setActionLoading] = useState<number | null>(null);
 
-  useEffect(() => { loadRequests(); }, []);
+  // Reset password modal
+  const [resetTarget, setResetTarget]     = useState<User | null>(null);
+  const [newPassword, setNewPassword]     = useState('');
+  const [showPass, setShowPass]           = useState(false);
+  const [resetLoading, setResetLoading]   = useState(false);
+  const [resetSuccess, setResetSuccess]   = useState('');
+  const [resetError, setResetError]       = useState('');
 
-  const loadRequests = async () => {
+  useEffect(() => { loadAll(); }, []);
+
+  const loadAll = async () => {
     try {
       setLoading(true);
       setError('');
-      const data = await adminService.getRequests();
-      setRequests(data);
+      const [reqs, usrs] = await Promise.all([adminService.getRequests(), adminService.getUsers()]);
+      setRequests(reqs);
+      setUsers(usrs);
     } catch (err: any) {
-      setError(err.response?.data?.error || 'Error al cargar solicitudes');
+      setError(err.response?.data?.error || 'Error al cargar datos');
     } finally {
       setLoading(false);
+    }
+  };
+
+  const loadRequests = loadAll;
+
+  const openReset = (u: User) => { setResetTarget(u); setNewPassword(''); setShowPass(false); setResetSuccess(''); setResetError(''); };
+  const closeReset = () => { setResetTarget(null); setNewPassword(''); setResetSuccess(''); setResetError(''); };
+
+  const handleReset = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!resetTarget) return;
+    try {
+      setResetLoading(true);
+      setResetError('');
+      const res = await adminService.resetPassword(resetTarget.id, newPassword);
+      setResetSuccess(res.message);
+      setNewPassword('');
+    } catch (err: any) {
+      setResetError(err.response?.data?.error || 'Error al cambiar la contraseña');
+    } finally {
+      setResetLoading(false);
     }
   };
 
@@ -180,7 +214,125 @@ const AdminRequestsPage: React.FC = () => {
             )}
           </div>
         )}
+
+        {/* Sección usuarios */}
+        {!loading && users.length > 0 && (
+          <div style={{ marginTop: '2rem' }}>
+            <div className="section-title">Usuarios activos</div>
+            <div className="card" style={{ overflow: 'hidden' }}>
+              <table className="tbl">
+                <thead>
+                  <tr>
+                    <th>Usuario</th>
+                    <th>Rol</th>
+                    <th>Creado</th>
+                    <th></th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {users.map(u => (
+                    <tr key={u.id}>
+                      <td>
+                        <div style={{ fontWeight: 600, fontSize: '.875rem' }}>{u.username}</div>
+                        <div style={{ fontSize: '.75rem', color: 'var(--text-muted)' }}>{u.email}</div>
+                      </td>
+                      <td>
+                        <span style={{
+                          display: 'inline-block', padding: '2px 10px', borderRadius: 99, fontSize: '.75rem', fontWeight: 600,
+                          background: u.role === 'admin' ? '#eef2ff' : 'var(--surface-3)',
+                          color: u.role === 'admin' ? '#4f46e5' : 'var(--text-secondary)',
+                        }}>
+                          {u.role === 'admin' ? 'Admin' : 'Usuario'}
+                        </span>
+                      </td>
+                      <td style={{ fontSize: '.8rem', color: 'var(--text-muted)' }}>
+                        {u.created_at ? new Date(u.created_at).toLocaleDateString('es-ES', { day: '2-digit', month: 'short', year: 'numeric' }) : '—'}
+                      </td>
+                      <td style={{ textAlign: 'right' }}>
+                        <button
+                          onClick={() => openReset(u)}
+                          style={{ display: 'inline-flex', alignItems: 'center', gap: 5, padding: '.4rem .75rem', borderRadius: 8, border: '1px solid var(--border)', background: 'var(--surface)', color: 'var(--text-secondary)', fontSize: '.8rem', fontWeight: 600, cursor: 'pointer' }}
+                        >
+                          <KeyIcon style={{ width: 13, height: 13 }} />
+                          Cambiar contraseña
+                        </button>
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          </div>
+        )}
       </main>
+
+      {/* Modal reset password */}
+      {resetTarget && (
+        <div className="modal-overlay" onClick={e => e.target === e.currentTarget && closeReset()}>
+          <div className="modal-box" style={{ maxWidth: 420 }}>
+            <div style={{ padding: '1.25rem 1.5rem', borderBottom: '1px solid var(--border)', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                <KeyIcon style={{ width: 18, height: 18, color: '#4f46e5' }} />
+                <h3 style={{ margin: 0, fontWeight: 700, fontSize: '1rem', color: 'var(--text-primary)' }}>
+                  Cambiar contraseña
+                </h3>
+              </div>
+              <button onClick={closeReset} style={{ padding: '.3rem', borderRadius: 6, background: 'var(--surface-3)', border: 'none', cursor: 'pointer', color: 'var(--text-muted)', display: 'flex' }}>
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><path d="M18 6 6 18M6 6l12 12"/></svg>
+              </button>
+            </div>
+            <form onSubmit={handleReset}>
+              <div style={{ padding: '1.5rem', display: 'flex', flexDirection: 'column', gap: '1rem' }}>
+                <p style={{ margin: 0, fontSize: '.875rem', color: 'var(--text-secondary)' }}>
+                  Establecé una nueva contraseña para <strong style={{ color: 'var(--text-primary)' }}>{resetTarget.username}</strong>.
+                </p>
+                <div>
+                  <label style={{ display: 'block', marginBottom: '.375rem', fontSize: '.875rem', fontWeight: 600 }}>Nueva contraseña *</label>
+                  <div style={{ position: 'relative' }}>
+                    <input
+                      type={showPass ? 'text' : 'password'}
+                      required
+                      minLength={6}
+                      value={newPassword}
+                      onChange={e => { setNewPassword(e.target.value); setResetSuccess(''); setResetError(''); }}
+                      placeholder="Mínimo 6 caracteres"
+                      style={{ paddingRight: '2.5rem' }}
+                    />
+                    <button
+                      type="button"
+                      onClick={() => setShowPass(v => !v)}
+                      style={{ position: 'absolute', right: '.625rem', top: '50%', transform: 'translateY(-50%)', background: 'none', border: 'none', cursor: 'pointer', color: 'var(--text-muted)', display: 'flex', padding: 0 }}
+                    >
+                      {showPass ? <EyeSlashIcon style={{ width: 16, height: 16 }} /> : <EyeIcon style={{ width: 16, height: 16 }} />}
+                    </button>
+                  </div>
+                </div>
+
+                {resetError && (
+                  <div style={{ display: 'flex', alignItems: 'center', gap: 6, background: '#fef2f2', border: '1px solid #fecaca', borderRadius: 8, padding: '.625rem .875rem', fontSize: '.8rem', color: '#991b1b' }}>
+                    <XCircleIcon style={{ width: 14, height: 14, flexShrink: 0 }} />
+                    {resetError}
+                  </div>
+                )}
+                {resetSuccess && (
+                  <div style={{ display: 'flex', alignItems: 'center', gap: 6, background: '#f0fdf4', border: '1px solid #bbf7d0', borderRadius: 8, padding: '.625rem .875rem', fontSize: '.8rem', color: '#15803d' }}>
+                    <CheckCircleIcon style={{ width: 14, height: 14, flexShrink: 0 }} />
+                    {resetSuccess}
+                  </div>
+                )}
+              </div>
+              <div style={{ padding: '1rem 1.5rem', borderTop: '1px solid var(--border)', display: 'flex', justifyContent: 'flex-end', gap: '.75rem' }}>
+                <button type="button" className="btn btn-ghost" onClick={closeReset}>Cerrar</button>
+                <button type="submit" className="btn btn-primary" disabled={resetLoading || !newPassword}>
+                  {resetLoading ? (
+                    <><div className="spinner" style={{ width: 14, height: 14, borderWidth: 2 }} /> Guardando…</>
+                  ) : 'Cambiar contraseña'}
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
     </div>
   );
 };

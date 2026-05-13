@@ -320,5 +320,44 @@ router.post('/admin/requests/:id/reject', authenticateToken, requireAdmin, async
   }
 });
 
+// ADMIN: Listar usuarios activos
+router.get('/admin/users', authenticateToken, requireAdmin, async (req: AuthRequest, res: Response) => {
+  try {
+    const users = await getRows<User>(
+      `SELECT id, username, email, role, optics_id, created_at
+       FROM users WHERE is_active = 1 ORDER BY username ASC`
+    );
+    res.json(users);
+  } catch (error: any) {
+    console.error('Error al listar usuarios:', error);
+    res.status(500).json({ error: 'Error interno del servidor' });
+  }
+});
+
+// ADMIN: Resetear contraseña de un usuario
+router.put('/admin/users/:id/reset-password', authenticateToken, requireAdmin, async (req: AuthRequest, res: Response) => {
+  try {
+    const userId = parseInt(req.params.id);
+    const { password } = req.body;
+
+    if (!password || password.length < 6) {
+      return res.status(400).json({ error: 'La contraseña debe tener al menos 6 caracteres' });
+    }
+
+    const user = await getRow<User>('SELECT id, username FROM users WHERE id = ? AND is_active = 1', [userId]);
+    if (!user) {
+      return res.status(404).json({ error: 'Usuario no encontrado' });
+    }
+
+    const hashed = await bcrypt.hash(password, 10);
+    await runQuery('UPDATE users SET password = ?, updated_at = CURRENT_TIMESTAMP WHERE id = ?', [hashed, userId]);
+
+    res.json({ message: `Contraseña de "${user.username}" actualizada correctamente` });
+  } catch (error: any) {
+    console.error('Error al resetear contraseña:', error);
+    res.status(500).json({ error: 'Error interno del servidor' });
+  }
+});
+
 export default router;
 
