@@ -1,6 +1,7 @@
 import express from 'express';
 import cors from 'cors';
 import dotenv from 'dotenv';
+import path from 'path';
 import { initializeDatabase } from './database/init';
 import authRoutes from './routes/auth';
 import opticsRoutes from './routes/optics';
@@ -39,6 +40,15 @@ app.use('/api/images', imagesRoutes);
 app.use('/api/suppliers', suppliersRoutes);
 app.use('/api/import', importRoutes);
 app.use('/api/reports', reportsRoutes);
+
+// Servir el frontend estático en producción
+const frontendDist = path.join(__dirname, '../../frontend/dist');
+app.use(express.static(frontendDist));
+
+// Catch-all: cualquier ruta no-API devuelve el index.html del SPA
+app.get('*', (_req, res) => {
+  res.sendFile(path.join(frontendDist, 'index.html'));
+});
 
 // Inicializar base de datos y servidor
 async function startServer() {
