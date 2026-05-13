@@ -22,8 +22,13 @@ export const adminService = {
     return response.data;
   },
 
-  async resetPassword(userId: number, password: string): Promise<{ message: string }> {
-    const response = await api.put(`/auth/admin/users/${userId}/reset-password`, { password });
+  async updateUser(userId: number, data: { username?: string; password?: string }): Promise<{ message: string }> {
+    const response = await api.put(`/auth/admin/users/${userId}`, data);
+    return response.data;
+  },
+
+  async deleteUser(userId: number): Promise<{ message: string }> {
+    const response = await api.delete(`/auth/admin/users/${userId}`);
     return response.data;
   },
 };
