@@ -42,7 +42,7 @@ app.use('/api/import', importRoutes);
 app.use('/api/reports', reportsRoutes);
 
 // Servir el frontend estático en producción
-const frontendDist = path.join(__dirname, '../../frontend/dist');
+const frontendDist = path.join(__dirname, '../frontend/dist');
 app.use(express.static(frontendDist));
 
 // Catch-all: cualquier ruta no-API devuelve el index.html del SPA
