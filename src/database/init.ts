@@ -28,10 +28,28 @@ async function initializeDatabase() {
         role TEXT NOT NULL DEFAULT 'user',
         optics_id INTEGER,
         is_active INTEGER NOT NULL DEFAULT 1,
+        license_type TEXT NOT NULL DEFAULT 'trial',
+        trial_expires_at TIMESTAMP,
+        license_expires_at TIMESTAMP,
         created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
         updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
         FOREIGN KEY (optics_id) REFERENCES optics(id)
       )
+    `);
+
+    // Migración: agregar columnas de licencia si no existen
+    await runQuery(`
+      DO $$
+      BEGIN
+        IF NOT EXISTS (
+          SELECT FROM information_schema.columns
+          WHERE table_name = 'users' AND column_name = 'license_type'
+        ) THEN
+          ALTER TABLE users ADD COLUMN license_type TEXT NOT NULL DEFAULT 'trial';
+          ALTER TABLE users ADD COLUMN trial_expires_at TIMESTAMP;
+          ALTER TABLE users ADD COLUMN license_expires_at TIMESTAMP;
+        END IF;
+      END $$;
     `);
 
     // Tabla de solicitudes de usuario

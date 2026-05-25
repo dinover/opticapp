@@ -15,6 +15,9 @@ export interface User {
   email: string;
   role: 'admin' | 'user';
   optics_id?: number | null;
+  license_type?: 'trial' | 'active';
+  trial_expires_at?: string | null;
+  license_expires_at?: string | null;
   created_at?: string;
 }
 

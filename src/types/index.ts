@@ -17,6 +17,9 @@ export interface User {
   role: 'admin' | 'user';
   optics_id?: number | null;
   is_active: number;
+  license_type: 'trial' | 'active';
+  trial_expires_at: string | null;
+  license_expires_at: string | null;
   created_at: string;
   updated_at: string;
 }
@@ -204,6 +207,9 @@ export interface AuthResponse {
     email: string;
     role: string;
     optics_id?: number | null;
+    license_type: 'trial' | 'active';
+    trial_expires_at: string | null;
+    license_expires_at: string | null;
   };
 }
 

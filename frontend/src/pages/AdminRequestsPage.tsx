@@ -12,7 +12,19 @@ import {
   KeyIcon,
   EyeIcon,
   EyeSlashIcon,
+  CalendarDaysIcon,
 } from '@heroicons/react/24/outline';
+
+function daysUntil(dateStr: string | null | undefined): number | null {
+  if (!dateStr) return null;
+  const diff = new Date(dateStr).getTime() - Date.now();
+  return Math.ceil(diff / (1000 * 60 * 60 * 24));
+}
+
+function formatDate(d: string | null | undefined) {
+  if (!d) return '—';
+  return new Date(d).toLocaleDateString('es-ES', { day: '2-digit', month: 'short', year: 'numeric' });
+}
 
 const AdminRequestsPage: React.FC = () => {
   const { user, logout } = useAuth();
@@ -21,6 +33,8 @@ const AdminRequestsPage: React.FC = () => {
   const [loading, setLoading]             = useState(true);
   const [error, setError]                 = useState('');
   const [actionLoading, setActionLoading] = useState<number | null>(null);
+  const [extendLoading, setExtendLoading] = useState<number | null>(null);
+  const [extendMsg, setExtendMsg]         = useState<{ id: number; msg: string } | null>(null);
 
   // Edit user modal
   const [editTarget, setEditTarget]       = useState<User | null>(null);
@@ -47,8 +61,6 @@ const AdminRequestsPage: React.FC = () => {
       setLoading(false);
     }
   };
-
-  const loadRequests = loadAll;
 
   const openEdit = (u: User) => {
     setEditTarget(u);
@@ -104,7 +116,7 @@ const AdminRequestsPage: React.FC = () => {
     try {
       setActionLoading(id);
       await adminService.approveRequest(id);
-      await loadRequests();
+      await loadAll();
     } catch (err: any) {
       alert(err.response?.data?.error || 'Error al aprobar');
     } finally {
@@ -113,11 +125,11 @@ const AdminRequestsPage: React.FC = () => {
   };
 
   const handleReject = async (id: number) => {
-    if (!confirm('¿Rechazar esta solicitud?')) return;
+    if (!confirm('¿Rechazar esta solicitud? Se desactivará la cuenta del usuario.')) return;
     try {
       setActionLoading(id);
       await adminService.rejectRequest(id);
-      await loadRequests();
+      await loadAll();
     } catch (err: any) {
       alert(err.response?.data?.error || 'Error al rechazar');
     } finally {
@@ -125,8 +137,30 @@ const AdminRequestsPage: React.FC = () => {
     }
   };
 
+  const handleExtend = async (u: User) => {
+    try {
+      setExtendLoading(u.id);
+      const res = await adminService.extendLicense(u.id);
+      setExtendMsg({ id: u.id, msg: res.message });
+      await loadAll();
+      setTimeout(() => setExtendMsg(null), 4000);
+    } catch (err: any) {
+      alert(err.response?.data?.error || 'Error al extender licencia');
+    } finally {
+      setExtendLoading(null);
+    }
+  };
+
   const pending   = requests.filter(r => r.status === 'pending');
   const processed = requests.filter(r => r.status !== 'pending');
+  const nonAdminUsers = users.filter(u => u.role !== 'admin');
+
+  // Usuarios con licencia próxima a vencer (≤ 7 días) o vencida
+  const expiringUsers = nonAdminUsers.filter(u => {
+    const expiry = u.license_type === 'trial' ? u.trial_expires_at : u.license_expires_at;
+    const days = daysUntil(expiry);
+    return days !== null && days <= 7;
+  });
 
   return (
     <div style={{ minHeight: '100vh', background: 'var(--surface-2)' }}>
@@ -155,6 +189,26 @@ const AdminRequestsPage: React.FC = () => {
       </header>
 
       <main className="max-w-5xl mx-auto px-4 sm:px-6 py-6 fade-in">
+
+        {/* Alerta de licencias por vencer */}
+        {!loading && expiringUsers.length > 0 && (
+          <div style={{ background: '#fffbeb', border: '1px solid #fde68a', borderRadius: 10, padding: '.875rem 1.125rem', marginBottom: '1.25rem', display: 'flex', alignItems: 'flex-start', gap: 10 }}>
+            <span style={{ fontSize: 18, flexShrink: 0 }}>⚠️</span>
+            <div>
+              <p style={{ margin: '0 0 4px', fontWeight: 700, fontSize: '.875rem', color: '#92400e' }}>
+                {expiringUsers.length} usuario{expiringUsers.length !== 1 ? 's' : ''} con licencia próxima a vencer
+              </p>
+              <p style={{ margin: 0, fontSize: '.8rem', color: '#b45309' }}>
+                {expiringUsers.map(u => {
+                  const expiry = u.license_type === 'trial' ? u.trial_expires_at : u.license_expires_at;
+                  const days = daysUntil(expiry);
+                  return `${u.username} (${days !== null && days < 0 ? 'vencida' : days === 0 ? 'vence hoy' : `${days}d`})`;
+                }).join(' · ')}
+              </p>
+            </div>
+          </div>
+        )}
+
         {/* Header */}
         <div className="page-header">
           <div>
@@ -163,7 +217,7 @@ const AdminRequestsPage: React.FC = () => {
               {pending.length} pendiente{pending.length !== 1 ? 's' : ''} · {processed.length} procesada{processed.length !== 1 ? 's' : ''}
             </p>
           </div>
-          <button className="btn btn-ghost" onClick={loadRequests} style={{ fontSize: '.8rem' }}>
+          <button className="btn btn-ghost" onClick={loadAll} style={{ fontSize: '.8rem' }}>
             <ArrowPathIcon className="w-4 h-4" />
             Actualizar
           </button>
@@ -248,50 +302,88 @@ const AdminRequestsPage: React.FC = () => {
           </div>
         )}
 
-        {/* Sección usuarios */}
-        {!loading && users.length > 0 && (
+        {/* Sección usuarios con licencias */}
+        {!loading && nonAdminUsers.length > 0 && (
           <div style={{ marginTop: '2rem' }}>
-            <div className="section-title">Usuarios activos</div>
+            <div className="section-title">Usuarios y licencias</div>
             <div className="card" style={{ overflow: 'hidden' }}>
               <table className="tbl">
                 <thead>
                   <tr>
                     <th>Usuario</th>
-                    <th>Rol</th>
-                    <th>Creado</th>
+                    <th>Licencia</th>
+                    <th>Vencimiento</th>
                     <th></th>
                   </tr>
                 </thead>
                 <tbody>
-                  {users.map(u => (
-                    <tr key={u.id}>
-                      <td>
-                        <div style={{ fontWeight: 600, fontSize: '.875rem' }}>{u.username}</div>
-                        <div style={{ fontSize: '.75rem', color: 'var(--text-muted)' }}>{u.email}</div>
-                      </td>
-                      <td>
-                        <span style={{
-                          display: 'inline-block', padding: '2px 10px', borderRadius: 99, fontSize: '.75rem', fontWeight: 600,
-                          background: u.role === 'admin' ? '#eef2ff' : 'var(--surface-3)',
-                          color: u.role === 'admin' ? '#4f46e5' : 'var(--text-secondary)',
-                        }}>
-                          {u.role === 'admin' ? 'Admin' : 'Usuario'}
-                        </span>
-                      </td>
-                      <td style={{ fontSize: '.8rem', color: 'var(--text-muted)' }}>
-                        {u.created_at ? new Date(u.created_at).toLocaleDateString('es-ES', { day: '2-digit', month: 'short', year: 'numeric' }) : '—'}
-                      </td>
-                      <td style={{ textAlign: 'right' }}>
-                        <button
-                          onClick={() => openEdit(u)}
-                          style={{ display: 'inline-flex', alignItems: 'center', gap: 5, padding: '.4rem .75rem', borderRadius: 8, border: '1px solid var(--border)', background: 'var(--surface)', color: 'var(--text-secondary)', fontSize: '.8rem', fontWeight: 600, cursor: 'pointer' }}
-                        >
-                          <KeyIcon style={{ width: 13, height: 13 }} />
-                          Editar
-                        </button>
-                      </td>
-                    </tr>
-                  ))}
+                  {nonAdminUsers.map(u => {
+                    const expiry = u.license_type === 'trial' ? u.trial_expires_at : u.license_expires_at;
+                    const days = daysUntil(expiry);
+                    const isExpired = days !== null && days < 0;
+                    const isUrgent = days !== null && days >= 0 && days <= 3;
+                    const successMsg = extendMsg?.id === u.id ? extendMsg.msg : null;
+
+                    return (
+                      <tr key={u.id}>
+                        <td>
+                          <div style={{ fontWeight: 600, fontSize: '.875rem' }}>{u.username}</div>
+                          <div style={{ fontSize: '.75rem', color: 'var(--text-muted)' }}>{u.email}</div>
+                        </td>
+                        <td>
+                          <LicenseTypeBadge type={u.license_type} />
+                        </td>
+                        <td>
+                          <div style={{ fontSize: '.85rem', fontWeight: 600, color: isExpired ? '#dc2626' : isUrgent ? '#d97706' : 'var(--text-primary)' }}>
+                            {formatDate(expiry)}
+                          </div>
+                          {days !== null && (
+                            <div style={{ fontSize: '.72rem', color: isExpired ? '#dc2626' : isUrgent ? '#d97706' : 'var(--text-muted)', fontWeight: isExpired || isUrgent ? 600 : 400 }}>
+                              {isExpired ? '⚠ Vencida' : days === 0 ? '⚠ Vence hoy' : `${days}d restantes`}
+                            </div>
+                          )}
+                        </td>
+                        <td style={{ textAlign: 'right' }}>
+                          {successMsg ? (
+                            <span style={{ fontSize: '.78rem', color: '#059669', fontWeight: 600 }}>✓ {successMsg}</span>
+                          ) : (
+                            <div style={{ display: 'flex', gap: 6, justifyContent: 'flex-end' }}>
+                              <button
+                                onClick={() => handleExtend(u)}
+                                disabled={extendLoading === u.id}
+                                title="Extender licencia 1 mes"
+                                style={{
+                                  display: 'inline-flex', alignItems: 'center', gap: 5,
+                                  padding: '.4rem .75rem', borderRadius: 8,
+                                  border: '1px solid #bfdbfe', background: '#eff6ff',
+                                  color: '#1d4ed8', fontSize: '.78rem', fontWeight: 600,
+                                  cursor: extendLoading === u.id ? 'not-allowed' : 'pointer',
+                                  opacity: extendLoading === u.id ? .6 : 1,
+                                }}
+                              >
+                                {extendLoading === u.id
+                                  ? <div className="spinner" style={{ width: 12, height: 12, borderWidth: 2 }} />
+                                  : <CalendarDaysIcon style={{ width: 13, height: 13 }} />}
+                                +1 mes
+                              </button>
+                              <button
+                                onClick={() => openEdit(u)}
+                                style={{
+                                  display: 'inline-flex', alignItems: 'center', gap: 5,
+                                  padding: '.4rem .75rem', borderRadius: 8,
+                                  border: '1px solid var(--border)', background: 'var(--surface)',
+                                  color: 'var(--text-secondary)', fontSize: '.78rem', fontWeight: 600, cursor: 'pointer',
+                                }}
+                              >
+                                <KeyIcon style={{ width: 13, height: 13 }} />
+                                Editar
+                              </button>
+                            </div>
+                          )}
+                        </td>
+                      </tr>
+                    );
+                  })}
                 </tbody>
               </table>
             </div>
@@ -364,7 +456,6 @@ const AdminRequestsPage: React.FC = () => {
               </div>
 
               <div style={{ padding: '1rem 1.5rem', borderTop: '1px solid var(--border)', display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: '.75rem' }}>
-                {/* Eliminar usuario */}
                 {editTarget.role !== 'admin' && (
                   <button
                     type="button"
@@ -413,6 +504,19 @@ const StatusBadge: React.FC<{ status: string }> = ({ status }) => {
   );
 };
 
+const LicenseTypeBadge: React.FC<{ type?: 'trial' | 'active' }> = ({ type }) => {
+  if (type === 'active') return (
+    <span style={{ display: 'inline-flex', alignItems: 'center', gap: 4, padding: '2px 10px', borderRadius: 99, fontSize: '.73rem', fontWeight: 700, background: '#f0fdf4', color: '#15803d', border: '1px solid #bbf7d0' }}>
+      ✓ Activa
+    </span>
+  );
+  return (
+    <span style={{ display: 'inline-flex', alignItems: 'center', gap: 4, padding: '2px 10px', borderRadius: 99, fontSize: '.73rem', fontWeight: 700, background: '#fefce8', color: '#a16207', border: '1px solid #fde68a' }}>
+      ⏳ Prueba
+    </span>
+  );
+};
+
 const RequestCard: React.FC<{
   req: UserRequest;
   loading: boolean;
@@ -427,7 +531,6 @@ const RequestCard: React.FC<{
     display: 'flex', alignItems: 'center', gap: '1rem',
     boxShadow: '0 1px 4px rgba(15,23,42,.06)',
   }}>
-    {/* Avatar */}
     <div style={{
       width: 42, height: 42, borderRadius: 99, flexShrink: 0,
       background: 'linear-gradient(135deg, #e0e7ff, #c7d2fe)',
@@ -437,7 +540,6 @@ const RequestCard: React.FC<{
       {req.username.charAt(0).toUpperCase()}
     </div>
 
-    {/* Info */}
     <div style={{ flex: 1, minWidth: 0 }}>
       <div style={{ display: 'flex', alignItems: 'baseline', gap: 8, flexWrap: 'wrap' }}>
         <span style={{ fontWeight: 700, fontSize: '.9rem', color: 'var(--text-primary)' }}>{req.username}</span>
@@ -452,7 +554,6 @@ const RequestCard: React.FC<{
       </div>
     </div>
 
-    {/* Actions */}
     <div style={{ display: 'flex', gap: '.5rem', flexShrink: 0 }}>
       <button
         onClick={onReject}
@@ -482,12 +583,10 @@ const RequestCard: React.FC<{
           boxShadow: loading ? 'none' : '0 2px 8px rgba(16,185,129,.3)',
         }}
       >
-        {loading ? (
-          <div className="spinner" style={{ width: 14, height: 14, borderWidth: 2 }} />
-        ) : (
-          <CheckCircleIcon style={{ width: 14, height: 14 }} />
-        )}
-        Aprobar
+        {loading
+          ? <div className="spinner" style={{ width: 14, height: 14, borderWidth: 2 }} />
+          : <CheckCircleIcon style={{ width: 14, height: 14 }} />}
+        Aprobar (+1 mes)
       </button>
     </div>
   </div>

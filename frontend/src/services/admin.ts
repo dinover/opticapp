@@ -31,5 +31,10 @@ export const adminService = {
     const response = await api.delete(`/auth/admin/users/${userId}`);
     return response.data;
   },
+
+  async extendLicense(userId: number): Promise<{ message: string; license_expires_at: string }> {
+    const response = await api.post(`/auth/admin/users/${userId}/extend`);
+    return response.data;
+  },
 };
 

@@ -7,6 +7,7 @@ const LoginPage: React.FC = () => {
   const [username, setUsername] = useState('');
   const [password, setPassword] = useState('');
   const [error, setError] = useState('');
+  const [licenseExpired, setLicenseExpired] = useState(false);
   const [loading, setLoading] = useState(false);
   const { login } = useAuth();
   const navigate = useNavigate();
@@ -14,13 +15,20 @@ const LoginPage: React.FC = () => {
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setError('');
+    setLicenseExpired(false);
     setLoading(true);
     try {
       const response = await authService.login({ username, password });
       login(response.token, response.user);
       navigate(response.user.role === 'admin' ? '/admin' : '/dashboard');
     } catch (err: any) {
-      setError(err.response?.data?.error || 'Credenciales incorrectas');
+      const data = err.response?.data;
+      if (data?.license_expired) {
+        setLicenseExpired(true);
+        setError(data.error);
+      } else {
+        setError(data?.error || 'Credenciales incorrectas');
+      }
     } finally {
       setLoading(false);
     }
@@ -146,15 +154,21 @@ const LoginPage: React.FC = () => {
 
           {error && (
             <div style={{
-              background: '#fef2f2', border: '1px solid #fecaca',
-              borderRadius: 10, padding: '0.75rem 1rem',
-              marginBottom: '1.25rem', fontSize: '.875rem', color: '#991b1b',
-              display: 'flex', alignItems: 'center', gap: 8,
+              background: licenseExpired ? '#fffbeb' : '#fef2f2',
+              border: `1px solid ${licenseExpired ? '#fde68a' : '#fecaca'}`,
+              borderRadius: 10, padding: '0.875rem 1rem',
+              marginBottom: '1.25rem', fontSize: '.875rem',
+              color: licenseExpired ? '#92400e' : '#991b1b',
             }}>
-              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                <circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/>
-              </svg>
-              {error}
+              <div style={{ display: 'flex', alignItems: 'center', gap: 8, fontWeight: 600, marginBottom: licenseExpired ? 4 : 0 }}>
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                  <circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/>
+                </svg>
+                {licenseExpired ? 'Licencia vencida' : error}
+              </div>
+              {licenseExpired && (
+                <p style={{ margin: 0, fontSize: '.8rem', color: '#b45309' }}>{error}</p>
+              )}
             </div>
           )}
 
