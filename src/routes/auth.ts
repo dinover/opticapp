@@ -67,7 +67,7 @@ router.post('/request-user', authLimiter, validateBody(requestUserSchema), async
     // Crear la óptica (siempre nueva: el nombre no identifica una óptica existente,
     // así que dos registros con el mismo nombre no deben terminar compartiendo datos)
     const opticsResult = await runQuery(
-      `INSERT INTO optics (name, is_active) VALUES (?, 1)`,
+      `INSERT INTO optics (name, is_active) VALUES (?, 1) RETURNING id`,
       [optics_name]
     );
     if (!opticsResult.lastID) {
@@ -295,7 +295,7 @@ router.post('/admin/requests/:id/approve', authenticateToken, requireAdmin, asyn
       }
 
       const opticsResult = await runQuery(
-        `INSERT INTO optics (name, is_active) VALUES (?, 1)`,
+        `INSERT INTO optics (name, is_active) VALUES (?, 1) RETURNING id`,
         [request.optics_name]
       );
       if (!opticsResult.lastID) return res.status(500).json({ error: 'Error al crear la óptica' });
@@ -539,7 +539,8 @@ router.post('/team/users', authenticateToken, validateBody(createTeamUserSchema)
 
     const result = await runQuery(
       `INSERT INTO users (username, email, password, role, optics_id, license_type, license_expires_at, trial_expires_at, is_active)
-       VALUES (?, ?, ?, 'user', ?, ?, ?, ?, 1)`,
+       VALUES (?, ?, ?, 'user', ?, ?, ?, ?, 1)
+       RETURNING id`,
       [
         username,
         email,
