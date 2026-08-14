@@ -25,7 +25,7 @@ services:
       - key: ADMIN_PASSWORD
         generateValue: true
       - key: ADMIN_EMAIL
-        value: davo1995@gmail.com
+        value: opticappuy@gmail.com
       # Envío de emails: configurar SMTP_* (casilla de Gmail) o RESEND_API_KEY.
       # Si no hay ninguno, la app arranca igual y solo no manda notificaciones.
       - key: SMTP_USER
