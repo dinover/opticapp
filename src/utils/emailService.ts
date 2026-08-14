@@ -84,7 +84,7 @@ async function send(payload: EmailPayload) {
 // (Settings → Domains): con el dominio de pruebas onboarding@resend.dev los
 // emails solo le llegan al dueño de la cuenta de Resend, nunca a clientes reales.
 const FROM = process.env.EMAIL_FROM || 'OpticApp <onboarding@resend.dev>';
-const ADMIN_EMAIL = process.env.ADMIN_EMAIL || 'davo1995@gmail.com';
+const ADMIN_EMAIL = process.env.ADMIN_EMAIL || 'opticappuy@gmail.com';
 const APP_URL = process.env.APP_URL || 'https://opticapp.onrender.com';
 
 const baseStyle = `
