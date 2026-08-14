@@ -200,6 +200,95 @@ describe.skipIf(!hasDatabase)('stock en ventas (UI-10)', () => {
   });
 });
 
+/**
+ * Estos casos existen por un incidente concreto: el guard que exige RETURNING id
+ * en los INSERT rompió el registro y el arranque en base nueva, y ninguna prueba
+ * lo detectó porque la suite creaba usuarios y ópticas por atajo, sin pasar nunca
+ * por los endpoints reales ni por un borrado exitoso.
+ */
+describe.skipIf(!hasDatabase)('altas y bajas end-to-end', () => {
+  const app = createApp();
+
+  beforeAll(async () => { await initializeDatabase(); });
+  afterAll(async () => { await closeDatabase(); });
+  beforeEach(async () => { await resetDatabase(); });
+
+  it('registra una óptica nueva con su usuario owner', async () => {
+    const res = await request(app)
+      .post('/api/auth/request-user')
+      .send({
+        username: 'nuevaoptica',
+        email: 'nueva@optica.test',
+        password: 'secreto123',
+        optics_name: 'Óptica Nueva',
+      });
+
+    expect(res.status).toBe(201);
+
+    // El usuario tiene que quedar realmente creado y como owner de su óptica.
+    const { getRow } = await import('../config/database');
+    const user = await getRow<any>(
+      'SELECT username, role, optics_id, license_type FROM users WHERE username = ?',
+      ['nuevaoptica']
+    );
+    expect(user).toBeDefined();
+    expect(user.role).toBe('owner');
+    expect(user.license_type).toBe('trial');
+    expect(user.optics_id).toBeGreaterThan(0);
+  });
+
+  it('no deja ópticas huérfanas si el registro falla por username repetido', async () => {
+    const payload = {
+      username: 'repetido',
+      email: 'uno@optica.test',
+      password: 'secreto123',
+      optics_name: 'Óptica Repetida',
+    };
+    await request(app).post('/api/auth/request-user').send(payload);
+
+    const segundo = await request(app)
+      .post('/api/auth/request-user')
+      .send({ ...payload, email: 'dos@optica.test' });
+
+    expect(segundo.status).toBe(400);
+
+    const { getRows } = await import('../config/database');
+    const opticas = await getRows<any>('SELECT id FROM optics WHERE name = ?', ['Óptica Repetida']);
+    expect(opticas).toHaveLength(1);
+  });
+
+  it('elimina un cliente y deja registro en el log de eliminaciones', async () => {
+    const optica = await createOptic('optica-borrado');
+    const cliente = await createClient(optica.opticsId, 'Cliente a borrar');
+
+    const res = await request(app)
+      .delete(`/api/clients/${cliente}`)
+      .set('Authorization', `Bearer ${optica.token}`);
+
+    expect(res.status).toBe(200);
+
+    const { getRow } = await import('../config/database');
+    const log = await getRow<any>(
+      'SELECT table_name, record_id FROM deletion_logs WHERE table_name = ? AND record_id = ?',
+      ['clients', cliente]
+    );
+    expect(log).toBeDefined();
+  });
+
+  it('inicializa una base vacía dos veces seguidas sin romperse', async () => {
+    // initializeDatabase corre en cada arranque: tiene que ser idempotente,
+    // incluida la creación del usuario admin inicial.
+    process.env.ADMIN_PASSWORD = 'admin-de-prueba';
+    await initializeDatabase();
+    await expect(initializeDatabase()).resolves.not.toThrow();
+
+    const { getRows } = await import('../config/database');
+    const admins = await getRows<any>('SELECT id FROM users WHERE username = ?', ['admin']);
+    expect(admins).toHaveLength(1);
+    delete process.env.ADMIN_PASSWORD;
+  });
+});
+
 describe.skipIf(!hasDatabase)('licencia y validación', () => {
   const app = createApp();
 

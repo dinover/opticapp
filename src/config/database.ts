@@ -61,25 +61,39 @@ export async function runQuery(query: string, params: any[] = []): Promise<RunRe
     const pgQuery = convertPlaceholders(query);
     const result = await database.query(pgQuery, params);
     
-    // Para INSERT, PostgreSQL devuelve el último ID insertado en result.rows[0] si usamos RETURNING id
-    // Si no hay RETURNING, intentamos obtener el ID usando lastval()
-    let lastID: number | undefined;
-    if (pgQuery.trim().toUpperCase().startsWith('INSERT')) {
-      if (result.rows.length > 0 && result.rows[0]?.id) {
-        // Si usamos RETURNING id, el ID está en result.rows[0].id
-        lastID = result.rows[0].id;
-      } else {
-        // No usar lastval(): es por sesión y con un Pool cada query puede
-        // usar una conexión física distinta, devolviendo el ID de OTRO
-        // INSERT concurrente (de otra tabla u otro usuario). Es más seguro
-        // fallar ruidosamente que devolver un ID incorrecto.
-        throw new Error('INSERT sin RETURNING id: no se puede determinar el ID insertado de forma segura con un pool de conexiones. Agregá RETURNING id a la query.');
-      }
+    const changes = result.rowCount || 0;
+    const isInsert = pgQuery.trim().toUpperCase().startsWith('INSERT');
+    const insertedId: number | undefined = result.rows[0]?.id;
+
+    // Nunca usar lastval() para resolver el ID: es por sesión de Postgres y
+    // con un Pool cada query puede tomar una conexión física distinta, así que
+    // podría devolver el ID de OTRO INSERT concurrente, de otra tabla u otro
+    // usuario.
+    //
+    // Cuando el INSERT no trae RETURNING id, `lastID` no se puede conocer. El
+    // error se lanza al LEER la propiedad, no al ejecutar la query: un INSERT
+    // que ya se escribió correctamente no debe hacer fallar a quien nunca
+    // necesitó el ID (por ejemplo, el log de eliminaciones). Y quien sí lo
+    // necesita recibe un error claro que apunta al arreglo.
+    if (isInsert && insertedId === undefined) {
+      const unknownId: RunResult = { changes };
+      // No enumerable a propósito: así un console.log o un spread del resultado
+      // no dispara el getter y el error solo aparece donde de verdad se pide el ID.
+      Object.defineProperty(unknownId, 'lastID', {
+        enumerable: false,
+        get() {
+          throw new Error(
+            'INSERT sin RETURNING id: no se puede determinar el ID insertado de forma ' +
+            'segura con un pool de conexiones. Agregá RETURNING id a la query.'
+          );
+        },
+      });
+      return unknownId;
     }
-    
+
     return {
-      lastID,
-      changes: result.rowCount || 0,
+      lastID: isInsert ? insertedId : undefined,
+      changes,
     };
   } catch (error) {
     console.error('Error ejecutando query:', error);
