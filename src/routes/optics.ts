@@ -1,5 +1,7 @@
 import express, { Request, Response } from 'express';
 import { authenticateToken, requireAdmin, AuthRequest } from '../middleware/auth';
+import { validateBody } from '../middleware/validate';
+import { opticsSchema } from '../schemas';
 import { getRow, getRows, runQuery } from '../config/database';
 import { Optics } from '../types';
 
@@ -52,7 +54,7 @@ router.get('/:id', authenticateToken, async (req: AuthRequest, res: Response) =>
 });
 
 // Crear óptica (solo admin)
-router.post('/', authenticateToken, requireAdmin, async (req: AuthRequest, res: Response) => {
+router.post('/', authenticateToken, requireAdmin, validateBody(opticsSchema), async (req: AuthRequest, res: Response) => {
   try {
     const { name, address, phone, email } = req.body;
 
@@ -62,7 +64,8 @@ router.post('/', authenticateToken, requireAdmin, async (req: AuthRequest, res: 
 
     const result = await runQuery(
       `INSERT INTO optics (name, address, phone, email)
-       VALUES (?, ?, ?, ?)`,
+       VALUES (?, ?, ?, ?)
+       RETURNING id`,
       [name, address || null, phone || null, email || null]
     );
 
@@ -79,7 +82,7 @@ router.post('/', authenticateToken, requireAdmin, async (req: AuthRequest, res: 
 });
 
 // Actualizar óptica (solo admin)
-router.put('/:id', authenticateToken, requireAdmin, async (req: AuthRequest, res: Response) => {
+router.put('/:id', authenticateToken, requireAdmin, validateBody(opticsSchema), async (req: AuthRequest, res: Response) => {
   try {
     const id = parseInt(req.params.id);
     const { name, address, phone, email } = req.body;

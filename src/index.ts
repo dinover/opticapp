@@ -1,101 +1,74 @@
-import express from 'express';
-import cors from 'cors';
-import dotenv from 'dotenv';
-import path from 'path';
+import 'dotenv/config';
+import type { Server } from 'http';
+import { createApp } from './app';
 import { initializeDatabase } from './database/init';
-import authRoutes from './routes/auth';
-import opticsRoutes from './routes/optics';
-import clientsRoutes from './routes/clients';
-import productsRoutes from './routes/products';
-import salesRoutes from './routes/sales';
-import dashboardRoutes from './routes/dashboard';
-import imagesRoutes from './routes/images';
-import suppliersRoutes from './routes/suppliers';
-import importRoutes from './routes/import';
-import reportsRoutes from './routes/reports';
+import { closeDatabase } from './config/database';
 
-dotenv.config();
-
-const app = express();
 const PORT = process.env.PORT || 3001;
 
-// Middleware
-app.use(cors());
-app.use(express.json());
-app.use(express.urlencoded({ extended: true }));
+// Si el cierre se cuelga (una query eterna, un socket que no libera), no
+// queremos bloquear el deploy: pasado este plazo se sale por la fuerza.
+const SHUTDOWN_TIMEOUT_MS = 10_000;
 
-// Health check
-app.get('/health', (req, res) => {
-  res.json({ status: 'ok', message: 'Servidor funcionando correctamente' });
+let server: Server | null = null;
+let shuttingDown = false;
+
+async function shutdown(reason: string, exitCode: number) {
+  if (shuttingDown) return;
+  shuttingDown = true;
+
+  console.log(`Cerrando el servidor (${reason})…`);
+
+  const forceExit = setTimeout(() => {
+    console.error('El cierre ordenado tardó demasiado, saliendo por la fuerza.');
+    process.exit(exitCode || 1);
+  }, SHUTDOWN_TIMEOUT_MS);
+  forceExit.unref();
+
+  try {
+    // Dejar de aceptar conexiones nuevas y esperar a que terminen las en vuelo.
+    // Sin esto, un deploy corta transacciones de venta por la mitad.
+    if (server) {
+      await new Promise<void>((resolve, reject) => {
+        server!.close(err => (err ? reject(err) : resolve()));
+      });
+    }
+    await closeDatabase();
+    console.log('Cierre completado.');
+  } catch (error) {
+    console.error('Error durante el cierre:', error);
+    exitCode = exitCode || 1;
+  } finally {
+    clearTimeout(forceExit);
+    process.exit(exitCode);
+  }
+}
+
+// Render (y cualquier orquestador) manda SIGTERM en cada deploy o reinicio.
+process.on('SIGTERM', () => { void shutdown('SIGTERM', 0); });
+process.on('SIGINT', () => { void shutdown('SIGINT', 0); });
+
+process.on('unhandledRejection', (reason) => {
+  console.error('Promesa rechazada sin manejar:', reason);
 });
 
-// Routes
-app.use('/api/auth', authRoutes);
-app.use('/api/optics', opticsRoutes);
-app.use('/api/clients', clientsRoutes);
-app.use('/api/products', productsRoutes);
-app.use('/api/sales', salesRoutes);
-app.use('/api/dashboard', dashboardRoutes);
-app.use('/api/images', imagesRoutes);
-app.use('/api/suppliers', suppliersRoutes);
-app.use('/api/import', importRoutes);
-app.use('/api/reports', reportsRoutes);
-
-// Servir el frontend estático en producción
-const frontendDist = path.join(__dirname, '../frontend/dist');
-app.use(express.static(frontendDist));
-
-// Catch-all: cualquier ruta no-API devuelve el index.html del SPA
-app.get('*', (_req, res) => {
-  res.sendFile(path.join(frontendDist, 'index.html'));
+// Tras una excepción no capturada el proceso queda en un estado que no es
+// confiable: se cierra ordenadamente y se sale con error para que el
+// orquestador levante una instancia nueva.
+process.on('uncaughtException', (err) => {
+  console.error('Excepción no capturada:', err);
+  void shutdown('uncaughtException', 1);
 });
 
-// Inicializar base de datos y servidor
 async function startServer() {
   try {
     await initializeDatabase();
-    
-    app.listen(PORT, () => {
+
+    const app = createApp();
+
+    server = app.listen(PORT, () => {
       console.log(`🚀 Servidor corriendo en http://localhost:${PORT}`);
-      console.log(`📝 Endpoints disponibles:`);
-      console.log(`   AUTH:`);
-      console.log(`   POST /api/auth/request-user - Solicitar creación de usuario`);
-      console.log(`   GET  /api/auth/request-status/:username - Verificar estado de solicitud`);
-      console.log(`   POST /api/auth/login - Login`);
-      console.log(`   GET  /api/auth/me - Obtener perfil (requiere autenticación)`);
-      console.log(`   GET  /api/auth/admin/requests - Listar solicitudes (admin)`);
-      console.log(`   POST /api/auth/admin/requests/:id/approve - Aprobar solicitud (admin)`);
-      console.log(`   POST /api/auth/admin/requests/:id/reject - Rechazar solicitud (admin)`);
-      console.log(`   OPTICS:`);
-      console.log(`   GET  /api/optics - Listar ópticas (admin)`);
-      console.log(`   POST /api/optics - Crear óptica (admin)`);
-      console.log(`   GET  /api/optics/:id - Obtener óptica`);
-      console.log(`   PUT  /api/optics/:id - Actualizar óptica (admin)`);
-      console.log(`   DELETE /api/optics/:id - Eliminar óptica (admin)`);
-      console.log(`   CLIENTS:`);
-      console.log(`   GET  /api/clients - Listar clientes (con paginación y búsqueda)`);
-      console.log(`   POST /api/clients - Crear cliente`);
-      console.log(`   GET  /api/clients/:id - Obtener cliente`);
-      console.log(`   PUT  /api/clients/:id - Actualizar cliente`);
-      console.log(`   DELETE /api/clients/:id - Eliminar cliente`);
-      console.log(`   PRODUCTS:`);
-      console.log(`   GET  /api/products - Listar productos (con paginación y búsqueda)`);
-      console.log(`   POST /api/products - Crear producto`);
-      console.log(`   GET  /api/products/:id - Obtener producto`);
-      console.log(`   PUT  /api/products/:id - Actualizar producto`);
-      console.log(`   DELETE /api/products/:id - Eliminar producto`);
-      console.log(`   SALES:`);
-      console.log(`   GET  /api/sales - Listar ventas (con paginación y búsqueda)`);
-      console.log(`   POST /api/sales - Crear venta con productos y ficha técnica`);
-      console.log(`   GET  /api/sales/:id - Obtener venta con productos`);
-      console.log(`   PUT  /api/sales/:id - Actualizar venta`);
-      console.log(`   DELETE /api/sales/:id - Eliminar venta`);
-      console.log(`   DASHBOARD:`);
-      console.log(`   GET  /api/dashboard/stats - Obtener estadísticas`);
-      console.log(`   GET  /api/dashboard/config - Obtener configuración del dashboard`);
-      console.log(`   PUT  /api/dashboard/config - Actualizar configuración del dashboard`);
-      console.log(`   IMAGES:`);
-      console.log(`   GET  /api/images/drive - Proxy para imágenes de Google Drive (resuelve CORS)`);
+      console.log('   Rutas: /health y /api/{auth,optics,clients,products,sales,dashboard,images,suppliers,import,reports}');
     });
   } catch (error) {
     console.error('Error al iniciar el servidor:', error);
@@ -104,4 +77,3 @@ async function startServer() {
 }
 
 startServer();
-

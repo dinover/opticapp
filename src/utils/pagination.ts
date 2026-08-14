@@ -9,15 +9,29 @@ export function buildPaginationQuery(
   const limit = params.limit || 10;
   const offset = (page - 1) * limit;
   const search = params.search?.trim();
-  const sortBy = params.sortBy || 'id';
-  const sortOrder = params.sortOrder || 'DESC';
+
+  const ALLOWED_SORT_COLUMNS = [
+    'id', 'name', 'created_at', 'updated_at', 'price', 'quantity',
+    'total_price', 'sale_date', 'email', 'phone',
+  ];
+  const ALLOWED_SORT_ORDERS = ['ASC', 'DESC'];
+
+  const requestedSortBy = params.sortBy;
+  const sortBy = requestedSortBy && ALLOWED_SORT_COLUMNS.includes(requestedSortBy)
+    ? requestedSortBy
+    : 'id';
+
+  const requestedSortOrder = params.sortOrder?.toUpperCase();
+  const sortOrder = requestedSortOrder && ALLOWED_SORT_ORDERS.includes(requestedSortOrder)
+    ? requestedSortOrder
+    : 'DESC';
 
   let query = baseQuery;
   const queryParams: any[] = [];
 
   // Agregar búsqueda si existe
   if (search && searchFields.length > 0) {
-    const searchConditions = searchFields.map(field => `${field} LIKE ?`).join(' OR ');
+    const searchConditions = searchFields.map(field => `${field} ILIKE ?`).join(' OR ');
     query += query.includes('WHERE') ? ` AND (${searchConditions})` : ` WHERE (${searchConditions})`;
     const searchPattern = `%${search}%`;
     queryParams.push(...searchFields.map(() => searchPattern));
@@ -41,7 +55,7 @@ export async function getPaginationMeta(
 ): Promise<{ total: number; totalPages: number }> {
   const { getRow } = await import('../config/database');
   const result = await getRow<{ count: number }>(countQuery, countParams);
-  const total = result?.count || 0;
+  const total = Number(result?.count) || 0;
   const totalPages = Math.ceil(total / limit);
 
   return { total, totalPages };

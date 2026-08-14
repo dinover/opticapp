@@ -3,6 +3,7 @@ import Layout from '../components/Layout';
 import { suppliersService } from '../services/suppliers';
 import { Supplier } from '../types';
 import api from '../services/api';
+import { useToast } from '../contexts/ToastContext';
 import {
   ArrowUpTrayIcon,
   DocumentCheckIcon,
@@ -16,6 +17,9 @@ type UploadState = 'idle' | 'dragging' | 'selected' | 'uploading' | 'success' | 
 interface ImportResult {
   message: string;
   created: number;
+  /** Productos que ya existían (mismo nombre y proveedor) y se actualizaron
+      en vez de duplicarse. */
+  updated: number;
   skipped: number;
   sinPrecio: number;
   errors?: string[];
@@ -29,6 +33,7 @@ const ImportPage: React.FC = () => {
   const [result, setResult] = useState<ImportResult | null>(null);
   const [errorMsg, setErrorMsg] = useState('');
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const toast = useToast();
 
   useEffect(() => {
     suppliersService.getAll().then(setSuppliers).catch(() => {});
@@ -81,9 +86,12 @@ const ImportPage: React.FC = () => {
 
       setResult(response.data);
       setUploadState('success');
+      toast.success(response.data.message || 'Importación completada');
     } catch (err: any) {
-      setErrorMsg(err.response?.data?.error || 'Error al procesar el archivo');
+      const message = err.response?.data?.error || 'Error al procesar el archivo';
+      setErrorMsg(message);
       setUploadState('error');
+      toast.error(message);
     }
   };
 
@@ -143,13 +151,22 @@ const ImportPage: React.FC = () => {
           onDragOver={onDragOver}
           onDragLeave={onDragLeave}
           onClick={() => !isUploading && !isSuccess && fileInputRef.current?.click()}
+          role="button"
+          tabIndex={isUploading || isSuccess ? -1 : 0}
+          aria-label="Seleccionar archivo Excel para importar"
+          onKeyDown={e => {
+            if ((e.key === 'Enter' || e.key === ' ') && !isUploading && !isSuccess) {
+              e.preventDefault();
+              fileInputRef.current?.click();
+            }
+          }}
           style={{
-            border: `2px dashed ${isDragging ? '#4f46e5' : isSuccess ? '#10b981' : isError ? '#ef4444' : 'var(--border)'}`,
+            border: `2px dashed ${isDragging ? 'var(--brand)' : isSuccess ? 'var(--success)' : isError ? 'var(--danger)' : 'var(--border)'}`,
             borderRadius: 14,
             padding: '3rem 2rem',
             textAlign: 'center',
             cursor: isUploading || isSuccess ? 'default' : 'pointer',
-            background: isDragging ? '#eef2ff' : isSuccess ? '#f0fdf4' : 'var(--surface)',
+            background: isDragging || isSuccess ? 'var(--surface-2)' : 'var(--surface)',
             transition: 'all .2s',
             position: 'relative',
           }}
@@ -170,13 +187,13 @@ const ImportPage: React.FC = () => {
             </div>
           ) : isSuccess ? (
             <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '.75rem' }}>
-              <CheckCircleIcon style={{ width: 44, height: 44, color: '#10b981' }} />
-              <p style={{ margin: 0, fontWeight: 700, color: '#065f46', fontSize: '1.05rem' }}>Importación exitosa</p>
+              <CheckCircleIcon style={{ width: 44, height: 44, color: 'var(--success)' }} />
+              <p style={{ margin: 0, fontWeight: 700, color: 'var(--success)', fontSize: '1.05rem' }}>Importación exitosa</p>
               <p style={{ margin: 0, fontSize: '.875rem', color: 'var(--text-secondary)' }}>{file?.name}</p>
             </div>
           ) : file ? (
             <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '.75rem' }}>
-              <DocumentCheckIcon style={{ width: 44, height: 44, color: '#4f46e5' }} />
+              <DocumentCheckIcon style={{ width: 44, height: 44, color: 'var(--brand)' }} />
               <p style={{ margin: 0, fontWeight: 600, color: 'var(--text-primary)', fontSize: '.95rem' }}>{file.name}</p>
               <p style={{ margin: 0, fontSize: '.8rem', color: 'var(--text-muted)' }}>
                 {(file.size / 1024).toFixed(1)} KB · Hacé clic para cambiar el archivo
@@ -186,18 +203,18 @@ const ImportPage: React.FC = () => {
             <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '.75rem' }}>
               <div style={{
                 width: 56, height: 56, borderRadius: '50%',
-                background: isDragging ? '#4f46e5' : 'var(--surface-3)',
+                background: isDragging ? 'var(--brand)' : 'var(--surface-3)',
                 display: 'flex', alignItems: 'center', justifyContent: 'center',
                 transition: 'background .2s',
               }}>
-                <ArrowUpTrayIcon style={{ width: 26, height: 26, color: isDragging ? '#fff' : '#4f46e5' }} />
+                <ArrowUpTrayIcon style={{ width: 26, height: 26, color: isDragging ? '#fff' : 'var(--brand)' }} />
               </div>
               <div>
                 <p style={{ margin: '0 0 .25rem', fontWeight: 600, color: 'var(--text-primary)' }}>
                   {isDragging ? 'Soltá el archivo aquí' : 'Arrastrá tu Excel aquí'}
                 </p>
                 <p style={{ margin: 0, fontSize: '.85rem', color: 'var(--text-muted)' }}>
-                  o <span style={{ color: '#4f46e5', fontWeight: 600 }}>hacé clic para seleccionar</span>
+                  o <span style={{ color: 'var(--brand)', fontWeight: 600 }}>hacé clic para seleccionar</span>
                 </p>
               </div>
               <p style={{ margin: 0, fontSize: '.78rem', color: 'var(--text-muted)' }}>Archivos .xlsx y .xls · Máximo 10 MB</p>
@@ -207,31 +224,37 @@ const ImportPage: React.FC = () => {
 
         {/* Error en el archivo */}
         {uploadState === 'error' && errorMsg && (
-          <div style={{ marginTop: '1rem', display: 'flex', gap: '.625rem', alignItems: 'flex-start', background: '#fef2f2', border: '1px solid #fecaca', borderRadius: 10, padding: '.875rem 1rem' }}>
-            <XCircleIcon style={{ width: 18, height: 18, color: '#ef4444', flexShrink: 0, marginTop: 1 }} />
-            <span style={{ fontSize: '.875rem', color: '#991b1b' }}>{errorMsg}</span>
+          <div role="alert" style={{ marginTop: '1rem', display: 'flex', gap: '.625rem', alignItems: 'flex-start', background: 'var(--surface)', border: '1px solid var(--danger)', borderRadius: 10, padding: '.875rem 1rem' }}>
+            <XCircleIcon style={{ width: 18, height: 18, color: 'var(--danger)', flexShrink: 0, marginTop: 1 }} />
+            <span style={{ fontSize: '.875rem', color: 'var(--text-primary)' }}>{errorMsg}</span>
           </div>
         )}
 
         {/* Resultado */}
         {result && (
-          <div style={{ marginTop: '1.25rem', background: '#f0fdf4', border: '1px solid #bbf7d0', borderRadius: 12, padding: '1rem 1.25rem' }}>
-            <p style={{ margin: '0 0 .5rem', fontWeight: 700, color: '#065f46', fontSize: '.95rem' }}>{result.message}</p>
-            <div style={{ display: 'flex', gap: '1.5rem', fontSize: '.85rem', color: '#047857', flexWrap: 'wrap' }}>
-              <span>Creados: <strong>{result.created}</strong></span>
-              {result.skipped > 0 && <span>Omitidos: <strong>{result.skipped}</strong></span>}
+          <div style={{ marginTop: '1.25rem', background: 'var(--surface)', border: '1px solid var(--success)', borderRadius: 12, padding: '1rem 1.25rem' }}>
+            <p style={{ margin: '0 0 .5rem', fontWeight: 700, color: 'var(--success)', fontSize: '.95rem' }}>{result.message}</p>
+            <div style={{ display: 'flex', gap: '1.5rem', fontSize: '.85rem', color: 'var(--text-secondary)', flexWrap: 'wrap' }}>
+              <span>Creados: <strong style={{ color: 'var(--text-primary)' }}>{result.created}</strong></span>
+              {result.updated > 0 && (
+                <span>
+                  Actualizados: <strong style={{ color: 'var(--text-primary)' }}>{result.updated}</strong>
+                  {' '}— ya existían y se les actualizó stock y precio
+                </span>
+              )}
+              {result.skipped > 0 && <span>Omitidos: <strong style={{ color: 'var(--text-primary)' }}>{result.skipped}</strong></span>}
               {result.sinPrecio > 0 && (
-                <span style={{ color: '#b45309' }}>
+                <span style={{ color: 'var(--warning)' }}>
                   Sin precio: <strong>{result.sinPrecio}</strong> — podés editarlos en Productos
                 </span>
               )}
             </div>
             {result.errors && result.errors.length > 0 && (
               <details style={{ marginTop: '.75rem' }}>
-                <summary style={{ fontSize: '.8rem', color: '#b45309', cursor: 'pointer' }}>
+                <summary style={{ fontSize: '.8rem', color: 'var(--warning)', cursor: 'pointer' }}>
                   {result.errors.length} fila{result.errors.length !== 1 ? 's' : ''} con error
                 </summary>
-                <ul style={{ margin: '.5rem 0 0', padding: '0 0 0 1.25rem', fontSize: '.78rem', color: '#92400e' }}>
+                <ul style={{ margin: '.5rem 0 0', padding: '0 0 0 1.25rem', fontSize: '.78rem', color: 'var(--text-secondary)' }}>
                   {result.errors.map((e, i) => <li key={i}>{e}</li>)}
                 </ul>
               </details>

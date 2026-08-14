@@ -40,19 +40,19 @@ const LoginPage: React.FC = () => {
       display: 'flex',
       alignItems: 'center',
       justifyContent: 'center',
-      background: '#f8fafc',
+      background: 'var(--surface-2)',
       position: 'relative',
       overflow: 'hidden',
     }}>
-      {/* Background decoration */}
+      {/* Background decoration: tinte de marca translúcido, funciona en claro y oscuro */}
       <div style={{
         position: 'absolute', inset: 0, pointerEvents: 'none',
-        background: 'radial-gradient(ellipse 80% 60% at 60% -10%, #e0e7ff 0%, transparent 70%)',
+        background: 'radial-gradient(ellipse 80% 60% at 60% -10%, rgba(79,70,229,.14) 0%, transparent 70%)',
       }} />
       <div style={{
         position: 'absolute', bottom: '-10%', left: '-5%',
         width: 400, height: 400, borderRadius: '50%',
-        background: 'radial-gradient(circle, #ede9fe 0%, transparent 70%)',
+        background: 'radial-gradient(circle, rgba(124,58,237,.12) 0%, transparent 70%)',
         pointerEvents: 'none',
       }} />
 
@@ -89,17 +89,17 @@ const LoginPage: React.FC = () => {
                 <circle cx="12" cy="12" r="3"/><path d="M20.188 10.934c.388.472.388 1.16 0 1.632C18.768 14.35 15.636 18 12 18c-3.636 0-6.768-3.65-8.188-5.434a1.3 1.3 0 0 1 0-1.632C5.232 9.65 8.364 6 12 6c3.636 0 6.768 3.65 8.188 5.434z"/>
               </svg>
             </div>
-            <span style={{ fontWeight: 800, fontSize: '1.25rem', color: '#0f172a' }}>OpticApp</span>
+            <span style={{ fontWeight: 800, fontSize: '1.25rem', color: 'var(--text-primary)' }}>OpticApp</span>
           </div>
 
           <h1 style={{
-            fontSize: '2.25rem', fontWeight: 800, color: '#0f172a',
+            fontSize: '2.25rem', fontWeight: 800, color: 'var(--text-primary)',
             lineHeight: 1.15, marginBottom: '1rem',
           }}>
             Gestión de óptica<br />
-            <span style={{ color: '#4f46e5' }}>simplificada.</span>
+            <span style={{ color: 'var(--brand)' }}>simplificada.</span>
           </h1>
-          <p style={{ color: '#64748b', fontSize: '1rem', lineHeight: 1.7 }}>
+          <p style={{ color: 'var(--text-secondary)', fontSize: '1rem', lineHeight: 1.7 }}>
             Clientes, productos, ventas y fichas ópticas en un solo lugar.
           </p>
 
@@ -108,13 +108,13 @@ const LoginPage: React.FC = () => {
             <div key={f} style={{ display: 'flex', alignItems: 'center', gap: 10, marginTop: '1rem' }}>
               <div style={{
                 width: 20, height: 20, borderRadius: 99,
-                background: '#ede9fe', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0,
+                background: 'var(--surface-3)', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0,
               }}>
                 <svg width="10" height="10" viewBox="0 0 12 12" fill="none">
-                  <path d="M2 6l3 3 5-5" stroke="#4f46e5" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"/>
+                  <path d="M2 6l3 3 5-5" stroke="var(--brand)" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"/>
                 </svg>
               </div>
-              <span style={{ fontSize: '.875rem', color: '#475569' }}>{f}</span>
+              <span style={{ fontSize: '.875rem', color: 'var(--text-secondary)' }}>{f}</span>
             </div>
           ))}
         </div>
@@ -125,11 +125,11 @@ const LoginPage: React.FC = () => {
         flex: '0 0 auto',
         width: '100%',
         maxWidth: 400,
-        background: '#fff',
-        border: '1px solid #e2e8f0',
+        background: 'var(--surface)',
+        border: '1px solid var(--border)',
         borderRadius: 20,
         padding: '2.5rem',
-        boxShadow: '0 8px 32px rgba(15,23,42,.08)',
+        boxShadow: 'var(--shadow-lg)',
       }}>
           {/* Logo mobile */}
           <div className="flex lg:hidden items-center gap-2 mb-6">
@@ -142,23 +142,23 @@ const LoginPage: React.FC = () => {
                 <circle cx="12" cy="12" r="3"/><path d="M20.188 10.934c.388.472.388 1.16 0 1.632C18.768 14.35 15.636 18 12 18c-3.636 0-6.768-3.65-8.188-5.434a1.3 1.3 0 0 1 0-1.632C5.232 9.65 8.364 6 12 6c3.636 0 6.768 3.65 8.188 5.434z"/>
               </svg>
             </div>
-            <span style={{ fontWeight: 800, fontSize: '1rem', color: '#0f172a' }}>OpticApp</span>
+            <span style={{ fontWeight: 800, fontSize: '1rem', color: 'var(--text-primary)' }}>OpticApp</span>
           </div>
 
-          <h2 style={{ fontWeight: 800, fontSize: '1.375rem', color: '#0f172a', margin: '0 0 .375rem' }}>
+          <h2 style={{ fontWeight: 800, fontSize: '1.375rem', color: 'var(--text-primary)', margin: '0 0 .375rem' }}>
             Iniciar sesión
           </h2>
-          <p style={{ color: '#64748b', fontSize: '.875rem', marginBottom: '1.75rem' }}>
+          <p style={{ color: 'var(--text-secondary)', fontSize: '.875rem', marginBottom: '1.75rem' }}>
             Ingresá tus credenciales para continuar
           </p>
 
           {error && (
-            <div style={{
-              background: licenseExpired ? '#fffbeb' : '#fef2f2',
-              border: `1px solid ${licenseExpired ? '#fde68a' : '#fecaca'}`,
+            <div role="alert" style={{
+              background: 'var(--surface-2)',
+              border: `1px solid ${licenseExpired ? 'var(--warning)' : 'var(--danger)'}`,
               borderRadius: 10, padding: '0.875rem 1rem',
               marginBottom: '1.25rem', fontSize: '.875rem',
-              color: licenseExpired ? '#92400e' : '#991b1b',
+              color: licenseExpired ? 'var(--warning)' : 'var(--danger)',
             }}>
               <div style={{ display: 'flex', alignItems: 'center', gap: 8, fontWeight: 600, marginBottom: licenseExpired ? 4 : 0 }}>
                 <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
@@ -167,7 +167,7 @@ const LoginPage: React.FC = () => {
                 {licenseExpired ? 'Licencia vencida' : error}
               </div>
               {licenseExpired && (
-                <p style={{ margin: 0, fontSize: '.8rem', color: '#b45309' }}>{error}</p>
+                <p style={{ margin: 0, fontSize: '.8rem', color: 'var(--text-secondary)' }}>{error}</p>
               )}
             </div>
           )}
@@ -199,7 +199,8 @@ const LoginPage: React.FC = () => {
               disabled={loading}
               style={{
                 width: '100%', padding: '.75rem',
-                background: loading ? '#a5b4fc' : '#4f46e5',
+                background: 'var(--brand)',
+                opacity: loading ? .6 : 1,
                 color: '#fff', fontWeight: 700, fontSize: '.9rem',
                 border: 'none', borderRadius: 10, cursor: loading ? 'not-allowed' : 'pointer',
                 marginTop: '.25rem', transition: 'all .15s',
@@ -212,9 +213,9 @@ const LoginPage: React.FC = () => {
             </button>
           </form>
 
-          <p style={{ textAlign: 'center', marginTop: '1.5rem', fontSize: '.875rem', color: '#64748b' }}>
+          <p style={{ textAlign: 'center', marginTop: '1.5rem', fontSize: '.875rem', color: 'var(--text-secondary)' }}>
             ¿No tenés cuenta?{' '}
-            <Link to="/request-user" style={{ color: '#4f46e5', fontWeight: 600, textDecoration: 'none' }}>
+            <Link to="/request-user" style={{ color: 'var(--brand)', fontWeight: 600, textDecoration: 'none' }}>
               Solicitá acceso
             </Link>
           </p>

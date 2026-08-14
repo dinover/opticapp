@@ -1,5 +1,6 @@
 import { Request, Response, NextFunction } from 'express';
 import jwt from 'jsonwebtoken';
+import { JWT_SECRET } from '../config/env';
 
 export interface AuthRequest extends Request {
   user?: {
@@ -7,7 +8,15 @@ export interface AuthRequest extends Request {
     username: string;
     email: string;
     role: string;
+    optics_id: number | null;
   };
+}
+
+// La óptica del usuario ya viaja en el JWT (ver routes/auth.ts login) — resolverla
+// acá evita que cada router tenga que volver a consultar la tabla users en cada
+// request solo para saber en qué óptica opera.
+export function getOpticsScope(user: NonNullable<AuthRequest['user']>): number | null {
+  return user.role === 'admin' ? null : (user.optics_id ?? null);
 }
 
 export function authenticateToken(req: AuthRequest, res: Response, next: NextFunction) {
@@ -19,12 +28,18 @@ export function authenticateToken(req: AuthRequest, res: Response, next: NextFun
     return res.status(401).json({ error: 'Token de autenticación requerido' });
   }
 
-  const jwtSecret = process.env.JWT_SECRET || 'default_secret_change_in_production';
-  
-  jwt.verify(token, jwtSecret, (err: any, user: any) => {
+  jwt.verify(token, JWT_SECRET, (err: any, user: any) => {
     if (err) {
       return res.status(403).json({ error: 'Token inválido o expirado' });
     }
+
+    // Tokens emitidos antes de incluir optics_id en el payload no lo traen.
+    // No asumir null (eso significaría "sin restricción" para un usuario no-admin,
+    // reabriendo el bug de fuga entre ópticas) — mejor pedir que vuelva a loguearse.
+    if (user.role !== 'admin' && user.optics_id === undefined) {
+      return res.status(401).json({ error: 'Tu sesión es de una versión anterior. Volvé a iniciar sesión.' });
+    }
+
     req.user = user;
     next();
   });

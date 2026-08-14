@@ -1,8 +1,89 @@
 import { Resend } from 'resend';
+import nodemailer, { Transporter } from 'nodemailer';
 
-const resend = new Resend(process.env.RESEND_API_KEY);
+/**
+ * El envío de emails soporta dos transportes y elige solo según las variables
+ * de entorno que estén configuradas:
+ *
+ *   1. SMTP (Gmail u otro)  — si están SMTP_USER y SMTP_PASS.
+ *   2. Resend               — si está RESEND_API_KEY.
+ *   3. Ninguno              — se registra un aviso y la app sigue andando.
+ *
+ * Son excluyentes por un motivo concreto: Resend NO permite enviar desde una
+ * dirección @gmail.com (exige un dominio propio verificado). Si la casilla de
+ * envío es un Gmail, el transporte tiene que ser SMTP.
+ *
+ * Importante: los clientes se crean de forma perezosa. El constructor de
+ * Resend lanza si la API key falta, y como este módulo se importa desde las
+ * rutas (y por lo tanto desde la app entera), esa excepción tumbaba el arranque
+ * del servidor completo cuando la variable no estaba configurada.
+ */
 
-const FROM = 'OpticApp <onboarding@resend.dev>';
+type EmailPayload = { from: string; to: string; subject: string; html: string };
+
+let resendClient: Resend | null = null;
+let smtpTransport: Transporter | null = null;
+
+function getSmtpTransport(): Transporter | null {
+  if (smtpTransport) return smtpTransport;
+
+  const user = process.env.SMTP_USER;
+  const pass = process.env.SMTP_PASS;
+  if (!user || !pass) return null;
+
+  try {
+    smtpTransport = nodemailer.createTransport({
+      host: process.env.SMTP_HOST || 'smtp.gmail.com',
+      port: Number(process.env.SMTP_PORT) || 465,
+      secure: (process.env.SMTP_PORT || '465') === '465',
+      auth: { user, pass },
+    });
+    return smtpTransport;
+  } catch (error) {
+    console.error('[emailService] No se pudo inicializar el transporte SMTP:', error);
+    return null;
+  }
+}
+
+function getResend(): Resend | null {
+  if (resendClient) return resendClient;
+
+  const apiKey = process.env.RESEND_API_KEY;
+  if (!apiKey) return null;
+
+  try {
+    resendClient = new Resend(apiKey);
+    return resendClient;
+  } catch (error) {
+    console.error('[emailService] No se pudo inicializar Resend:', error);
+    return null;
+  }
+}
+
+/** Envía por el transporte que esté configurado; si no hay ninguno, avisa y sigue. */
+async function send(payload: EmailPayload) {
+  const smtp = getSmtpTransport();
+  if (smtp) {
+    await smtp.sendMail(payload);
+    return;
+  }
+
+  const resend = getResend();
+  if (resend) {
+    await resend.emails.send(payload);
+    return;
+  }
+
+  console.warn(
+    `[emailService] Sin transporte configurado (falta SMTP_USER/SMTP_PASS o RESEND_API_KEY): ` +
+    `no se envió "${payload.subject}" a ${payload.to}`
+  );
+}
+
+// En producción, EMAIL_FROM debe apuntar a un dominio verificado en Resend
+// (Settings → Domains): con el dominio de pruebas onboarding@resend.dev los
+// emails solo le llegan al dueño de la cuenta de Resend, nunca a clientes reales.
+const FROM = process.env.EMAIL_FROM || 'OpticApp <onboarding@resend.dev>';
 const ADMIN_EMAIL = process.env.ADMIN_EMAIL || 'davo1995@gmail.com';
 const APP_URL = process.env.APP_URL || 'https://opticapp.onrender.com';
 
@@ -43,7 +124,7 @@ export async function sendNewUserNotificationToAdmin(data: {
   trial_expires_at: Date;
 }) {
   try {
-    await resend.emails.send({
+    await send({
       from: FROM,
       to: ADMIN_EMAIL,
       subject: `[OpticApp] Nueva solicitud de cuenta — ${data.username}`,
@@ -100,7 +181,7 @@ export async function sendApprovalEmail(data: {
   license_expires_at: Date;
 }) {
   try {
-    await resend.emails.send({
+    await send({
       from: FROM,
       to: data.to,
       subject: `[OpticApp] ¡Tu cuenta fue aprobada!`,
@@ -147,7 +228,7 @@ export async function sendRejectionEmail(data: {
   username: string;
 }) {
   try {
-    await resend.emails.send({
+    await send({
       from: FROM,
       to: data.to,
       subject: `[OpticApp] Solicitud de cuenta revisada`,
@@ -188,7 +269,7 @@ export async function sendLicenseExtendedEmail(data: {
   license_expires_at: Date;
 }) {
   try {
-    await resend.emails.send({
+    await send({
       from: FROM,
       to: data.to,
       subject: `[OpticApp] Tu licencia fue renovada`,

@@ -1,23 +1,13 @@
 import express, { Request, Response } from 'express';
-import { authenticateToken, AuthRequest } from '../middleware/auth';
+import { authenticateToken, AuthRequest, getOpticsScope } from '../middleware/auth';
+import { validateBody } from '../middleware/validate';
+import { createProductSchema, updateProductSchema } from '../schemas';
 import { getRow, getRows, runQuery } from '../config/database';
 import { Product, PaginationParams, PaginatedResponse } from '../types';
 import { buildPaginationQuery, getPaginationMeta, createPaginatedResponse } from '../utils/pagination';
 import { logDeletion } from '../utils/deletion-log';
 
 const router = express.Router();
-
-// Obtener óptica del usuario autenticado
-async function getUserOpticsId(userId: number, userRole: string): Promise<number | null> {
-  if (userRole === 'admin') {
-    return null; // Admin puede ver todas las ópticas
-  }
-  const user = await getRow<{ optics_id: number | null }>(
-    'SELECT optics_id FROM users WHERE id = ?',
-    [userId]
-  );
-  return user?.optics_id || null;
-}
 
 // Listar productos con paginación y búsqueda
 router.get('/', authenticateToken, async (req: AuthRequest, res: Response) => {
@@ -27,7 +17,7 @@ router.get('/', authenticateToken, async (req: AuthRequest, res: Response) => {
       return res.status(401).json({ error: 'Usuario no autenticado' });
     }
 
-    const opticsId = await getUserOpticsId(user.id, user.role);
+    const opticsId = getOpticsScope(user);
     const paginationParams: PaginationParams = {
       page: parseInt(req.query.page as string) || 1,
       limit: parseInt(req.query.limit as string) || 10,
@@ -59,7 +49,7 @@ router.get('/', authenticateToken, async (req: AuthRequest, res: Response) => {
 
     // Ajustar count query con búsqueda
     if (paginationParams.search) {
-      const searchConditions = searchFields.map(field => `${field} LIKE ?`).join(' OR ');
+      const searchConditions = searchFields.map(field => `${field} ILIKE ?`).join(' OR ');
       countQuery += ` AND (${searchConditions})`;
       const searchPattern = `%${paginationParams.search}%`;
       countParams.push(...searchFields.map(() => searchPattern));
@@ -100,7 +90,7 @@ router.get('/:id', authenticateToken, async (req: AuthRequest, res: Response) =>
       return res.status(404).json({ error: 'Producto no encontrado' });
     }
 
-    const opticsId = await getUserOpticsId(user.id, user.role);
+    const opticsId = getOpticsScope(user);
     if (opticsId !== null && product.optics_id !== opticsId) {
       return res.status(403).json({ error: 'No tienes acceso a este producto' });
     }
@@ -113,7 +103,7 @@ router.get('/:id', authenticateToken, async (req: AuthRequest, res: Response) =>
 });
 
 // Crear producto
-router.post('/', authenticateToken, async (req: AuthRequest, res: Response) => {
+router.post('/', authenticateToken, validateBody(createProductSchema), async (req: AuthRequest, res: Response) => {
   try {
     const user = req.user;
     if (!user) {
@@ -126,8 +116,10 @@ router.post('/', authenticateToken, async (req: AuthRequest, res: Response) => {
       return res.status(400).json({ error: 'El nombre del producto es requerido' });
     }
 
-    const opticsId = optics_id || (await getUserOpticsId(user.id, user.role));
-    
+    const opticsId = (user.role === 'admin' && optics_id)
+      ? optics_id
+      : getOpticsScope(user);
+
     if (opticsId === null) {
       return res.status(400).json({ error: 'No se pudo determinar la óptica. Se requiere optics_id.' });
     }
@@ -145,7 +137,8 @@ router.post('/', authenticateToken, async (req: AuthRequest, res: Response) => {
 
     const result = await runQuery(
       `INSERT INTO products (optics_id, name, price, quantity, description, image_url)
-       VALUES (?, ?, ?, ?, ?, ?)`,
+       VALUES (?, ?, ?, ?, ?, ?)
+       RETURNING id`,
       [opticsId, name.trim(), productPrice, productQuantity, description || null, image_url || null]
     );
 
@@ -162,7 +155,7 @@ router.post('/', authenticateToken, async (req: AuthRequest, res: Response) => {
 });
 
 // Actualizar producto
-router.put('/:id', authenticateToken, async (req: AuthRequest, res: Response) => {
+router.put('/:id', authenticateToken, validateBody(updateProductSchema), async (req: AuthRequest, res: Response) => {
   try {
     const id = parseInt(req.params.id);
     const user = req.user;
@@ -185,7 +178,7 @@ router.put('/:id', authenticateToken, async (req: AuthRequest, res: Response) =>
       return res.status(404).json({ error: 'Producto no encontrado' });
     }
 
-    const opticsId = await getUserOpticsId(user.id, user.role);
+    const opticsId = getOpticsScope(user);
     if (opticsId !== null && existing.optics_id !== opticsId) {
       return res.status(403).json({ error: 'No tienes acceso a este producto' });
     }
@@ -234,7 +227,7 @@ router.delete('/:id', authenticateToken, async (req: AuthRequest, res: Response)
       return res.status(404).json({ error: 'Producto no encontrado' });
     }
 
-    const opticsId = await getUserOpticsId(user.id, user.role);
+    const opticsId = getOpticsScope(user);
     if (opticsId !== null && existing.optics_id !== opticsId) {
       return res.status(403).json({ error: 'No tienes acceso a este producto' });
     }

@@ -1,21 +1,18 @@
 import express, { Request, Response } from 'express';
-import { authenticateToken, AuthRequest } from '../middleware/auth';
+import { authenticateToken, AuthRequest, getOpticsScope } from '../middleware/auth';
+import { validateBody } from '../middleware/validate';
+import { dashboardConfigSchema } from '../schemas';
 import { getRow, getRows, runQuery } from '../config/database';
 import { DashboardConfig } from '../types';
 
 const router = express.Router();
 
-// Obtener óptica del usuario autenticado
-async function getUserOpticsId(userId: number, userRole: string): Promise<number | null> {
-  if (userRole === 'admin') {
-    return null; // Admin puede ver todas las ópticas
-  }
-  const user = await getRow<{ optics_id: number | null }>(
-    'SELECT optics_id FROM users WHERE id = ?',
-    [userId]
-  );
-  return user?.optics_id || null;
-}
+// Caché simple en memoria para /stats, por óptica, con TTL corto.
+// Limitación conocida y aceptable para el tamaño actual de la app: no sobrevive
+// un restart del proceso ni se comparte entre instancias si en el futuro se
+// escala a múltiples procesos/dynos.
+const STATS_CACHE_TTL_MS = 45 * 1000; // 45 segundos
+const statsCache = new Map<string, { data: any; expiresAt: number }>();
 
 // Obtener estadísticas del dashboard
 router.get('/stats', authenticateToken, async (req: AuthRequest, res: Response) => {
@@ -25,7 +22,12 @@ router.get('/stats', authenticateToken, async (req: AuthRequest, res: Response) 
       return res.status(401).json({ error: 'Usuario no autenticado' });
     }
 
-    const opticsId = await getUserOpticsId(user.id, user.role);
+    const opticsId = getOpticsScope(user);
+    const cacheKey = opticsId === null ? 'admin' : String(opticsId);
+    const cached = statsCache.get(cacheKey);
+    if (cached && cached.expiresAt > Date.now()) {
+      return res.json(cached.data);
+    }
 
     // Total de ventas
     const salesCondition = opticsId !== null ? 'AND s.optics_id = ?' : '';
@@ -145,7 +147,7 @@ router.get('/stats', authenticateToken, async (req: AuthRequest, res: Response) 
       salesParams
     );
 
-    res.json({
+    const responseData = {
       totalSales,
       totalRevenue: Number(totalRevenue) || 0,
       totalClients,
@@ -154,7 +156,14 @@ router.get('/stats', authenticateToken, async (req: AuthRequest, res: Response) 
       monthRevenue: Number(monthRevenue) || 0,
       topProducts,
       recentSales,
+    };
+
+    statsCache.set(cacheKey, {
+      data: responseData,
+      expiresAt: Date.now() + STATS_CACHE_TTL_MS,
     });
+
+    res.json(responseData);
   } catch (error: any) {
     console.error('Error al obtener estadísticas:', error);
     res.status(500).json({ error: 'Error interno del servidor' });
@@ -169,7 +178,7 @@ router.get('/config', authenticateToken, async (req: AuthRequest, res: Response)
       return res.status(401).json({ error: 'Usuario no autenticado' });
     }
 
-    const opticsId = await getUserOpticsId(user.id, user.role);
+    const opticsId = getOpticsScope(user);
     
     if (opticsId === null) {
       return res.status(400).json({ error: 'No se pudo determinar la óptica' });
@@ -199,7 +208,8 @@ router.get('/config', authenticateToken, async (req: AuthRequest, res: Response)
 
       const result = await runQuery(
         `INSERT INTO dashboard_config (user_id, optics_id, sections_visible)
-         VALUES (?, ?, ?)`,
+         VALUES (?, ?, ?)
+         RETURNING id`,
         [defaultConfig.user_id, defaultConfig.optics_id, defaultConfig.sections_visible]
       );
 
@@ -219,7 +229,7 @@ router.get('/config', authenticateToken, async (req: AuthRequest, res: Response)
 });
 
 // Actualizar configuración del dashboard
-router.put('/config', authenticateToken, async (req: AuthRequest, res: Response) => {
+router.put('/config', authenticateToken, validateBody(dashboardConfigSchema), async (req: AuthRequest, res: Response) => {
   try {
     const user = req.user;
     if (!user) {
@@ -228,7 +238,7 @@ router.put('/config', authenticateToken, async (req: AuthRequest, res: Response)
 
     const { sections_visible } = req.body;
 
-    const opticsId = await getUserOpticsId(user.id, user.role);
+    const opticsId = getOpticsScope(user);
     
     if (opticsId === null) {
       return res.status(400).json({ error: 'No se pudo determinar la óptica' });
@@ -253,7 +263,8 @@ router.put('/config', authenticateToken, async (req: AuthRequest, res: Response)
     } else {
       await runQuery(
         `INSERT INTO dashboard_config (user_id, optics_id, sections_visible)
-         VALUES (?, ?, ?)`,
+         VALUES (?, ?, ?)
+         RETURNING id`,
         [user.id, opticsId, sectionsVisibleStr]
       );
     }

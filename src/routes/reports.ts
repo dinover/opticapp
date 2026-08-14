@@ -1,15 +1,9 @@
 import express, { Response } from 'express';
 import * as XLSX from 'xlsx';
-import { authenticateToken, AuthRequest } from '../middleware/auth';
+import { authenticateToken, AuthRequest, getOpticsScope } from '../middleware/auth';
 import { getRow, getRows } from '../config/database';
 
 const router = express.Router();
-
-async function getUserOpticsId(userId: number, userRole: string): Promise<number | null> {
-  if (userRole === 'admin') return null;
-  const user = await getRow<{ optics_id: number | null }>('SELECT optics_id FROM users WHERE id = ?', [userId]);
-  return user?.optics_id || null;
-}
 
 // GET /api/reports/products?supplier_id=X — Descargar Excel de armazones disponibles
 router.get('/products', authenticateToken, async (req: AuthRequest, res: Response) => {
@@ -17,7 +11,7 @@ router.get('/products', authenticateToken, async (req: AuthRequest, res: Respons
     const user = req.user;
     if (!user) return res.status(401).json({ error: 'Usuario no autenticado' });
 
-    const opticsId = await getUserOpticsId(user.id, user.role);
+    const opticsId = getOpticsScope(user);
     const supplierIdParam = req.query.supplier_id as string | undefined;
 
     let query = `

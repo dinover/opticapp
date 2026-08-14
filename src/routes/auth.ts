@@ -1,9 +1,20 @@
 import express, { Request, Response } from 'express';
 import bcrypt from 'bcryptjs';
 import jwt from 'jsonwebtoken';
+import rateLimit from 'express-rate-limit';
 import { getRow, getRows, runQuery } from '../config/database';
+import { JWT_SECRET } from '../config/env';
 import { User, UserRequest, UserRequestCreate, LoginRequest, AuthResponse } from '../types';
-import { authenticateToken, requireAdmin, AuthRequest } from '../middleware/auth';
+import { authenticateToken, requireAdmin, AuthRequest, getOpticsScope } from '../middleware/auth';
+import { validateBody } from '../middleware/validate';
+import {
+  requestUserSchema,
+  loginSchema,
+  changePasswordSchema,
+  adminUpdateUserSchema,
+  createTeamUserSchema,
+} from '../schemas';
+import { addDays, getLicenseStatus, TRIAL_DAYS, LICENSE_DAYS } from '../utils/license';
 import {
   sendNewUserNotificationToAdmin,
   sendApprovalEmail,
@@ -12,32 +23,19 @@ import {
 } from '../utils/emailService';
 
 const router = express.Router();
-const JWT_SECRET = process.env.JWT_SECRET || 'default_secret_change_in_production';
-const TRIAL_DAYS = 7;
-const LICENSE_DAYS = 30;
 
-function addDays(date: Date, days: number): Date {
-  const d = new Date(date);
-  d.setDate(d.getDate() + days);
-  return d;
-}
-
-function getLicenseStatus(user: User): { blocked: boolean; reason?: string } {
-  const now = new Date();
-  if (user.license_type === 'trial') {
-    if (!user.trial_expires_at || now > new Date(user.trial_expires_at)) {
-      return { blocked: true, reason: 'Tu período de prueba de 7 días ha vencido. Contactá al administrador para activar tu licencia.' };
-    }
-  } else if (user.license_type === 'active') {
-    if (!user.license_expires_at || now > new Date(user.license_expires_at)) {
-      return { blocked: true, reason: 'Tu licencia ha vencido. Contactá al administrador para renovarla.' };
-    }
-  }
-  return { blocked: false };
-}
+// Sin esto, /login y /request-user quedan abiertos a fuerza bruta: nada
+// impedía probar contraseñas o crear cuentas en loop.
+const authLimiter = rateLimit({
+  windowMs: 15 * 60 * 1000,
+  limit: 20,
+  standardHeaders: true,
+  legacyHeaders: false,
+  message: { error: 'Demasiados intentos. Esperá unos minutos y volvé a intentar.' },
+});
 
 // Solicitar creación de usuario (crea la cuenta inmediatamente en modo trial)
-router.post('/request-user', async (req: Request, res: Response) => {
+router.post('/request-user', authLimiter, validateBody(requestUserSchema), async (req: Request, res: Response) => {
   try {
     const { username, email, password, optics_name }: UserRequestCreate = req.body;
 
@@ -66,22 +64,16 @@ router.post('/request-user', async (req: Request, res: Response) => {
       return res.status(400).json({ error: 'Ya existe una solicitud pendiente con este username o email' });
     }
 
-    // Crear o buscar la óptica
-    let optics = await getRow<any>('SELECT id FROM optics WHERE name = ? AND is_active = 1', [optics_name]);
-    let opticsId: number;
-
-    if (!optics) {
-      const result = await runQuery(
-        `INSERT INTO optics (name, is_active) VALUES (?, 1)`,
-        [optics_name]
-      );
-      if (!result.lastID) {
-        return res.status(500).json({ error: 'Error al crear la óptica' });
-      }
-      opticsId = result.lastID;
-    } else {
-      opticsId = optics.id;
+    // Crear la óptica (siempre nueva: el nombre no identifica una óptica existente,
+    // así que dos registros con el mismo nombre no deben terminar compartiendo datos)
+    const opticsResult = await runQuery(
+      `INSERT INTO optics (name, is_active) VALUES (?, 1)`,
+      [optics_name]
+    );
+    if (!opticsResult.lastID) {
+      return res.status(500).json({ error: 'Error al crear la óptica' });
     }
+    const opticsId = opticsResult.lastID;
 
     // Hash de la contraseña
     const hashedPassword = await bcrypt.hash(password, 10);
@@ -89,10 +81,10 @@ router.post('/request-user', async (req: Request, res: Response) => {
     // Calcular vencimiento del trial
     const trialExpiresAt = addDays(new Date(), TRIAL_DAYS);
 
-    // Crear usuario en modo trial
+    // Crear usuario en modo trial (primer y único usuario de la óptica nueva: es su 'owner')
     await runQuery(
       `INSERT INTO users (username, email, password, role, optics_id, license_type, trial_expires_at)
-       VALUES (?, ?, ?, 'user', ?, 'trial', ?)`,
+       VALUES (?, ?, ?, 'owner', ?, 'trial', ?)`,
       [username, email, hashedPassword, opticsId, trialExpiresAt.toISOString()]
     );
 
@@ -142,7 +134,7 @@ router.get('/request-status/:username', async (req: Request, res: Response) => {
 });
 
 // Login
-router.post('/login', async (req: Request, res: Response) => {
+router.post('/login', authLimiter, validateBody(loginSchema), async (req: Request, res: Response) => {
   try {
     const { username, password }: LoginRequest = req.body;
 
@@ -173,7 +165,7 @@ router.post('/login', async (req: Request, res: Response) => {
     }
 
     const token = jwt.sign(
-      { id: user.id, username: user.username, email: user.email, role: user.role },
+      { id: user.id, username: user.username, email: user.email, role: user.role, optics_id: user.optics_id || null },
       JWT_SECRET,
       { expiresIn: '24h' }
     );
@@ -302,19 +294,12 @@ router.post('/admin/requests/:id/approve', authenticateToken, requireAdmin, asyn
         return res.status(400).json({ error: 'La solicitud no tiene nombre de óptica especificado' });
       }
 
-      let optics = await getRow<any>('SELECT id FROM optics WHERE name = ? AND is_active = 1', [request.optics_name]);
-      let opticsId: number;
-
-      if (!optics) {
-        const result = await runQuery(
-          `INSERT INTO optics (name, is_active) VALUES (?, 1)`,
-          [request.optics_name]
-        );
-        if (!result.lastID) return res.status(500).json({ error: 'Error al crear la óptica' });
-        opticsId = result.lastID;
-      } else {
-        opticsId = optics.id;
-      }
+      const opticsResult = await runQuery(
+        `INSERT INTO optics (name, is_active) VALUES (?, 1)`,
+        [request.optics_name]
+      );
+      if (!opticsResult.lastID) return res.status(500).json({ error: 'Error al crear la óptica' });
+      const opticsId = opticsResult.lastID;
 
       await runQuery(
         `INSERT INTO users (username, email, password, role, optics_id, license_type, license_expires_at)
@@ -406,7 +391,7 @@ router.post('/admin/users/:id/extend', authenticateToken, requireAdmin, async (r
     const userId = parseInt(req.params.id);
 
     const user = await getRow<User>(
-      'SELECT id, username, email, license_type, license_expires_at FROM users WHERE id = ? AND is_active = 1',
+      'SELECT id, username, email, role, license_type, license_expires_at FROM users WHERE id = ? AND is_active = 1',
       [userId]
     );
 
@@ -438,7 +423,7 @@ router.post('/admin/users/:id/extend', authenticateToken, requireAdmin, async (r
 });
 
 // ADMIN: Editar usuario (username y/o contraseña)
-router.put('/admin/users/:id', authenticateToken, requireAdmin, async (req: AuthRequest, res: Response) => {
+router.put('/admin/users/:id', authenticateToken, requireAdmin, validateBody(adminUpdateUserSchema), async (req: AuthRequest, res: Response) => {
   try {
     const userId = parseInt(req.params.id);
     const { username, password } = req.body;
@@ -488,6 +473,179 @@ router.delete('/admin/users/:id', authenticateToken, requireAdmin, async (req: A
     res.json({ message: `Usuario "${user.username}" eliminado correctamente` });
   } catch (error: any) {
     console.error('Error al eliminar usuario:', error);
+    res.status(500).json({ error: 'Error interno del servidor' });
+  }
+});
+
+// OWNER: Listar usuarios activos de la propia óptica
+router.get('/team/users', authenticateToken, async (req: AuthRequest, res: Response) => {
+  try {
+    if (!req.user || req.user.role !== 'owner') {
+      return res.status(403).json({ error: 'Acceso denegado. Se requiere rol de dueño de óptica' });
+    }
+
+    const opticsId = getOpticsScope(req.user);
+
+    const users = await getRows<User>(
+      `SELECT id, username, email, role, is_active, license_type, created_at
+       FROM users WHERE optics_id = ? AND is_active = 1 ORDER BY username`,
+      [opticsId]
+    );
+
+    res.json(users);
+  } catch (error: any) {
+    console.error('Error al listar usuarios del equipo:', error);
+    res.status(500).json({ error: 'Error interno del servidor' });
+  }
+});
+
+// OWNER: Crear un usuario nuevo dentro de la propia óptica
+router.post('/team/users', authenticateToken, validateBody(createTeamUserSchema), async (req: AuthRequest, res: Response) => {
+  try {
+    if (!req.user || req.user.role !== 'owner') {
+      return res.status(403).json({ error: 'Acceso denegado. Se requiere rol de dueño de óptica' });
+    }
+
+    const { username, email, password } = req.body;
+
+    if (!username || !email || !password) {
+      return res.status(400).json({ error: 'Username, email y password son requeridos' });
+    }
+
+    if (password.length < 6) {
+      return res.status(400).json({ error: 'La contraseña debe tener al menos 6 caracteres' });
+    }
+
+    const existingUser = await getRow<User>('SELECT id FROM users WHERE username = ?', [username]);
+    if (existingUser) {
+      return res.status(400).json({ error: 'El username ya está en uso' });
+    }
+
+    const existingEmail = await getRow<User>('SELECT id FROM users WHERE email = ?', [email]);
+    if (existingEmail) {
+      return res.status(400).json({ error: 'El email ya está en uso' });
+    }
+
+    const opticsId = getOpticsScope(req.user);
+
+    // Copiar la licencia vigente del owner: el empleado queda cubierto por ella,
+    // sin necesitar aprobación separada del admin del sistema.
+    const owner = await getRow<User>(
+      'SELECT license_type, license_expires_at, trial_expires_at FROM users WHERE id = ?',
+      [req.user.id]
+    );
+
+    const hashedPassword = await bcrypt.hash(password, 10);
+
+    const result = await runQuery(
+      `INSERT INTO users (username, email, password, role, optics_id, license_type, license_expires_at, trial_expires_at, is_active)
+       VALUES (?, ?, ?, 'user', ?, ?, ?, ?, 1)`,
+      [
+        username,
+        email,
+        hashedPassword,
+        opticsId,
+        owner?.license_type ?? 'trial',
+        owner?.license_expires_at ?? null,
+        owner?.trial_expires_at ?? null,
+      ]
+    );
+
+    const newUser = await getRow<User>(
+      'SELECT id, username, email, role, optics_id, is_active, license_type, trial_expires_at, license_expires_at, created_at FROM users WHERE id = ?',
+      [result.lastID]
+    );
+
+    res.status(201).json(newUser);
+  } catch (error: any) {
+    console.error('Error al crear usuario del equipo:', error);
+    res.status(500).json({ error: 'Error interno del servidor' });
+  }
+});
+
+// OWNER: Desactivar (soft delete) un usuario de la propia óptica
+router.delete('/team/users/:id', authenticateToken, async (req: AuthRequest, res: Response) => {
+  try {
+    if (!req.user || req.user.role !== 'owner') {
+      return res.status(403).json({ error: 'Acceso denegado. Se requiere rol de dueño de óptica' });
+    }
+
+    const userId = parseInt(req.params.id);
+
+    if (userId === req.user.id) {
+      return res.status(400).json({ error: 'No podés desactivar tu propio usuario' });
+    }
+
+    const opticsId = getOpticsScope(req.user);
+
+    const targetUser = await getRow<User>(
+      'SELECT id, optics_id, role FROM users WHERE id = ? AND is_active = 1',
+      [userId]
+    );
+
+    if (!targetUser || targetUser.optics_id !== opticsId) {
+      return res.status(403).json({ error: 'Acceso denegado' });
+    }
+
+    if (targetUser.role !== 'user') {
+      return res.status(403).json({ error: 'Solo se pueden desactivar empleados de tu equipo' });
+    }
+
+    await runQuery(
+      `UPDATE users SET is_active = 0, updated_at = CURRENT_TIMESTAMP WHERE id = ? AND optics_id = ? AND role = 'user'`,
+      [userId, opticsId]
+    );
+
+    res.json({ message: 'Usuario desactivado correctamente' });
+  } catch (error: any) {
+    console.error('Error al desactivar usuario del equipo:', error);
+    res.status(500).json({ error: 'Error interno del servidor' });
+  }
+});
+
+// Cambiar la propia contraseña (usuario autenticado que conoce la actual).
+// Lleva authLimiter porque verifica una contraseña: mismo vector de fuerza bruta que /login.
+router.put('/me/password', authLimiter, authenticateToken, validateBody(changePasswordSchema), async (req: AuthRequest, res: Response) => {
+  try {
+    if (!req.user) {
+      return res.status(401).json({ error: 'Usuario no autenticado' });
+    }
+
+    const { current_password, new_password } = req.body;
+
+    if (!current_password || !new_password) {
+      return res.status(400).json({ error: 'La contraseña actual y la nueva son requeridas' });
+    }
+
+    // Necesitamos la columna password para comparar el hash
+    const user = await getRow<User>('SELECT id, password FROM users WHERE id = ? AND is_active = 1', [req.user.id]);
+    if (!user) {
+      return res.status(404).json({ error: 'Usuario no encontrado' });
+    }
+
+    const validPassword = await bcrypt.compare(current_password, user.password);
+    if (!validPassword) {
+      return res.status(400).json({ error: 'La contraseña actual no es correcta' });
+    }
+
+    if (typeof new_password !== 'string' || new_password.length < 6) {
+      return res.status(400).json({ error: 'La contraseña nueva debe tener al menos 6 caracteres' });
+    }
+
+    if (current_password === new_password) {
+      return res.status(400).json({ error: 'La contraseña nueva debe ser distinta de la actual' });
+    }
+
+    const hashedPassword = await bcrypt.hash(new_password, 10);
+
+    await runQuery(
+      'UPDATE users SET password = ?, updated_at = CURRENT_TIMESTAMP WHERE id = ?',
+      [hashedPassword, user.id]
+    );
+
+    res.json({ message: 'Contraseña actualizada correctamente' });
+  } catch (error: any) {
+    console.error('Error al cambiar la contraseña:', error);
     res.status(500).json({ error: 'Error interno del servidor' });
   }
 });

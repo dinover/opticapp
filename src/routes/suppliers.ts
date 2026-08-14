@@ -1,16 +1,12 @@
 import express, { Response } from 'express';
-import { authenticateToken, AuthRequest } from '../middleware/auth';
+import { authenticateToken, AuthRequest, getOpticsScope } from '../middleware/auth';
+import { validateBody } from '../middleware/validate';
+import { createSupplierSchema, updateSupplierSchema } from '../schemas';
 import { getRow, getRows, runQuery } from '../config/database';
 import { Supplier } from '../types';
 import { logDeletion } from '../utils/deletion-log';
 
 const router = express.Router();
-
-async function getUserOpticsId(userId: number, userRole: string): Promise<number | null> {
-  if (userRole === 'admin') return null;
-  const user = await getRow<{ optics_id: number | null }>('SELECT optics_id FROM users WHERE id = ?', [userId]);
-  return user?.optics_id || null;
-}
 
 // Listar proveedores
 router.get('/', authenticateToken, async (req: AuthRequest, res: Response) => {
@@ -18,7 +14,7 @@ router.get('/', authenticateToken, async (req: AuthRequest, res: Response) => {
     const user = req.user;
     if (!user) return res.status(401).json({ error: 'Usuario no autenticado' });
 
-    const opticsId = await getUserOpticsId(user.id, user.role);
+    const opticsId = getOpticsScope(user);
     let query = 'SELECT * FROM suppliers WHERE is_active = 1';
     const params: any[] = [];
 
@@ -46,7 +42,7 @@ router.get('/:id', authenticateToken, async (req: AuthRequest, res: Response) =>
     const supplier = await getRow<Supplier>('SELECT * FROM suppliers WHERE id = ? AND is_active = 1', [id]);
     if (!supplier) return res.status(404).json({ error: 'Proveedor no encontrado' });
 
-    const opticsId = await getUserOpticsId(user.id, user.role);
+    const opticsId = getOpticsScope(user);
     if (opticsId !== null && supplier.optics_id !== opticsId) {
       return res.status(403).json({ error: 'No tienes acceso a este proveedor' });
     }
@@ -59,7 +55,7 @@ router.get('/:id', authenticateToken, async (req: AuthRequest, res: Response) =>
 });
 
 // Crear proveedor
-router.post('/', authenticateToken, async (req: AuthRequest, res: Response) => {
+router.post('/', authenticateToken, validateBody(createSupplierSchema), async (req: AuthRequest, res: Response) => {
   try {
     const user = req.user;
     if (!user) return res.status(401).json({ error: 'Usuario no autenticado' });
@@ -67,7 +63,7 @@ router.post('/', authenticateToken, async (req: AuthRequest, res: Response) => {
     const { name, contact_name, phone, email, notes, optics_id } = req.body;
     if (!name || !name.trim()) return res.status(400).json({ error: 'El nombre del proveedor es requerido' });
 
-    const opticsId = optics_id || (await getUserOpticsId(user.id, user.role));
+    const opticsId = (user.role === 'admin' && optics_id) ? optics_id : getOpticsScope(user);
     if (opticsId === null) return res.status(400).json({ error: 'No se pudo determinar la óptica' });
 
     const result = await runQuery(
@@ -85,7 +81,7 @@ router.post('/', authenticateToken, async (req: AuthRequest, res: Response) => {
 });
 
 // Actualizar proveedor
-router.put('/:id', authenticateToken, async (req: AuthRequest, res: Response) => {
+router.put('/:id', authenticateToken, validateBody(updateSupplierSchema), async (req: AuthRequest, res: Response) => {
   try {
     const user = req.user;
     if (!user) return res.status(401).json({ error: 'Usuario no autenticado' });
@@ -97,7 +93,7 @@ router.put('/:id', authenticateToken, async (req: AuthRequest, res: Response) =>
     const existing = await getRow<Supplier>('SELECT * FROM suppliers WHERE id = ? AND is_active = 1', [id]);
     if (!existing) return res.status(404).json({ error: 'Proveedor no encontrado' });
 
-    const opticsId = await getUserOpticsId(user.id, user.role);
+    const opticsId = getOpticsScope(user);
     if (opticsId !== null && existing.optics_id !== opticsId) {
       return res.status(403).json({ error: 'No tienes acceso a este proveedor' });
     }
@@ -125,7 +121,7 @@ router.delete('/:id', authenticateToken, async (req: AuthRequest, res: Response)
     const existing = await getRow<Supplier>('SELECT * FROM suppliers WHERE id = ? AND is_active = 1', [id]);
     if (!existing) return res.status(404).json({ error: 'Proveedor no encontrado' });
 
-    const opticsId = await getUserOpticsId(user.id, user.role);
+    const opticsId = getOpticsScope(user);
     if (opticsId !== null && existing.optics_id !== opticsId) {
       return res.status(403).json({ error: 'No tienes acceso a este proveedor' });
     }

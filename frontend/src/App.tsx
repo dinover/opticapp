@@ -4,7 +4,11 @@ import { AuthProvider, useAuth } from './contexts/AuthContext';
 import { ThemeProvider } from './contexts/ThemeContext';
 import { DashboardConfigProvider } from './contexts/DashboardConfigContext';
 import { CurrencyProvider } from './contexts/CurrencyContext';
+import { ToastProvider } from './contexts/ToastContext';
+import { ConfirmProvider } from './contexts/ConfirmContext';
+import ErrorBoundary from './components/ErrorBoundary';
 import LicenseBanner from './components/LicenseBanner';
+import NotFoundPage from './pages/NotFoundPage';
 import LoginPage from './pages/LoginPage';
 import RequestUserPage from './pages/RequestUserPage';
 import AdminRequestsPage from './pages/AdminRequestsPage';
@@ -15,10 +19,13 @@ import SalesPage from './pages/SalesPage';
 import SuppliersPage from './pages/SuppliersPage';
 import ImportPage from './pages/ImportPage';
 import ReportsPage from './pages/ReportsPage';
+import TeamPage from './pages/TeamPage';
+import ProfilePage from './pages/ProfilePage';
 
-const PrivateRoute: React.FC<{ children: React.ReactNode; requireAdmin?: boolean }> = ({
+const PrivateRoute: React.FC<{ children: React.ReactNode; requireAdmin?: boolean; requireOwner?: boolean }> = ({
   children,
   requireAdmin = false,
+  requireOwner = false,
 }) => {
   const { user, loading } = useAuth();
 
@@ -38,6 +45,10 @@ const PrivateRoute: React.FC<{ children: React.ReactNode; requireAdmin?: boolean
   }
 
   if (requireAdmin && user.role !== 'admin') {
+    return <Navigate to="/dashboard" replace />;
+  }
+
+  if (requireOwner && user.role !== 'owner') {
     return <Navigate to="/dashboard" replace />;
   }
 
@@ -126,24 +137,47 @@ const AppRoutes: React.FC = () => {
           </PrivateRoute>
         }
       />
+      <Route
+        path="/team"
+        element={
+          <PrivateRoute requireOwner>
+            <TeamPage />
+          </PrivateRoute>
+        }
+      />
+      <Route
+        path="/profile"
+        element={
+          <PrivateRoute>
+            <ProfilePage />
+          </PrivateRoute>
+        }
+      />
       <Route path="/" element={<Navigate to={user ? (user.role === 'admin' ? '/admin' : '/dashboard') : '/login'} replace />} />
+      <Route path="*" element={<NotFoundPage />} />
     </Routes>
   );
 };
 
 const App: React.FC = () => {
   return (
-    <Router>
-      <ThemeProvider>
-        <CurrencyProvider>
-          <AuthProvider>
-            <DashboardConfigProvider>
-              <AppRoutes />
-            </DashboardConfigProvider>
-          </AuthProvider>
-        </CurrencyProvider>
-      </ThemeProvider>
-    </Router>
+    <ErrorBoundary>
+      <Router>
+        <ThemeProvider>
+          <ToastProvider>
+            <ConfirmProvider>
+              <CurrencyProvider>
+                <AuthProvider>
+                  <DashboardConfigProvider>
+                    <AppRoutes />
+                  </DashboardConfigProvider>
+                </AuthProvider>
+              </CurrencyProvider>
+            </ConfirmProvider>
+          </ToastProvider>
+        </ThemeProvider>
+      </Router>
+    </ErrorBoundary>
   );
 };
 
