@@ -13,7 +13,7 @@ export interface User {
   id: number;
   username: string;
   email: string;
-  role: 'admin' | 'user';
+  role: 'admin' | 'user' | 'owner';
   optics_id?: number | null;
   license_type?: 'trial' | 'active';
   trial_expires_at?: string | null;

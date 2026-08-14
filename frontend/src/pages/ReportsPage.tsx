@@ -1,34 +1,50 @@
 import React, { useState, useEffect } from 'react';
+import { useNavigate } from 'react-router-dom';
 import Layout from '../components/Layout';
+import EmptyState from '../components/EmptyState';
+import { SkeletonLine } from '../components/Skeleton';
+import { useToast } from '../contexts/ToastContext';
 import { suppliersService } from '../services/suppliers';
 import { reportsService } from '../services/reports';
 import { Supplier } from '../types';
 import {
   ArrowDownTrayIcon,
   TableCellsIcon,
+  TruckIcon,
 } from '@heroicons/react/24/outline';
 
 const ReportsPage: React.FC = () => {
+  const navigate = useNavigate();
+  const toast = useToast();
   const [suppliers, setSuppliers] = useState<Supplier[]>([]);
+  const [loadingSuppliers, setLoadingSuppliers] = useState(true);
   const [supplierId, setSupplierId] = useState<string>('all');
-  const [downloading, setDownloading] = useState(false);
+  const [generating, setGenerating] = useState(false);
   const [downloaded, setDownloaded] = useState(false);
 
   useEffect(() => {
-    suppliersService.getAll().then(setSuppliers).catch(() => {});
+    suppliersService.getAll()
+      .then(setSuppliers)
+      .catch((err: any) => {
+        toast.error(err.response?.data?.error || 'No pudimos cargar la lista de proveedores');
+      })
+      .finally(() => setLoadingSuppliers(false));
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   const handleDownload = async () => {
+    if (generating) return;
     try {
-      setDownloading(true);
+      setGenerating(true);
       setDownloaded(false);
       await reportsService.downloadProducts(supplierId);
       setDownloaded(true);
+      toast.success('Reporte descargado');
       setTimeout(() => setDownloaded(false), 3000);
     } catch (err: any) {
-      alert(err.response?.data?.error || 'Error al generar el reporte');
+      toast.error(err.response?.data?.error || 'Error al generar el reporte');
     } finally {
-      setDownloading(false);
+      setGenerating(false);
     }
   };
 
@@ -37,6 +53,8 @@ const ReportsPage: React.FC = () => {
     : supplierId === 'none'
       ? 'Sin proveedor (óptica)'
       : suppliers.find(s => String(s.id) === supplierId)?.name || '';
+
+  const noSuppliers = !loadingSuppliers && suppliers.length === 0;
 
   return (
     <Layout>
@@ -55,7 +73,7 @@ const ReportsPage: React.FC = () => {
               background: 'linear-gradient(135deg, #eef2ff, #ddd6fe)',
               display: 'flex', alignItems: 'center', justifyContent: 'center',
             }}>
-              <TableCellsIcon style={{ width: 30, height: 30, color: '#4f46e5' }} />
+              <TableCellsIcon style={{ width: 30, height: 30, color: 'var(--brand)' }} />
             </div>
 
             <div>
@@ -68,23 +86,45 @@ const ReportsPage: React.FC = () => {
             </div>
 
             <div style={{ width: '100%', maxWidth: 380 }}>
-              <label style={{ display: 'block', textAlign: 'left', fontWeight: 600, marginBottom: '.5rem', fontSize: '.875rem', color: 'var(--text-primary)' }}>
-                Filtrar por proveedor
-              </label>
-              <select
-                value={supplierId}
-                onChange={e => { setSupplierId(e.target.value); setDownloaded(false); }}
-                style={{ width: '100%' }}
-              >
-                <option value="all">Todos los proveedores</option>
-                <option value="none">Sin proveedor (óptica)</option>
-                {suppliers.map(s => (
-                  <option key={s.id} value={String(s.id)}>{s.name}</option>
-                ))}
-              </select>
+              {loadingSuppliers ? (
+                <>
+                  <SkeletonLine width="45%" height={12} />
+                  <div style={{ height: '.5rem' }} />
+                  <SkeletonLine height={38} />
+                </>
+              ) : noSuppliers ? (
+                <EmptyState
+                  icon={<TruckIcon />}
+                  title="Todavía no cargaste proveedores"
+                  description="Sin proveedores no hay nada por lo que filtrar, pero igual podés descargar el listado completo."
+                  actionLabel="Cargar proveedores"
+                  onAction={() => navigate('/suppliers')}
+                />
+              ) : (
+                <>
+                  <label
+                    htmlFor="report-supplier"
+                    style={{ display: 'block', textAlign: 'left', fontWeight: 600, marginBottom: '.5rem', fontSize: '.875rem', color: 'var(--text-primary)' }}
+                  >
+                    Filtrar por proveedor
+                  </label>
+                  <select
+                    id="report-supplier"
+                    value={supplierId}
+                    onChange={e => { setSupplierId(e.target.value); setDownloaded(false); }}
+                    style={{ width: '100%' }}
+                  >
+                    <option value="all">Todos los proveedores</option>
+                    <option value="none">Sin proveedor (óptica)</option>
+                    {suppliers.map(s => (
+                      <option key={s.id} value={String(s.id)}>{s.name}</option>
+                    ))}
+                  </select>
+                </>
+              )}
             </div>
 
-            <div style={{ width: '100%', maxWidth: 380, background: 'var(--surface-3)', borderRadius: 10, padding: '.875rem 1rem', textAlign: 'left', fontSize: '.85rem', color: 'var(--text-secondary)' }}>
+            <div style={{ width: '100%', maxWidth: 380, background: 'var(--surface-3)', borderRadius: 'var(--radius)', padding: '.875rem 1rem', textAlign: 'left', fontSize: '.85rem', color: 'var(--text-secondary)' }}>
               <strong style={{ color: 'var(--text-primary)' }}>Contenido del archivo:</strong>
               <ul style={{ margin: '.5rem 0 0', padding: '0 0 0 1.25rem', lineHeight: 1.8 }}>
                 <li>Artículo (nombre del armazón)</li>
@@ -98,12 +138,13 @@ const ReportsPage: React.FC = () => {
             <button
               className="btn btn-primary"
               onClick={handleDownload}
-              disabled={downloading}
+              disabled={generating}
+              aria-busy={generating}
               style={{ minWidth: 220, padding: '.625rem 1.5rem', fontSize: '.95rem' }}
             >
-              {downloading ? (
+              {generating ? (
                 <>
-                  <div className="spinner" style={{ width: 16, height: 16, borderWidth: 2 }} />
+                  <div className="spinner" style={{ width: 16, height: 16, borderWidth: 2 }} aria-hidden="true" />
                   Generando…
                 </>
               ) : downloaded ? (
@@ -112,7 +153,7 @@ const ReportsPage: React.FC = () => {
                 </>
               ) : (
                 <>
-                  <ArrowDownTrayIcon className="w-4 h-4" />
+                  <ArrowDownTrayIcon className="w-4 h-4" aria-hidden="true" />
                   Descargar Excel · {selectedLabel}
                 </>
               )}

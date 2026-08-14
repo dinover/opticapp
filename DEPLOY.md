@@ -243,18 +243,32 @@ Para evitar esto:
 
 ---
 
+## 🏢 Antes de tener clientes reales pagando
+
+El plan gratuito de Render está pensado para pruebas, no para un servicio con clientes reales:
+
+- **El servicio se duerme por inactividad** — el primer request después de un rato tarda ~30-50s en responder. Con clientes pagando, eso se nota.
+- **La base de datos gratuita se borra a los 90 días.** No es negociable, Render la elimina.
+- **Sin backups automáticos** en el plan free. Si algo sale mal, no hay forma de recuperar los datos.
+
+Antes de cobrarle a alguien:
+
+- [ ] Subir el Web Service y la base de datos a un plan pago en Render (o migrar a otro proveedor con backups)
+- [ ] Confirmar que los backups automáticos de Postgres están habilitados y probar una restauración al menos una vez
+- [ ] Revisar que las variables de entorno sensibles (`JWT_SECRET`, `ADMIN_PASSWORD`, `RESEND_API_KEY`) están marcadas como secretas en el dashboard de Render, no visibles en logs de build
+- [ ] Configurar `EMAIL_FROM` con un dominio propio verificado en Resend (con `onboarding@resend.dev` los emails no le llegan a los clientes, ver `src/utils/emailService.ts`)
+- [ ] Configurar `APP_URL` con el dominio real de producción (se usa para los links de los emails y para restringir CORS)
+- [ ] Tener un plan de qué hacer si el servicio se cae fuera de horario laboral (alertas, quién responde)
+
 ## ✅ Checklist de Despliegue
 
 - [ ] Código subido a GitHub/GitLab/Bitbucket
-- [ ] Backend desplegado en Render (Web Service)
+- [ ] Backend desplegado en Render (Web Service) — sirve también el frontend compilado, no hace falta un Static Site separado
 - [ ] Base de datos PostgreSQL creada
-- [ ] Base de datos inicializada (`npm run db:init`)
-- [ ] Variables de entorno configuradas correctamente
-- [ ] Frontend desplegado en Render (Static Site)
-- [ ] `VITE_API_URL` configurado en frontend
+- [ ] Variables de entorno configuradas: `JWT_SECRET` y `ADMIN_PASSWORD` (ver `render.yaml` — ambas se autogeneran en el blueprint; sin ellas el servidor no arranca)
+- [ ] `RESEND_API_KEY`, `EMAIL_FROM`, `ADMIN_EMAIL`, `APP_URL` configuradas para que los emails de licencia funcionen
 - [ ] Prueba de acceso al frontend
-- [ ] Login funcional con credenciales admin
-- [ ] Contraseña admin cambiada
+- [ ] Login funcional con el usuario admin (username `admin`, contraseña = el valor de `ADMIN_PASSWORD` que configuraste)
 
 ¡Listo! Tu aplicación debería estar funcionando en producción. 🎉
 

@@ -1,21 +1,43 @@
 import express, { Request, Response } from 'express';
 import https from 'https';
 import http from 'http';
+import { authenticateToken, AuthRequest } from '../middleware/auth';
 
 const router = express.Router();
+
+// El proxy solo debe seguir redirecciones dentro de dominios de Google:
+// sin esto, alguien podía usar este endpoint autenticado como un proxy
+// abierto hacia cualquier host (SSRF), aprovechando que el backend hace
+// la request server-side.
+const ALLOWED_REDIRECT_HOSTS = [
+  'drive.google.com',
+  'drive.usercontent.google.com',
+  'docs.google.com',
+  'googleusercontent.com',
+  'lh3.googleusercontent.com',
+];
+
+function isAllowedHost(url: string): boolean {
+  try {
+    const hostname = new URL(url).hostname;
+    return ALLOWED_REDIRECT_HOSTS.some(h => hostname === h || hostname.endsWith(`.${h}`));
+  } catch {
+    return false;
+  }
+}
 
 /**
  * Proxy para imágenes de Google Drive
  * Resuelve problemas de CORS al servir las imágenes a través del backend
- * 
+ *
  * Uso: GET /api/images/drive?fileId=FILE_ID&method=thumbnail
- * 
+ *
  * Parámetros:
  * - fileId: ID del archivo de Google Drive (obligatorio)
  * - method: Método a usar ('thumbnail' o 'view') - default: 'thumbnail'
  * - size: Tamaño para thumbnail (solo si method=thumbnail) - default: 'w1000'
  */
-router.get('/drive', async (req: Request, res: Response) => {
+router.get('/drive', authenticateToken, async (req: AuthRequest, res: Response) => {
   try {
     const { fileId, method = 'thumbnail', size = 'w1000' } = req.query;
 
@@ -54,10 +76,12 @@ router.get('/drive', async (req: Request, res: Response) => {
         // Manejar redirecciones (códigos 3xx)
         if (driveRes.statusCode && driveRes.statusCode >= 300 && driveRes.statusCode < 400 && driveRes.headers.location) {
           const redirectUrl = driveRes.headers.location;
-          // Si es redirección, seguirla
-          if (redirectUrl.startsWith('http://') || redirectUrl.startsWith('https://')) {
+          // Solo seguir la redirección si sigue apuntando a un dominio de Google
+          if (isAllowedHost(redirectUrl)) {
             return makeRequest(redirectUrl, isRetry, redirectCount + 1);
           }
+          res.status(502).json({ error: 'Redirección a un host no permitido' });
+          return;
         }
 
         // Si la respuesta es exitosa, servir la imagen

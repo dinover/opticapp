@@ -217,21 +217,43 @@ async function initializeDatabase() {
       )
     `);
 
+    // Índices: todas las consultas filtran por optics_id y hoy hacen scan
+    // secuencial de la tabla completa. Sin esto, cada óptica nueva enlentece
+    // las consultas de todas las demás.
+    await runQuery('CREATE INDEX IF NOT EXISTS idx_users_username ON users(username)');
+    await runQuery('CREATE INDEX IF NOT EXISTS idx_users_optics_id ON users(optics_id)');
+    await runQuery('CREATE INDEX IF NOT EXISTS idx_clients_optics_id ON clients(optics_id)');
+    await runQuery('CREATE INDEX IF NOT EXISTS idx_suppliers_optics_id ON suppliers(optics_id)');
+    await runQuery('CREATE INDEX IF NOT EXISTS idx_products_optics_id ON products(optics_id)');
+    await runQuery('CREATE INDEX IF NOT EXISTS idx_products_supplier_id ON products(supplier_id)');
+    await runQuery('CREATE INDEX IF NOT EXISTS idx_sales_optics_id_sale_date ON sales(optics_id, sale_date)');
+    await runQuery('CREATE INDEX IF NOT EXISTS idx_sales_client_id ON sales(client_id)');
+    await runQuery('CREATE INDEX IF NOT EXISTS idx_sale_products_sale_id ON sale_products(sale_id)');
+    await runQuery('CREATE INDEX IF NOT EXISTS idx_sale_products_product_id ON sale_products(product_id)');
+    await runQuery('CREATE INDEX IF NOT EXISTS idx_user_requests_status ON user_requests(status)');
+    await runQuery('CREATE INDEX IF NOT EXISTS idx_deletion_logs_table_record ON deletion_logs(table_name, record_id)');
+
     // Crear usuario admin por defecto (si no existe)
     const adminExists = await getRow<User>('SELECT id FROM users WHERE username = ?', ['admin']);
 
     if (!adminExists) {
-      const defaultPassword = await bcrypt.hash('admin123', 10);
-      
-      await runQuery(`
-        INSERT INTO users (username, email, password, role)
-        VALUES (?, ?, ?, ?)
-      `, ['admin', 'admin@opticapp.com', defaultPassword, 'admin']);
+      const adminPassword = process.env.ADMIN_PASSWORD;
 
-      console.log('Usuario admin creado:');
-      console.log('Username: admin');
-      console.log('Password: admin123');
-      console.log('⚠️ IMPORTANTE: Cambia la contraseña del admin en producción');
+      if (!adminPassword) {
+        console.warn(
+          '⚠️ No se creó el usuario admin: falta la variable de entorno ADMIN_PASSWORD. ' +
+          'Configurala y reiniciá el servidor para crear el usuario admin inicial.'
+        );
+      } else {
+        const hashedPassword = await bcrypt.hash(adminPassword, 10);
+
+        await runQuery(`
+          INSERT INTO users (username, email, password, role)
+          VALUES (?, ?, ?, ?)
+        `, ['admin', process.env.ADMIN_EMAIL || 'admin@opticapp.com', hashedPassword, 'admin']);
+
+        console.log('Usuario admin creado (username: admin, contraseña desde ADMIN_PASSWORD)');
+      }
     }
 
     console.log('Base de datos PostgreSQL inicializada correctamente');

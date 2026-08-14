@@ -69,13 +69,11 @@ export async function runQuery(query: string, params: any[] = []): Promise<RunRe
         // Si usamos RETURNING id, el ID está en result.rows[0].id
         lastID = result.rows[0].id;
       } else {
-        // Si no hay RETURNING, intentar obtener el último ID usando lastval()
-        try {
-          const idResult = await database.query('SELECT lastval() as id');
-          lastID = idResult.rows[0]?.id;
-        } catch {
-          // Si falla (puede pasar si no hay secuencia), no hay problema
-        }
+        // No usar lastval(): es por sesión y con un Pool cada query puede
+        // usar una conexión física distinta, devolviendo el ID de OTRO
+        // INSERT concurrente (de otra tabla u otro usuario). Es más seguro
+        // fallar ruidosamente que devolver un ID incorrecto.
+        throw new Error('INSERT sin RETURNING id: no se puede determinar el ID insertado de forma segura con un pool de conexiones. Agregá RETURNING id a la query.');
       }
     }
     

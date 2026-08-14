@@ -1,23 +1,13 @@
 import express, { Request, Response } from 'express';
-import { authenticateToken, AuthRequest } from '../middleware/auth';
+import { authenticateToken, AuthRequest, getOpticsScope } from '../middleware/auth';
+import { validateBody } from '../middleware/validate';
+import { createClientSchema, updateClientSchema } from '../schemas';
 import { getRow, getRows, runQuery } from '../config/database';
 import { Client, PaginationParams, PaginatedResponse } from '../types';
 import { buildPaginationQuery, getPaginationMeta, createPaginatedResponse } from '../utils/pagination';
 import { logDeletion } from '../utils/deletion-log';
 
 const router = express.Router();
-
-// Obtener óptica del usuario autenticado
-async function getUserOpticsId(userId: number, userRole: string): Promise<number | null> {
-  if (userRole === 'admin') {
-    return null; // Admin puede ver todas las ópticas
-  }
-  const user = await getRow<{ optics_id: number | null }>(
-    'SELECT optics_id FROM users WHERE id = ?',
-    [userId]
-  );
-  return user?.optics_id || null;
-}
 
 // Listar clientes con paginación y búsqueda
 router.get('/', authenticateToken, async (req: AuthRequest, res: Response) => {
@@ -27,7 +17,7 @@ router.get('/', authenticateToken, async (req: AuthRequest, res: Response) => {
       return res.status(401).json({ error: 'Usuario no autenticado' });
     }
 
-    const opticsId = await getUserOpticsId(user.id, user.role);
+    const opticsId = getOpticsScope(user);
     const paginationParams: PaginationParams = {
       page: parseInt(req.query.page as string) || 1,
       limit: parseInt(req.query.limit as string) || 10,
@@ -59,7 +49,7 @@ router.get('/', authenticateToken, async (req: AuthRequest, res: Response) => {
 
     // Ajustar count query con búsqueda
     if (paginationParams.search) {
-      const searchConditions = searchFields.map(field => `${field} LIKE ?`).join(' OR ');
+      const searchConditions = searchFields.map(field => `${field} ILIKE ?`).join(' OR ');
       countQuery += ` AND (${searchConditions})`;
       const searchPattern = `%${paginationParams.search}%`;
       countParams.push(...searchFields.map(() => searchPattern));
@@ -100,7 +90,7 @@ router.get('/:id', authenticateToken, async (req: AuthRequest, res: Response) =>
       return res.status(404).json({ error: 'Cliente no encontrado' });
     }
 
-    const opticsId = await getUserOpticsId(user.id, user.role);
+    const opticsId = getOpticsScope(user);
     if (opticsId !== null && client.optics_id !== opticsId) {
       return res.status(403).json({ error: 'No tienes acceso a este cliente' });
     }
@@ -113,7 +103,7 @@ router.get('/:id', authenticateToken, async (req: AuthRequest, res: Response) =>
 });
 
 // Crear cliente
-router.post('/', authenticateToken, async (req: AuthRequest, res: Response) => {
+router.post('/', authenticateToken, validateBody(createClientSchema), async (req: AuthRequest, res: Response) => {
   try {
     const user = req.user;
     if (!user) {
@@ -126,15 +116,18 @@ router.post('/', authenticateToken, async (req: AuthRequest, res: Response) => {
       return res.status(400).json({ error: 'El nombre del cliente es requerido' });
     }
 
-    const opticsId = optics_id || (await getUserOpticsId(user.id, user.role));
-    
+    const opticsId = (user.role === 'admin' && optics_id)
+      ? optics_id
+      : getOpticsScope(user);
+
     if (opticsId === null) {
       return res.status(400).json({ error: 'No se pudo determinar la óptica. Se requiere optics_id.' });
     }
 
     const result = await runQuery(
       `INSERT INTO clients (optics_id, name, document_id, email, phone, address, birth_date, notes)
-       VALUES (?, ?, ?, ?, ?, ?, ?, ?)`,
+       VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+       RETURNING id`,
       [opticsId, name.trim(), document_id || null, email || null, phone || null, address || null, birth_date || null, notes || null]
     );
 
@@ -151,7 +144,7 @@ router.post('/', authenticateToken, async (req: AuthRequest, res: Response) => {
 });
 
 // Actualizar cliente
-router.put('/:id', authenticateToken, async (req: AuthRequest, res: Response) => {
+router.put('/:id', authenticateToken, validateBody(updateClientSchema), async (req: AuthRequest, res: Response) => {
   try {
     const id = parseInt(req.params.id);
     const user = req.user;
@@ -174,7 +167,7 @@ router.put('/:id', authenticateToken, async (req: AuthRequest, res: Response) =>
       return res.status(404).json({ error: 'Cliente no encontrado' });
     }
 
-    const opticsId = await getUserOpticsId(user.id, user.role);
+    const opticsId = getOpticsScope(user);
     if (opticsId !== null && existing.optics_id !== opticsId) {
       return res.status(403).json({ error: 'No tienes acceso a este cliente' });
     }
@@ -212,7 +205,7 @@ router.delete('/:id', authenticateToken, async (req: AuthRequest, res: Response)
       return res.status(404).json({ error: 'Cliente no encontrado' });
     }
 
-    const opticsId = await getUserOpticsId(user.id, user.role);
+    const opticsId = getOpticsScope(user);
     if (opticsId !== null && existing.optics_id !== opticsId) {
       return res.status(403).json({ error: 'No tienes acceso a este cliente' });
     }

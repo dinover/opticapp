@@ -33,20 +33,20 @@ const RequestUserPage: React.FC = () => {
   };
 
   if (success) return (
-    <div style={{ minHeight: '100vh', display: 'flex', alignItems: 'center', justifyContent: 'center', background: '#f8fafc', padding: '2rem' }}>
+    <div style={{ minHeight: '100vh', display: 'flex', alignItems: 'center', justifyContent: 'center', background: 'var(--surface-2)', padding: '2rem' }}>
       <div style={{ maxWidth: 420, textAlign: 'center' }}>
-        <div style={{ width: 64, height: 64, borderRadius: 99, background: '#dcfce7', display: 'flex', alignItems: 'center', justifyContent: 'center', margin: '0 auto 1.25rem' }}>
-          <CheckCircleIcon style={{ width: 32, height: 32, color: '#16a34a' }} />
+        <div style={{ width: 64, height: 64, borderRadius: 99, background: 'var(--surface-3)', display: 'flex', alignItems: 'center', justifyContent: 'center', margin: '0 auto 1.25rem' }}>
+          <CheckCircleIcon style={{ width: 32, height: 32, color: 'var(--success)' }} />
         </div>
-        <h2 style={{ fontWeight: 800, fontSize: '1.375rem', color: '#0f172a', margin: '0 0 .75rem' }}>
+        <h2 style={{ fontWeight: 800, fontSize: '1.375rem', color: 'var(--text-primary)', margin: '0 0 .75rem' }}>
           ¡Solicitud enviada!
         </h2>
-        <p style={{ color: '#64748b', lineHeight: 1.7, margin: '0 0 1.75rem', fontSize: '.9rem' }}>
+        <p style={{ color: 'var(--text-secondary)', lineHeight: 1.7, margin: '0 0 1.75rem', fontSize: '.9rem' }}>
           Un administrador revisará tu solicitud y te notificará cuando sea aprobada. Podés verificar el estado en cualquier momento.
         </p>
         <Link to="/login" style={{
           display: 'inline-flex', alignItems: 'center', justifyContent: 'center',
-          padding: '.75rem 1.5rem', background: '#4f46e5', color: '#fff',
+          padding: '.75rem 1.5rem', background: 'var(--brand)', color: '#fff',
           fontWeight: 700, borderRadius: 10, textDecoration: 'none', fontSize: '.9rem',
         }}>
           Volver al login
@@ -56,11 +56,13 @@ const RequestUserPage: React.FC = () => {
   );
 
   return (
-    <div style={{ minHeight: '100vh', display: 'flex', alignItems: 'center', justifyContent: 'center', background: '#f8fafc', padding: '2rem', position: 'relative', overflow: 'hidden' }}>
+    <div style={{ minHeight: '100vh', display: 'flex', alignItems: 'center', justifyContent: 'center', background: 'var(--surface-2)', padding: '2rem', position: 'relative', overflow: 'hidden' }}>
       {/* BG decoration */}
-      <div style={{ position: 'absolute', inset: 0, pointerEvents: 'none', background: 'radial-gradient(ellipse 80% 60% at 60% -10%, #e0e7ff 0%, transparent 70%)' }} />
+      {/* Fondo decorativo. Usa un token para que en modo oscuro sea un halo
+          apenas más claro que el fondo y no una mancha blanca. */}
+      <div style={{ position: 'absolute', inset: 0, pointerEvents: 'none', background: 'radial-gradient(ellipse 80% 60% at 60% -10%, var(--surface-3) 0%, transparent 70%)' }} />
 
-      <div style={{ width: '100%', maxWidth: 460, background: '#fff', border: '1px solid #e2e8f0', borderRadius: 20, padding: '2.5rem', boxShadow: '0 8px 32px rgba(15,23,42,.08)', position: 'relative' }}>
+      <div style={{ width: '100%', maxWidth: 460, background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: 20, padding: '2.5rem', boxShadow: '0 8px 32px rgba(15,23,42,.08)', position: 'relative' }}>
         {/* Logo */}
         <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: '2rem' }}>
           <div style={{ width: 36, height: 36, borderRadius: 10, background: 'linear-gradient(135deg, #4f46e5, #7c3aed)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
@@ -68,16 +70,16 @@ const RequestUserPage: React.FC = () => {
               <circle cx="12" cy="12" r="3"/><path d="M20.188 10.934c.388.472.388 1.16 0 1.632C18.768 14.35 15.636 18 12 18c-3.636 0-6.768-3.65-8.188-5.434a1.3 1.3 0 0 1 0-1.632C5.232 9.65 8.364 6 12 6c3.636 0 6.768 3.65 8.188 5.434z"/>
             </svg>
           </div>
-          <span style={{ fontWeight: 800, color: '#0f172a' }}>OpticApp</span>
+          <span style={{ fontWeight: 800, color: 'var(--text-primary)' }}>OpticApp</span>
         </div>
 
-        <h2 style={{ fontWeight: 800, fontSize: '1.375rem', color: '#0f172a', margin: '0 0 .375rem' }}>Solicitar acceso</h2>
-        <p style={{ color: '#64748b', fontSize: '.875rem', marginBottom: '1.75rem', lineHeight: 1.5 }}>
+        <h2 style={{ fontWeight: 800, fontSize: '1.375rem', color: 'var(--text-primary)', margin: '0 0 .375rem' }}>Solicitar acceso</h2>
+        <p style={{ color: 'var(--text-secondary)', fontSize: '.875rem', marginBottom: '1.75rem', lineHeight: 1.5 }}>
           Completá el formulario y un administrador revisará tu solicitud.
         </p>
 
         {error && (
-          <div style={{ background: '#fef2f2', border: '1px solid #fecaca', borderRadius: 10, padding: '.75rem 1rem', marginBottom: '1.25rem', fontSize: '.875rem', color: '#991b1b', display: 'flex', gap: 8 }}>
+          <div style={{ background: 'var(--surface-2)', border: '1px solid var(--danger)', borderRadius: 10, padding: '.75rem 1rem', marginBottom: '1.25rem', fontSize: '.875rem', color: 'var(--danger)', display: 'flex', gap: 8 }}>
             <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" style={{ flexShrink: 0, marginTop: 1 }}>
               <circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/>
             </svg>
@@ -114,7 +116,7 @@ const RequestUserPage: React.FC = () => {
             disabled={loading}
             style={{
               width: '100%', padding: '.75rem',
-              background: loading ? '#a5b4fc' : '#4f46e5',
+              background: 'var(--brand)', opacity: loading ? .6 : 1,
               color: '#fff', fontWeight: 700, fontSize: '.9rem',
               border: 'none', borderRadius: 10,
               cursor: loading ? 'not-allowed' : 'pointer',
@@ -128,9 +130,9 @@ const RequestUserPage: React.FC = () => {
           </button>
         </form>
 
-        <p style={{ textAlign: 'center', marginTop: '1.5rem', fontSize: '.875rem', color: '#64748b' }}>
+        <p style={{ textAlign: 'center', marginTop: '1.5rem', fontSize: '.875rem', color: 'var(--text-secondary)' }}>
           ¿Ya tenés cuenta?{' '}
-          <Link to="/login" style={{ color: '#4f46e5', fontWeight: 600, textDecoration: 'none' }}>Iniciar sesión</Link>
+          <Link to="/login" style={{ color: 'var(--brand)', fontWeight: 600, textDecoration: 'none' }}>Iniciar sesión</Link>
         </p>
       </div>
     </div>

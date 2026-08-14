@@ -22,6 +22,22 @@ services:
         value: 10000
       - key: JWT_SECRET
         generateValue: true
+      - key: ADMIN_PASSWORD
+        generateValue: true
+      - key: ADMIN_EMAIL
+        value: davo1995@gmail.com
+      # Envío de emails: configurar SMTP_* (casilla de Gmail) o RESEND_API_KEY.
+      # Si no hay ninguno, la app arranca igual y solo no manda notificaciones.
+      - key: SMTP_USER
+        sync: false
+      - key: SMTP_PASS
+        sync: false
+      - key: RESEND_API_KEY
+        sync: false
+      - key: EMAIL_FROM
+        sync: false
+      - key: APP_URL
+        value: https://opticapp.onrender.com
       - key: DATABASE_URL
         fromDatabase:
           name: opticapp-database

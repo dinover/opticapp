@@ -2,6 +2,7 @@ import React, { useState } from 'react';
 import { Link, useLocation } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContext';
 import { useCurrency } from '../contexts/CurrencyContext';
+import { useTheme } from '../contexts/ThemeContext';
 import {
   HomeIcon,
   UserGroupIcon,
@@ -14,6 +15,9 @@ import {
   TruckIcon,
   ArrowUpTrayIcon,
   DocumentChartBarIcon,
+  SunIcon,
+  MoonIcon,
+  UserCircleIcon,
 } from '@heroicons/react/24/outline';
 
 interface LayoutProps {
@@ -23,8 +27,11 @@ interface LayoutProps {
 const Layout: React.FC<LayoutProps> = ({ children }) => {
   const { user, logout } = useAuth();
   const { currency, toggleCurrency } = useCurrency();
+  const { theme, toggleTheme } = useTheme();
   const location = useLocation();
   const [mobileOpen, setMobileOpen] = useState(false);
+  // El hover de la user pill se maneja en estado porque el estilo es inline
+  const [userPillHover, setUserPillHover] = useState(false);
 
   const isActive = (path: string) => location.pathname === path;
 
@@ -88,16 +95,36 @@ const Layout: React.FC<LayoutProps> = ({ children }) => {
                     Admin
                   </Link>
                 )}
+                {user?.role === 'owner' && (
+                  <Link to="/team" className={`nav-link ${isActive('/team') ? 'active' : ''}`}>
+                    <UserGroupIcon className="w-4 h-4" />
+                    Equipo
+                  </Link>
+                )}
               </nav>
             </div>
 
             {/* Right side */}
             <div className="flex items-center gap-2">
-              {/* User pill */}
-              <div className="hidden sm:flex items-center gap-2.5" style={{
-                background: 'var(--surface-3)',
-                borderRadius: 99, padding: '4px 12px 4px 4px',
-              }}>
+              {/* User pill → Mi cuenta */}
+              <Link
+                to="/profile"
+                className="hidden sm:flex items-center gap-2.5"
+                title="Mi cuenta"
+                aria-label="Mi cuenta"
+                onMouseEnter={() => setUserPillHover(true)}
+                onMouseLeave={() => setUserPillHover(false)}
+                onFocus={() => setUserPillHover(true)}
+                onBlur={() => setUserPillHover(false)}
+                style={{
+                  background: 'var(--surface-3)',
+                  borderRadius: 99, padding: '4px 12px 4px 4px',
+                  textDecoration: 'none',
+                  transition: 'box-shadow .15s, opacity .15s',
+                  boxShadow: userPillHover ? 'var(--shadow-sm)' : 'none',
+                  opacity: userPillHover ? 0.85 : 1,
+                }}
+              >
                 <div style={{
                   width: 26, height: 26, borderRadius: 99,
                   background: 'linear-gradient(135deg, #4f46e5, #7c3aed)',
@@ -109,7 +136,7 @@ const Layout: React.FC<LayoutProps> = ({ children }) => {
                 <span style={{ fontSize: '.8rem', fontWeight: 600, color: 'var(--text-secondary)' }}>
                   {user?.username}
                 </span>
-              </div>
+              </Link>
 
               {/* Currency toggle */}
               <button
@@ -119,6 +146,19 @@ const Layout: React.FC<LayoutProps> = ({ children }) => {
                 title={currency === 'UYU' ? 'Cambiar a dólares' : 'Cambiar a pesos'}
               >
                 {currency === 'UYU' ? '$ UYU' : 'USD'}
+              </button>
+
+              {/* Theme toggle */}
+              <button
+                onClick={toggleTheme}
+                className="btn btn-ghost"
+                style={{ padding: '.4rem' }}
+                title={theme === 'dark' ? 'Cambiar a modo claro' : 'Cambiar a modo oscuro'}
+                aria-label={theme === 'dark' ? 'Cambiar a modo claro' : 'Cambiar a modo oscuro'}
+              >
+                {theme === 'dark'
+                  ? <SunIcon className="w-4 h-4" />
+                  : <MoonIcon className="w-4 h-4" />}
               </button>
 
               <button
@@ -136,6 +176,8 @@ const Layout: React.FC<LayoutProps> = ({ children }) => {
                 className="sm:hidden btn btn-ghost"
                 style={{ padding: '.4rem' }}
                 onClick={() => setMobileOpen(!mobileOpen)}
+                aria-label={mobileOpen ? 'Cerrar menú' : 'Abrir menú'}
+                aria-expanded={mobileOpen}
               >
                 {mobileOpen
                   ? <XMarkIcon className="w-5 h-5" />
@@ -152,7 +194,12 @@ const Layout: React.FC<LayoutProps> = ({ children }) => {
             background: 'var(--surface)',
             padding: '0.5rem 1rem 1rem',
           }}>
-            {[...navItems, ...(user?.role === 'admin' ? [{ path: '/admin', label: 'Admin', icon: ShieldCheckIcon }] : [])].map(item => {
+            {[
+              ...navItems,
+              ...(user?.role === 'admin' ? [{ path: '/admin', label: 'Admin', icon: ShieldCheckIcon }] : []),
+              ...(user?.role === 'owner' ? [{ path: '/team', label: 'Equipo', icon: UserGroupIcon }] : []),
+              { path: '/profile', label: 'Mi cuenta', icon: UserCircleIcon },
+            ].map(item => {
               const Icon = item.icon;
               return (
                 <Link

@@ -1,5 +1,10 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import { useAuth } from '../contexts/AuthContext';
+import { useToast } from '../contexts/ToastContext';
+import { useConfirm } from '../contexts/ConfirmContext';
+import Modal from '../components/Modal';
+import EmptyState from '../components/EmptyState';
+import { SkeletonRows } from '../components/Skeleton';
 import { adminService } from '../services/admin';
 import { UserRequest, User } from '../types';
 import {
@@ -13,6 +18,7 @@ import {
   EyeIcon,
   EyeSlashIcon,
   CalendarDaysIcon,
+  TrashIcon,
 } from '@heroicons/react/24/outline';
 
 function daysUntil(dateStr: string | null | undefined): number | null {
@@ -26,25 +32,29 @@ function formatDate(d: string | null | undefined) {
   return new Date(d).toLocaleDateString('es-ES', { day: '2-digit', month: 'short', year: 'numeric' });
 }
 
+type RequestAction = 'approve' | 'reject';
+
 const AdminRequestsPage: React.FC = () => {
   const { user, logout } = useAuth();
-  const [requests, setRequests]           = useState<UserRequest[]>([]);
-  const [users, setUsers]                 = useState<User[]>([]);
-  const [loading, setLoading]             = useState(true);
-  const [error, setError]                 = useState('');
-  const [actionLoading, setActionLoading] = useState<number | null>(null);
-  const [extendLoading, setExtendLoading] = useState<number | null>(null);
-  const [extendMsg, setExtendMsg]         = useState<{ id: number; msg: string } | null>(null);
+  const toast = useToast();
+  const confirm = useConfirm();
 
-  // Edit user modal
-  const [editTarget, setEditTarget]       = useState<User | null>(null);
-  const [editUsername, setEditUsername]   = useState('');
-  const [editPassword, setEditPassword]   = useState('');
-  const [showPass, setShowPass]           = useState(false);
-  const [editLoading, setEditLoading]     = useState(false);
-  const [editSuccess, setEditSuccess]     = useState('');
-  const [editError, setEditError]         = useState('');
-  const [deleteLoading, setDeleteLoading] = useState(false);
+  const [requests, setRequests] = useState<UserRequest[]>([]);
+  const [users, setUsers]       = useState<User[]>([]);
+  const [loading, setLoading]   = useState(true);
+  const [error, setError]       = useState('');
+
+  // Una sola solicitud / un solo usuario en curso a la vez: evita el doble
+  // clic que procesaría la misma acción dos veces.
+  const [busyReq, setBusyReq]     = useState<{ id: number; action: RequestAction } | null>(null);
+  const [busyUserId, setBusyUserId] = useState<number | null>(null);
+
+  // Modal editar usuario
+  const [editTarget, setEditTarget]     = useState<User | null>(null);
+  const [editUsername, setEditUsername] = useState('');
+  const [editPassword, setEditPassword] = useState('');
+  const [showPass, setShowPass]         = useState(false);
+  const [saving, setSaving]             = useState(false);
 
   useEffect(() => { loadAll(); }, []);
 
@@ -67,87 +77,104 @@ const AdminRequestsPage: React.FC = () => {
     setEditUsername(u.username);
     setEditPassword('');
     setShowPass(false);
-    setEditSuccess('');
-    setEditError('');
   };
-  const closeEdit = () => { setEditTarget(null); setEditSuccess(''); setEditError(''); };
+  // Estable: Modal re-ejecuta su efecto de foco cuando cambia onClose, y con
+  // una función nueva por render el foco saltaría al primer campo al tipear.
+  const closeEdit = useCallback(() => { setEditTarget(null); setSaving(false); }, []);
 
   const handleEdit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!editTarget) return;
+    if (!editTarget || saving) return;
     const usernameChanged = editUsername.trim() !== editTarget.username;
     if (!usernameChanged && !editPassword) {
-      setEditError('No hay cambios para guardar');
+      toast.info('No hay cambios para guardar');
       return;
     }
     try {
-      setEditLoading(true);
-      setEditError('');
+      setSaving(true);
       const data: { username?: string; password?: string } = {};
       if (usernameChanged) data.username = editUsername.trim();
       if (editPassword) data.password = editPassword;
       const res = await adminService.updateUser(editTarget.id, data);
-      setEditSuccess(res.message);
-      setEditPassword('');
-      if (usernameChanged) setEditTarget({ ...editTarget, username: editUsername.trim() });
-      loadAll();
+      toast.success(res.message || 'Usuario actualizado');
+      closeEdit();
+      await loadAll();
     } catch (err: any) {
-      setEditError(err.response?.data?.error || 'Error al actualizar usuario');
+      toast.error(err.response?.data?.error || 'Error al actualizar usuario');
     } finally {
-      setEditLoading(false);
+      setSaving(false);
     }
   };
 
   const handleDelete = async (u: User) => {
-    if (!confirm(`¿Eliminar el usuario "${u.username}"? Esta acción no se puede deshacer.`)) return;
+    // Se cierra el modal de edición antes de confirmar para no anidar dos
+    // diálogos (dos trampas de foco compitiendo).
+    closeEdit();
+    if (!(await confirm({
+      title: 'Eliminar usuario',
+      message: `¿Seguro que querés eliminar a ${u.username}? Pierde el acceso a OpticApp de forma permanente y la acción no se puede deshacer.`,
+      confirmLabel: 'Eliminar',
+      danger: true,
+    }))) return;
+
     try {
-      setDeleteLoading(true);
-      await adminService.deleteUser(u.id);
-      closeEdit();
-      loadAll();
+      setBusyUserId(u.id);
+      const res = await adminService.deleteUser(u.id);
+      toast.success(res.message || `Usuario ${u.username} eliminado`);
+      await loadAll();
     } catch (err: any) {
-      setEditError(err.response?.data?.error || 'Error al eliminar usuario');
+      toast.error(err.response?.data?.error || 'Error al eliminar usuario');
     } finally {
-      setDeleteLoading(false);
+      setBusyUserId(null);
     }
   };
 
-  const handleApprove = async (id: number) => {
+  const handleApprove = async (req: UserRequest) => {
+    if (busyReq) return;
     try {
-      setActionLoading(id);
-      await adminService.approveRequest(id);
+      setBusyReq({ id: req.id, action: 'approve' });
+      const res: any = await adminService.approveRequest(req.id);
+      toast.success(res?.message || `Solicitud de ${req.username} aprobada`);
       await loadAll();
     } catch (err: any) {
-      alert(err.response?.data?.error || 'Error al aprobar');
+      toast.error(err.response?.data?.error || 'Error al aprobar');
     } finally {
-      setActionLoading(null);
+      setBusyReq(null);
     }
   };
 
-  const handleReject = async (id: number) => {
-    if (!confirm('¿Rechazar esta solicitud? Se desactivará la cuenta del usuario.')) return;
+  const handleReject = async (req: UserRequest) => {
+    if (busyReq) return;
+    if (!(await confirm({
+      title: 'Rechazar solicitud',
+      message: `¿Seguro que querés rechazar la solicitud de ${req.username}? Se desactiva su cuenta y se le envía un email avisándole.`,
+      confirmLabel: 'Rechazar',
+      danger: true,
+    }))) return;
+
     try {
-      setActionLoading(id);
-      await adminService.rejectRequest(id);
+      setBusyReq({ id: req.id, action: 'reject' });
+      const res: any = await adminService.rejectRequest(req.id);
+      toast.success(res?.message || `Solicitud de ${req.username} rechazada`);
       await loadAll();
     } catch (err: any) {
-      alert(err.response?.data?.error || 'Error al rechazar');
+      toast.error(err.response?.data?.error || 'Error al rechazar');
     } finally {
-      setActionLoading(null);
+      setBusyReq(null);
     }
   };
 
   const handleExtend = async (u: User) => {
+    if (busyUserId) return;
     try {
-      setExtendLoading(u.id);
+      setBusyUserId(u.id);
       const res = await adminService.extendLicense(u.id);
-      setExtendMsg({ id: u.id, msg: res.message });
+      toast.success(res.message || `Licencia de ${u.username} extendida un mes`);
       await loadAll();
-      setTimeout(() => setExtendMsg(null), 4000);
     } catch (err: any) {
-      alert(err.response?.data?.error || 'Error al extender licencia');
+      toast.error(err.response?.data?.error || 'Error al extender licencia');
     } finally {
-      setExtendLoading(null);
+      setBusyUserId(null);
     }
   };
 
@@ -169,13 +196,13 @@ const AdminRequestsPage: React.FC = () => {
         <div className="max-w-5xl mx-auto px-4 sm:px-6" style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', height: 56 }}>
           <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
             <div style={{ width: 30, height: 30, borderRadius: 8, background: 'linear-gradient(135deg, #4f46e5, #7c3aed)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth="2.5">
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth="2.5" aria-hidden="true">
                 <circle cx="12" cy="12" r="3"/><path d="M20.188 10.934c.388.472.388 1.16 0 1.632C18.768 14.35 15.636 18 12 18c-3.636 0-6.768-3.65-8.188-5.434a1.3 1.3 0 0 1 0-1.632C5.232 9.65 8.364 6 12 6c3.636 0 6.768 3.65 8.188 5.434z"/>
               </svg>
             </div>
             <div>
               <span style={{ fontWeight: 800, fontSize: '.95rem', color: 'var(--text-primary)' }}>OpticApp</span>
-              <span style={{ marginLeft: 8, fontSize: '.75rem', fontWeight: 600, color: '#6366f1', background: '#eef2ff', padding: '1px 8px', borderRadius: 99 }}>Admin</span>
+              <span className="badge badge-blue" style={{ marginLeft: 8 }}>Admin</span>
             </div>
           </div>
           <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
@@ -192,13 +219,25 @@ const AdminRequestsPage: React.FC = () => {
 
         {/* Alerta de licencias por vencer */}
         {!loading && expiringUsers.length > 0 && (
-          <div style={{ background: '#fffbeb', border: '1px solid #fde68a', borderRadius: 10, padding: '.875rem 1.125rem', marginBottom: '1.25rem', display: 'flex', alignItems: 'flex-start', gap: 10 }}>
-            <span style={{ fontSize: 18, flexShrink: 0 }}>⚠️</span>
+          <div
+            role="status"
+            style={{
+              background: 'var(--surface)',
+              border: '1px solid var(--border)',
+              borderLeft: '4px solid var(--warning)',
+              borderRadius: 'var(--radius)',
+              boxShadow: 'var(--shadow-sm)',
+              padding: '.875rem 1.125rem',
+              marginBottom: '1.25rem',
+              display: 'flex', alignItems: 'flex-start', gap: 10,
+            }}
+          >
+            <ClockIcon style={{ width: 18, height: 18, flexShrink: 0, color: 'var(--warning)' }} aria-hidden="true" />
             <div>
-              <p style={{ margin: '0 0 4px', fontWeight: 700, fontSize: '.875rem', color: '#92400e' }}>
+              <p style={{ margin: '0 0 4px', fontWeight: 700, fontSize: '.875rem', color: 'var(--text-primary)' }}>
                 {expiringUsers.length} usuario{expiringUsers.length !== 1 ? 's' : ''} con licencia próxima a vencer
               </p>
-              <p style={{ margin: 0, fontSize: '.8rem', color: '#b45309' }}>
+              <p style={{ margin: 0, fontSize: '.8rem', color: 'var(--text-secondary)' }}>
                 {expiringUsers.map(u => {
                   const expiry = u.license_type === 'trial' ? u.trial_expires_at : u.license_expires_at;
                   const days = daysUntil(expiry);
@@ -217,85 +256,117 @@ const AdminRequestsPage: React.FC = () => {
               {pending.length} pendiente{pending.length !== 1 ? 's' : ''} · {processed.length} procesada{processed.length !== 1 ? 's' : ''}
             </p>
           </div>
-          <button className="btn btn-ghost" onClick={loadAll} style={{ fontSize: '.8rem' }}>
+          <button className="btn btn-ghost" onClick={loadAll} disabled={loading} style={{ fontSize: '.8rem' }}>
             <ArrowPathIcon className="w-4 h-4" />
             Actualizar
           </button>
         </div>
 
         {error && (
-          <div style={{ background: '#fef2f2', border: '1px solid #fecaca', borderRadius: 10, padding: '.75rem 1rem', marginBottom: '1.25rem', color: '#991b1b', fontSize: '.875rem' }}>
+          <div
+            role="alert"
+            style={{
+              background: 'var(--surface)',
+              border: '1px solid var(--border)',
+              borderLeft: '4px solid var(--danger)',
+              borderRadius: 'var(--radius)',
+              padding: '.75rem 1rem',
+              marginBottom: '1.25rem',
+              color: 'var(--danger)',
+              fontSize: '.875rem',
+              fontWeight: 600,
+            }}
+          >
             {error}
           </div>
         )}
 
         {loading ? (
-          <div style={{ display: 'flex', justifyContent: 'center', padding: '4rem' }}>
-            <div className="spinner" />
-          </div>
-        ) : requests.length === 0 ? (
-          <div className="card">
-            <div className="empty-state">
-              <ShieldCheckIcon style={{ width: 40, height: 40, margin: '0 auto 0.75rem' }} />
-              <p>No hay solicitudes</p>
+          <div className="card" style={{ overflow: 'hidden' }}>
+            <div className="table-scroll">
+              <table className="tbl">
+                <thead>
+                  <tr>
+                    <th>Usuario</th>
+                    <th>Óptica</th>
+                    <th>Solicitado</th>
+                    <th>Revisado por</th>
+                    <th>Estado</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  <SkeletonRows rows={4} columns={5} />
+                </tbody>
+              </table>
             </div>
           </div>
         ) : (
           <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
-            {/* Pending */}
-            {pending.length > 0 && (
-              <div>
-                <div className="section-title">Pendientes</div>
+            {/* Pendientes */}
+            <div>
+              <div className="section-title">Pendientes</div>
+              {pending.length > 0 ? (
                 <div style={{ display: 'flex', flexDirection: 'column', gap: '.625rem' }}>
                   {pending.map(req => (
                     <RequestCard
                       key={req.id}
                       req={req}
-                      loading={actionLoading === req.id}
-                      onApprove={() => handleApprove(req.id)}
-                      onReject={() => handleReject(req.id)}
+                      busy={busyReq?.id === req.id ? busyReq.action : null}
+                      blocked={busyReq !== null}
+                      onApprove={() => handleApprove(req)}
+                      onReject={() => handleReject(req)}
                     />
                   ))}
                 </div>
-              </div>
-            )}
+              ) : (
+                <div className="card">
+                  <EmptyState
+                    icon={<ShieldCheckIcon />}
+                    title="No hay solicitudes pendientes"
+                    description="Todo al día: ya revisaste cada pedido de acceso que llegó."
+                  />
+                </div>
+              )}
+            </div>
 
-            {/* Processed */}
+            {/* Historial */}
             {processed.length > 0 && (
               <div>
                 <div className="section-title">Historial</div>
                 <div className="card" style={{ overflow: 'hidden' }}>
-                  <table className="tbl">
-                    <thead>
-                      <tr>
-                        <th>Usuario</th>
-                        <th>Óptica</th>
-                        <th>Solicitado</th>
-                        <th>Revisado por</th>
-                        <th>Estado</th>
-                      </tr>
-                    </thead>
-                    <tbody>
-                      {processed.map(req => (
-                        <tr key={req.id}>
-                          <td>
-                            <div style={{ fontWeight: 600, fontSize: '.875rem' }}>{req.username}</div>
-                            <div style={{ fontSize: '.75rem', color: 'var(--text-muted)' }}>{req.email}</div>
-                          </td>
-                          <td style={{ fontSize: '.875rem', color: 'var(--text-secondary)' }}>{req.optics_name}</td>
-                          <td style={{ fontSize: '.8rem', color: 'var(--text-muted)' }}>
-                            {new Date(req.requested_at).toLocaleDateString('es-ES', { day: '2-digit', month: 'short', year: 'numeric' })}
-                          </td>
-                          <td style={{ fontSize: '.8rem', color: 'var(--text-secondary)' }}>
-                            {req.reviewer_username || '—'}
-                          </td>
-                          <td>
-                            <StatusBadge status={req.status} />
-                          </td>
+                  <div className="table-scroll">
+                    <table className="tbl">
+                      <thead>
+                        <tr>
+                          <th>Usuario</th>
+                          <th>Óptica</th>
+                          <th>Solicitado</th>
+                          <th>Revisado por</th>
+                          <th>Estado</th>
                         </tr>
-                      ))}
-                    </tbody>
-                  </table>
+                      </thead>
+                      <tbody>
+                        {processed.map(req => (
+                          <tr key={req.id}>
+                            <td>
+                              <div style={{ fontWeight: 600, fontSize: '.875rem' }}>{req.username}</div>
+                              <div style={{ fontSize: '.75rem', color: 'var(--text-muted)' }}>{req.email}</div>
+                            </td>
+                            <td style={{ fontSize: '.875rem', color: 'var(--text-secondary)' }}>{req.optics_name}</td>
+                            <td style={{ fontSize: '.8rem', color: 'var(--text-muted)' }}>
+                              {formatDate(req.requested_at)}
+                            </td>
+                            <td style={{ fontSize: '.8rem', color: 'var(--text-secondary)' }}>
+                              {req.reviewer_username || '—'}
+                            </td>
+                            <td>
+                              <StatusBadge status={req.status} />
+                            </td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  </div>
                 </div>
               </div>
             )}
@@ -307,236 +378,206 @@ const AdminRequestsPage: React.FC = () => {
           <div style={{ marginTop: '2rem' }}>
             <div className="section-title">Usuarios y licencias</div>
             <div className="card" style={{ overflow: 'hidden' }}>
-              <table className="tbl">
-                <thead>
-                  <tr>
-                    <th>Usuario</th>
-                    <th>Licencia</th>
-                    <th>Vencimiento</th>
-                    <th></th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {nonAdminUsers.map(u => {
-                    const expiry = u.license_type === 'trial' ? u.trial_expires_at : u.license_expires_at;
-                    const days = daysUntil(expiry);
-                    const isExpired = days !== null && days < 0;
-                    const isUrgent = days !== null && days >= 0 && days <= 3;
-                    const successMsg = extendMsg?.id === u.id ? extendMsg.msg : null;
+              <div className="table-scroll">
+                <table className="tbl">
+                  <thead>
+                    <tr>
+                      <th>Usuario</th>
+                      <th>Licencia</th>
+                      <th>Vencimiento</th>
+                      <th style={{ textAlign: 'right' }}>Acciones</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {nonAdminUsers.map(u => {
+                      const expiry = u.license_type === 'trial' ? u.trial_expires_at : u.license_expires_at;
+                      const days = daysUntil(expiry);
+                      const isExpired = days !== null && days < 0;
+                      const isUrgent = days !== null && days >= 0 && days <= 3;
+                      const rowColor = isExpired ? 'var(--danger)' : isUrgent ? 'var(--warning)' : null;
+                      const busy = busyUserId === u.id;
 
-                    return (
-                      <tr key={u.id}>
-                        <td>
-                          <div style={{ fontWeight: 600, fontSize: '.875rem' }}>{u.username}</div>
-                          <div style={{ fontSize: '.75rem', color: 'var(--text-muted)' }}>{u.email}</div>
-                        </td>
-                        <td>
-                          <LicenseTypeBadge type={u.license_type} />
-                        </td>
-                        <td>
-                          <div style={{ fontSize: '.85rem', fontWeight: 600, color: isExpired ? '#dc2626' : isUrgent ? '#d97706' : 'var(--text-primary)' }}>
-                            {formatDate(expiry)}
-                          </div>
-                          {days !== null && (
-                            <div style={{ fontSize: '.72rem', color: isExpired ? '#dc2626' : isUrgent ? '#d97706' : 'var(--text-muted)', fontWeight: isExpired || isUrgent ? 600 : 400 }}>
-                              {isExpired ? '⚠ Vencida' : days === 0 ? '⚠ Vence hoy' : `${days}d restantes`}
+                      return (
+                        <tr key={u.id}>
+                          <td>
+                            <div style={{ fontWeight: 600, fontSize: '.875rem' }}>{u.username}</div>
+                            <div style={{ fontSize: '.75rem', color: 'var(--text-muted)' }}>{u.email}</div>
+                          </td>
+                          <td>
+                            <LicenseTypeBadge type={u.license_type} />
+                          </td>
+                          <td>
+                            <div style={{ fontSize: '.85rem', fontWeight: 600, color: rowColor || 'var(--text-primary)' }}>
+                              {formatDate(expiry)}
                             </div>
-                          )}
-                        </td>
-                        <td style={{ textAlign: 'right' }}>
-                          {successMsg ? (
-                            <span style={{ fontSize: '.78rem', color: '#059669', fontWeight: 600 }}>✓ {successMsg}</span>
-                          ) : (
+                            {days !== null && (
+                              <div style={{ fontSize: '.72rem', color: rowColor || 'var(--text-muted)', fontWeight: rowColor ? 600 : 400 }}>
+                                {isExpired ? 'Vencida' : days === 0 ? 'Vence hoy' : `${days}d restantes`}
+                              </div>
+                            )}
+                          </td>
+                          <td>
                             <div style={{ display: 'flex', gap: 6, justifyContent: 'flex-end' }}>
                               <button
+                                type="button"
+                                className="btn btn-ghost"
                                 onClick={() => handleExtend(u)}
-                                disabled={extendLoading === u.id}
-                                title="Extender licencia 1 mes"
-                                style={{
-                                  display: 'inline-flex', alignItems: 'center', gap: 5,
-                                  padding: '.4rem .75rem', borderRadius: 8,
-                                  border: '1px solid #bfdbfe', background: '#eff6ff',
-                                  color: '#1d4ed8', fontSize: '.78rem', fontWeight: 600,
-                                  cursor: extendLoading === u.id ? 'not-allowed' : 'pointer',
-                                  opacity: extendLoading === u.id ? .6 : 1,
-                                }}
+                                disabled={busy}
+                                aria-label={`Extender un mes la licencia de ${u.username}`}
+                                style={{ fontSize: '.78rem', padding: '.4rem .75rem' }}
                               >
-                                {extendLoading === u.id
-                                  ? <div className="spinner" style={{ width: 12, height: 12, borderWidth: 2 }} />
-                                  : <CalendarDaysIcon style={{ width: 13, height: 13 }} />}
-                                +1 mes
+                                <CalendarDaysIcon style={{ width: 13, height: 13 }} aria-hidden="true" />
+                                {busy ? 'Aplicando…' : '+1 mes'}
                               </button>
                               <button
+                                type="button"
+                                className="btn btn-ghost"
                                 onClick={() => openEdit(u)}
-                                style={{
-                                  display: 'inline-flex', alignItems: 'center', gap: 5,
-                                  padding: '.4rem .75rem', borderRadius: 8,
-                                  border: '1px solid var(--border)', background: 'var(--surface)',
-                                  color: 'var(--text-secondary)', fontSize: '.78rem', fontWeight: 600, cursor: 'pointer',
-                                }}
+                                disabled={busy}
+                                aria-label={`Editar usuario ${u.username}`}
+                                style={{ fontSize: '.78rem', padding: '.4rem .75rem' }}
                               >
-                                <KeyIcon style={{ width: 13, height: 13 }} />
+                                <KeyIcon style={{ width: 13, height: 13 }} aria-hidden="true" />
                                 Editar
                               </button>
                             </div>
-                          )}
-                        </td>
-                      </tr>
-                    );
-                  })}
-                </tbody>
-              </table>
+                          </td>
+                        </tr>
+                      );
+                    })}
+                  </tbody>
+                </table>
+              </div>
             </div>
           </div>
         )}
       </main>
 
       {/* Modal editar usuario */}
-      {editTarget && (
-        <div className="modal-overlay" onClick={e => e.target === e.currentTarget && closeEdit()}>
-          <div className="modal-box" style={{ maxWidth: 440 }}>
-            <div style={{ padding: '1.25rem 1.5rem', borderBottom: '1px solid var(--border)', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-              <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-                <KeyIcon style={{ width: 18, height: 18, color: '#4f46e5' }} />
-                <h3 style={{ margin: 0, fontWeight: 700, fontSize: '1rem', color: 'var(--text-primary)' }}>
-                  Editar usuario
-                </h3>
-              </div>
-              <button onClick={closeEdit} style={{ padding: '.3rem', borderRadius: 6, background: 'var(--surface-3)', border: 'none', cursor: 'pointer', color: 'var(--text-muted)', display: 'flex' }}>
-                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><path d="M18 6 6 18M6 6l12 12"/></svg>
+      <Modal
+        open={editTarget !== null}
+        onClose={closeEdit}
+        title="Editar usuario"
+        maxWidth={440}
+        onSubmit={handleEdit}
+        footer={
+          <>
+            {editTarget && editTarget.role !== 'admin' && (
+              <button
+                type="button"
+                className="btn btn-danger-solid"
+                onClick={() => handleDelete(editTarget)}
+                disabled={saving}
+                aria-label={`Eliminar usuario ${editTarget.username}`}
+                style={{ marginRight: 'auto' }}
+              >
+                <TrashIcon style={{ width: 14, height: 14 }} aria-hidden="true" />
+                Eliminar usuario
               </button>
-            </div>
+            )}
+            <button type="button" className="btn btn-ghost" onClick={closeEdit} disabled={saving}>Cancelar</button>
+            <button type="submit" className="btn btn-primary" disabled={saving}>
+              {saving ? 'Guardando…' : 'Guardar cambios'}
+            </button>
+          </>
+        }
+      >
+        <div>
+          <label htmlFor="edit-username" style={{ display: 'block', marginBottom: '.375rem', fontSize: '.875rem', fontWeight: 600 }}>
+            Nombre de usuario
+          </label>
+          <input
+            id="edit-username"
+            type="text"
+            required
+            minLength={3}
+            value={editUsername}
+            onChange={e => setEditUsername(e.target.value.replace(/\s/g, ''))}
+            placeholder="Sin espacios"
+          />
+          <p style={{ margin: '.25rem 0 0', fontSize: '.75rem', color: 'var(--text-muted)' }}>
+            Los espacios se eliminan automáticamente.
+          </p>
+        </div>
 
-            <form onSubmit={handleEdit}>
-              <div style={{ padding: '1.5rem', display: 'flex', flexDirection: 'column', gap: '1rem' }}>
-                <div>
-                  <label style={{ display: 'block', marginBottom: '.375rem', fontSize: '.875rem', fontWeight: 600 }}>Nombre de usuario</label>
-                  <input
-                    type="text"
-                    required
-                    minLength={3}
-                    value={editUsername}
-                    onChange={e => { setEditUsername(e.target.value.replace(/\s/g, '')); setEditSuccess(''); setEditError(''); }}
-                    placeholder="Sin espacios"
-                  />
-                  <p style={{ margin: '.25rem 0 0', fontSize: '.75rem', color: 'var(--text-muted)' }}>Los espacios se eliminan automáticamente.</p>
-                </div>
-
-                <div>
-                  <label style={{ display: 'block', marginBottom: '.375rem', fontSize: '.875rem', fontWeight: 600 }}>Nueva contraseña <span style={{ fontWeight: 400, color: 'var(--text-muted)' }}>(opcional)</span></label>
-                  <div style={{ position: 'relative' }}>
-                    <input
-                      type={showPass ? 'text' : 'password'}
-                      minLength={6}
-                      value={editPassword}
-                      onChange={e => { setEditPassword(e.target.value); setEditSuccess(''); setEditError(''); }}
-                      placeholder="Dejar vacío para no cambiar"
-                      style={{ paddingRight: '2.5rem' }}
-                    />
-                    <button
-                      type="button"
-                      onClick={() => setShowPass(v => !v)}
-                      style={{ position: 'absolute', right: '.625rem', top: '50%', transform: 'translateY(-50%)', background: 'none', border: 'none', cursor: 'pointer', color: 'var(--text-muted)', display: 'flex', padding: 0 }}
-                    >
-                      {showPass ? <EyeSlashIcon style={{ width: 16, height: 16 }} /> : <EyeIcon style={{ width: 16, height: 16 }} />}
-                    </button>
-                  </div>
-                </div>
-
-                {editError && (
-                  <div style={{ display: 'flex', alignItems: 'center', gap: 6, background: '#fef2f2', border: '1px solid #fecaca', borderRadius: 8, padding: '.625rem .875rem', fontSize: '.8rem', color: '#991b1b' }}>
-                    <XCircleIcon style={{ width: 14, height: 14, flexShrink: 0 }} />{editError}
-                  </div>
-                )}
-                {editSuccess && (
-                  <div style={{ display: 'flex', alignItems: 'center', gap: 6, background: '#f0fdf4', border: '1px solid #bbf7d0', borderRadius: 8, padding: '.625rem .875rem', fontSize: '.8rem', color: '#15803d' }}>
-                    <CheckCircleIcon style={{ width: 14, height: 14, flexShrink: 0 }} />{editSuccess}
-                  </div>
-                )}
-              </div>
-
-              <div style={{ padding: '1rem 1.5rem', borderTop: '1px solid var(--border)', display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: '.75rem' }}>
-                {editTarget.role !== 'admin' && (
-                  <button
-                    type="button"
-                    onClick={() => handleDelete(editTarget)}
-                    disabled={deleteLoading}
-                    style={{ display: 'inline-flex', alignItems: 'center', gap: 5, padding: '.45rem .875rem', borderRadius: 8, border: '1px solid #fecaca', background: '#fef2f2', color: '#dc2626', fontSize: '.8rem', fontWeight: 600, cursor: deleteLoading ? 'not-allowed' : 'pointer' }}
-                  >
-                    {deleteLoading
-                      ? <div className="spinner" style={{ width: 13, height: 13, borderWidth: 2 }} />
-                      : <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6"/><path d="M10 11v6M14 11v6"/><path d="M9 6V4a1 1 0 0 1 1-1h4a1 1 0 0 1 1 1v2"/></svg>}
-                    Eliminar usuario
-                  </button>
-                )}
-                <div style={{ display: 'flex', gap: '.75rem', marginLeft: 'auto' }}>
-                  <button type="button" className="btn btn-ghost" onClick={closeEdit}>Cancelar</button>
-                  <button type="submit" className="btn btn-primary" disabled={editLoading}>
-                    {editLoading
-                      ? <><div className="spinner" style={{ width: 14, height: 14, borderWidth: 2 }} /> Guardando…</>
-                      : 'Guardar cambios'}
-                  </button>
-                </div>
-              </div>
-            </form>
+        <div>
+          <label htmlFor="edit-password" style={{ display: 'block', marginBottom: '.375rem', fontSize: '.875rem', fontWeight: 600 }}>
+            Nueva contraseña <span style={{ fontWeight: 400, color: 'var(--text-muted)' }}>(opcional)</span>
+          </label>
+          <div style={{ position: 'relative' }}>
+            <input
+              id="edit-password"
+              type={showPass ? 'text' : 'password'}
+              minLength={6}
+              value={editPassword}
+              onChange={e => setEditPassword(e.target.value)}
+              placeholder="Dejar vacío para no cambiar"
+              style={{ paddingRight: '2.5rem' }}
+            />
+            <button
+              type="button"
+              onClick={() => setShowPass(v => !v)}
+              aria-label={showPass ? 'Ocultar contraseña' : 'Mostrar contraseña'}
+              style={{ position: 'absolute', right: '.625rem', top: '50%', transform: 'translateY(-50%)', background: 'none', border: 'none', cursor: 'pointer', color: 'var(--text-muted)', display: 'flex', padding: 0 }}
+            >
+              {showPass
+                ? <EyeSlashIcon style={{ width: 16, height: 16 }} aria-hidden="true" />
+                : <EyeIcon style={{ width: 16, height: 16 }} aria-hidden="true" />}
+            </button>
           </div>
         </div>
-      )}
+      </Modal>
     </div>
   );
 };
 
 const StatusBadge: React.FC<{ status: string }> = ({ status }) => {
   if (status === 'approved') return (
-    <span className="badge badge-green" style={{ display: 'inline-flex', alignItems: 'center', gap: 4 }}>
-      <CheckCircleIcon style={{ width: 11, height: 11 }} /> Aprobada
+    <span className="badge badge-green" style={{ gap: 4 }}>
+      <CheckCircleIcon style={{ width: 11, height: 11 }} aria-hidden="true" /> Aprobada
     </span>
   );
   if (status === 'rejected') return (
-    <span className="badge badge-red" style={{ display: 'inline-flex', alignItems: 'center', gap: 4 }}>
-      <XCircleIcon style={{ width: 11, height: 11 }} /> Rechazada
+    <span className="badge badge-red" style={{ gap: 4 }}>
+      <XCircleIcon style={{ width: 11, height: 11 }} aria-hidden="true" /> Rechazada
     </span>
   );
   return (
-    <span className="badge badge-yellow" style={{ display: 'inline-flex', alignItems: 'center', gap: 4 }}>
-      <ClockIcon style={{ width: 11, height: 11 }} /> Pendiente
+    <span className="badge badge-yellow" style={{ gap: 4 }}>
+      <ClockIcon style={{ width: 11, height: 11 }} aria-hidden="true" /> Pendiente
     </span>
   );
 };
 
-const LicenseTypeBadge: React.FC<{ type?: 'trial' | 'active' }> = ({ type }) => {
-  if (type === 'active') return (
-    <span style={{ display: 'inline-flex', alignItems: 'center', gap: 4, padding: '2px 10px', borderRadius: 99, fontSize: '.73rem', fontWeight: 700, background: '#f0fdf4', color: '#15803d', border: '1px solid #bbf7d0' }}>
-      ✓ Activa
-    </span>
-  );
-  return (
-    <span style={{ display: 'inline-flex', alignItems: 'center', gap: 4, padding: '2px 10px', borderRadius: 99, fontSize: '.73rem', fontWeight: 700, background: '#fefce8', color: '#a16207', border: '1px solid #fde68a' }}>
-      ⏳ Prueba
-    </span>
-  );
-};
+const LicenseTypeBadge: React.FC<{ type?: 'trial' | 'active' }> = ({ type }) => (
+  type === 'active'
+    ? <span className="badge badge-green">Activa</span>
+    : <span className="badge badge-yellow">Prueba</span>
+);
 
 const RequestCard: React.FC<{
   req: UserRequest;
-  loading: boolean;
+  /** Acción en curso sobre ESTA solicitud, si la hay. */
+  busy: RequestAction | null;
+  /** Hay una acción en curso en la página: bloquea el resto de las tarjetas. */
+  blocked: boolean;
   onApprove: () => void;
   onReject: () => void;
-}> = ({ req, loading, onApprove, onReject }) => (
+}> = ({ req, busy, blocked, onApprove, onReject }) => (
   <div style={{
     background: 'var(--surface)',
     border: '1px solid var(--border)',
-    borderRadius: 12,
+    borderRadius: 'var(--radius-lg)',
     padding: '1.125rem 1.25rem',
     display: 'flex', alignItems: 'center', gap: '1rem',
-    boxShadow: '0 1px 4px rgba(15,23,42,.06)',
+    boxShadow: 'var(--shadow-sm)',
   }}>
     <div style={{
       width: 42, height: 42, borderRadius: 99, flexShrink: 0,
       background: 'linear-gradient(135deg, #e0e7ff, #c7d2fe)',
       display: 'flex', alignItems: 'center', justifyContent: 'center',
       fontWeight: 800, fontSize: '.9rem', color: '#4338ca',
-    }}>
+    }} aria-hidden="true">
       {req.username.charAt(0).toUpperCase()}
     </div>
 
@@ -556,37 +597,39 @@ const RequestCard: React.FC<{
 
     <div style={{ display: 'flex', gap: '.5rem', flexShrink: 0 }}>
       <button
+        type="button"
         onClick={onReject}
-        disabled={loading}
+        disabled={blocked}
+        aria-label={`Rechazar solicitud de ${req.username}`}
         style={{
           padding: '.5rem .875rem',
-          background: '#fef2f2', color: '#dc2626',
-          border: '1px solid #fecaca', borderRadius: 8,
-          fontWeight: 600, fontSize: '.8rem', cursor: loading ? 'not-allowed' : 'pointer',
-          transition: 'all .15s', opacity: loading ? .6 : 1,
+          background: 'var(--surface)', color: 'var(--danger)',
+          border: '1px solid var(--danger)', borderRadius: 'var(--radius)',
+          fontWeight: 600, fontSize: '.8rem',
+          transition: 'all .15s', opacity: blocked ? .6 : 1,
           display: 'flex', alignItems: 'center', gap: 4,
         }}
       >
-        <XCircleIcon style={{ width: 14, height: 14 }} />
-        Rechazar
+        <XCircleIcon style={{ width: 14, height: 14 }} aria-hidden="true" />
+        {busy === 'reject' ? 'Rechazando…' : 'Rechazar'}
       </button>
       <button
+        type="button"
         onClick={onApprove}
-        disabled={loading}
+        disabled={blocked}
+        aria-label={`Aprobar solicitud de ${req.username} y darle un mes de licencia`}
         style={{
           padding: '.5rem .875rem',
-          background: loading ? '#d1fae5' : '#10b981', color: '#fff',
-          border: 'none', borderRadius: 8,
-          fontWeight: 600, fontSize: '.8rem', cursor: loading ? 'not-allowed' : 'pointer',
-          transition: 'all .15s',
+          background: 'var(--success)', color: '#fff',
+          border: 'none', borderRadius: 'var(--radius)',
+          fontWeight: 600, fontSize: '.8rem',
+          transition: 'all .15s', opacity: blocked ? .6 : 1,
           display: 'flex', alignItems: 'center', gap: 4,
-          boxShadow: loading ? 'none' : '0 2px 8px rgba(16,185,129,.3)',
+          boxShadow: blocked ? 'none' : 'var(--shadow-sm)',
         }}
       >
-        {loading
-          ? <div className="spinner" style={{ width: 14, height: 14, borderWidth: 2 }} />
-          : <CheckCircleIcon style={{ width: 14, height: 14 }} />}
-        Aprobar (+1 mes)
+        <CheckCircleIcon style={{ width: 14, height: 14 }} aria-hidden="true" />
+        {busy === 'approve' ? 'Aprobando…' : 'Aprobar (+1 mes)'}
       </button>
     </div>
   </div>

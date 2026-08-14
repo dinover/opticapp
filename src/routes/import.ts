@@ -1,18 +1,12 @@
 import express, { Response } from 'express';
 import multer from 'multer';
 import * as XLSX from 'xlsx';
-import { authenticateToken, AuthRequest } from '../middleware/auth';
-import { getRow, getRows, runQuery } from '../config/database';
+import { authenticateToken, AuthRequest, getOpticsScope } from '../middleware/auth';
+import { getDatabase, getRow } from '../config/database';
 import { Supplier } from '../types';
 
 const router = express.Router();
 const upload = multer({ storage: multer.memoryStorage(), limits: { fileSize: 10 * 1024 * 1024 } });
-
-async function getUserOpticsId(userId: number, userRole: string): Promise<number | null> {
-  if (userRole === 'admin') return null;
-  const user = await getRow<{ optics_id: number | null }>('SELECT optics_id FROM users WHERE id = ?', [userId]);
-  return user?.optics_id || null;
-}
 
 // POST /api/import/products - Importar armazones desde Excel
 router.post('/products', authenticateToken, upload.single('file'), async (req: AuthRequest, res: Response) => {
@@ -21,9 +15,9 @@ router.post('/products', authenticateToken, upload.single('file'), async (req: A
     if (!user) return res.status(401).json({ error: 'Usuario no autenticado' });
     if (!req.file) return res.status(400).json({ error: 'No se recibió ningún archivo' });
 
-    const opticsId = req.body.optics_id
+    const opticsId = (user.role === 'admin' && req.body.optics_id)
       ? parseInt(req.body.optics_id)
-      : await getUserOpticsId(user.id, user.role);
+      : getOpticsScope(user);
 
     if (!opticsId) return res.status(400).json({ error: 'No se pudo determinar la óptica' });
 
@@ -61,39 +55,86 @@ router.post('/products', authenticateToken, upload.single('file'), async (req: A
     }
 
     let created = 0;
+    let updated = 0;
     let skipped = 0;
     let sinPrecio = 0;
     const errors: string[] = [];
 
-    for (let i = 0; i < rows.length; i++) {
-      const row = rows[i];
-      const name = String(row[articuloKey] || '').trim();
-      if (!name) { skipped++; continue; }
+    // Decisión de producto: usamos SAVEPOINTs por fila dentro de una única
+    // transacción, para preservar el comportamiento actual de "una fila con
+    // datos inválidos se loguea como error y no aborta el resto de la
+    // importación", pero ahora con atomicidad real ante fallas de conexión/DB
+    // (esas sí hacen ROLLBACK completo) y sin dejar importaciones parciales
+    // colgadas si el proceso se corta a mitad de camino.
+    const pool = getDatabase();
+    const client = await pool.connect();
+    try {
+      await client.query('BEGIN');
 
-      const quantity = cantidadKey ? parseInt(String(row[cantidadKey] || '0')) || 0 : 0;
-      const rawPrice = precioKey ? parseFloat(String(row[precioKey] || '').replace(',', '.')) : NaN;
-      const price    = !isNaN(rawPrice) && rawPrice > 0 ? rawPrice : 0;
-      if (price === 0) sinPrecio++;
+      for (let i = 0; i < rows.length; i++) {
+        const row = rows[i];
+        const name = String(row[articuloKey] || '').trim();
+        if (!name) { skipped++; continue; }
 
-      try {
-        await runQuery(
-          `INSERT INTO products (optics_id, supplier_id, name, quantity, price)
-           VALUES (?, ?, ?, ?, ?)`,
-          [opticsId, supplierId, name, quantity, price]
-        );
-        created++;
-      } catch (err) {
-        errors.push(`Fila ${i + 2}: ${name} — error al insertar`);
+        const quantity = cantidadKey ? parseInt(String(row[cantidadKey] || '0')) || 0 : 0;
+        const rawPrice = precioKey ? parseFloat(String(row[precioKey] || '').replace(',', '.')) : NaN;
+        const price    = !isNaN(rawPrice) && rawPrice > 0 ? rawPrice : 0;
+        if (price === 0) sinPrecio++;
+
+        await client.query(`SAVEPOINT sp_row`);
+        try {
+          // Dedupe: mismo nombre (case-insensitive) y mismo proveedor dentro
+          // de la misma óptica -> se actualiza cantidad y precio en vez de
+          // crear un duplicado (útil para reimportar listas de stock/precios
+          // actualizadas del mismo proveedor).
+          const existing = await client.query(
+            `SELECT id FROM products
+             WHERE optics_id = $1
+               AND name ILIKE $2
+               AND (supplier_id = $3 OR (supplier_id IS NULL AND $3::int IS NULL))
+             LIMIT 1`,
+            [opticsId, name, supplierId]
+          );
+
+          if (existing.rows.length > 0) {
+            await client.query(
+              `UPDATE products SET quantity = $1, price = $2 WHERE id = $3`,
+              [quantity, price, existing.rows[0].id]
+            );
+            updated++;
+          } else {
+            await client.query(
+              `INSERT INTO products (optics_id, supplier_id, name, quantity, price)
+               VALUES ($1, $2, $3, $4, $5)`,
+              [opticsId, supplierId, name, quantity, price]
+            );
+            created++;
+          }
+          await client.query(`RELEASE SAVEPOINT sp_row`);
+        } catch (err) {
+          await client.query(`ROLLBACK TO SAVEPOINT sp_row`);
+          await client.query(`RELEASE SAVEPOINT sp_row`);
+          errors.push(`Fila ${i + 2}: ${name} — error al insertar`);
+        }
       }
+
+      await client.query('COMMIT');
+    } catch (txError) {
+      await client.query('ROLLBACK');
+      throw txError;
+    } finally {
+      client.release();
     }
 
     const parts = [`${created} armazón${created !== 1 ? 'es' : ''} creado${created !== 1 ? 's' : ''}`];
+    if (updated > 0)   parts.push(`${updated} actualizado${updated !== 1 ? 's' : ''}`);
     if (skipped > 0)   parts.push(`${skipped} fila${skipped !== 1 ? 's' : ''} vacía${skipped !== 1 ? 's' : ''} omitida${skipped !== 1 ? 's' : ''}`);
     if (sinPrecio > 0) parts.push(`${sinPrecio} sin precio`);
 
     res.json({
       message: `Importación completada: ${parts.join(', ')}.`,
       created,
+      updated,
       skipped,
       sinPrecio,
       errors: errors.length > 0 ? errors : undefined,
