@@ -1,6 +1,14 @@
 import 'dotenv/config';
+import dns from 'dns';
 import type { Server } from 'http';
 import { createApp } from './app';
+
+// Render no tiene salida por IPv6. Desde Node 18 la resolución DNS devuelve
+// las direcciones en el orden que da el sistema, que suele poner AAAA (IPv6)
+// primero: al conectar contra servicios de Google (SMTP de Gmail, el proxy de
+// imágenes de Drive) se elegía una IPv6 y la conexión moría con ENETUNREACH.
+// Priorizar IPv4 resuelve toda esa familia de fallos de una vez.
+dns.setDefaultResultOrder('ipv4first');
 import { initializeDatabase } from './database/init';
 import { closeDatabase } from './config/database';
 

@@ -23,6 +23,16 @@ import { requireActiveLicense } from './middleware/license';
 export function createApp() {
   const app = express();
 
+  // Render (y cualquier PaaS) sirve detrás de un balanceador, así que la IP
+  // real del cliente llega en X-Forwarded-For. Sin esto, Express reporta la IP
+  // del proxy para todas las requests y el rate limiting agrupa a TODOS los
+  // usuarios en un mismo cupo: 20 intentos cada 15 minutos entre todos.
+  //
+  // Se confía en un solo salto (el balanceador de Render), no en `true`: con
+  // `true` se confiaría en toda la cadena y un cliente podría falsear su IP
+  // mandando su propio X-Forwarded-For para esquivar el límite.
+  app.set('trust proxy', 1);
+
   // Content-Security-Policy: el valor real está en script-src, que impide que
   // un script inyectado se ejecute. style-src necesita 'unsafe-inline' porque
   // la app usa estilos inline de React en casi todas las pantallas; sacarlo
