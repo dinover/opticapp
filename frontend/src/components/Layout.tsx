@@ -58,7 +58,7 @@ const Layout: React.FC<LayoutProps> = ({ children }) => {
                 <Bars3Icon className="w-5 h-5" />
               </button>
               <Link to="/dashboard" className="flex items-center gap-2.5" style={{ textDecoration: 'none' }}>
-                <img src="/logo.png" alt="OpticApp" style={{ width: 30, height: 30, objectFit: 'contain' }} />
+                <img src="/logo.png" alt="OpticApp" style={{ width: 50, height: 50, objectFit: 'contain' }} />
                 <span style={{ fontWeight: 800, fontSize: '1rem', color: 'var(--text-primary)' }}>
                   OpticApp
                 </span>
@@ -151,7 +151,7 @@ const Layout: React.FC<LayoutProps> = ({ children }) => {
                 padding: '0 1rem', height: TOPBAR_HEIGHT, borderBottom: '1px solid var(--border)', flexShrink: 0,
               }}>
                 <div className="flex items-center gap-2">
-                  <img src="/logo.png" alt="OpticApp" style={{ width: 26, height: 26, objectFit: 'contain' }} />
+                  <img src="/logo.png" alt="OpticApp" style={{ width: 50, height: 50, objectFit: 'contain' }} />
                   <span style={{ fontWeight: 800, fontSize: '.95rem', color: 'var(--text-primary)' }}>OpticApp</span>
                 </div>
                 <button

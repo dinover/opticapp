@@ -79,7 +79,7 @@ const LoginPage: React.FC = () => {
           <div style={{
             display: 'flex', alignItems: 'center', gap: 12, marginBottom: '3rem',
           }}>
-            <img src="/logo.png" alt="OpticApp" style={{ width: 44, height: 44, objectFit: 'contain' }} />
+            <img src="/logo.png" alt="OpticApp" style={{ width: 50, height: 50, objectFit: 'contain' }} />
             <span style={{ fontWeight: 800, fontSize: '1.25rem', color: 'var(--text-primary)' }}>OpticApp</span>
           </div>
 
@@ -124,7 +124,7 @@ const LoginPage: React.FC = () => {
       }}>
           {/* Logo mobile */}
           <div className="flex lg:hidden items-center gap-2 mb-6">
-            <img src="/logo.png" alt="OpticApp" style={{ width: 36, height: 36, objectFit: 'contain' }} />
+            <img src="/logo.png" alt="OpticApp" style={{ width: 50, height: 50, objectFit: 'contain' }} />
             <span style={{ fontWeight: 800, fontSize: '1rem', color: 'var(--text-primary)' }}>OpticApp</span>
           </div>
 

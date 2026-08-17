@@ -195,7 +195,7 @@ const AdminRequestsPage: React.FC = () => {
       <header style={{ background: 'var(--surface)', borderBottom: '1px solid var(--border)', position: 'sticky', top: 0, zIndex: 40 }}>
         <div className="max-w-5xl mx-auto px-4 sm:px-6" style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', height: 56 }}>
           <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
-            <img src="/logo.png" alt="OpticApp" style={{ width: 30, height: 30, objectFit: 'contain' }} />
+            <img src="/logo.png" alt="OpticApp" style={{ width: 50, height: 50, objectFit: 'contain' }} />
             <div>
               <span style={{ fontWeight: 800, fontSize: '.95rem', color: 'var(--text-primary)' }}>OpticApp</span>
               <span className="badge badge-blue" style={{ marginLeft: 8 }}>Admin</span>

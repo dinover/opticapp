@@ -65,7 +65,7 @@ const RequestUserPage: React.FC = () => {
       <div style={{ width: '100%', maxWidth: 460, background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: 20, padding: '2.5rem', boxShadow: '0 8px 32px rgba(15,23,42,.08)', position: 'relative' }}>
         {/* Logo */}
         <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: '2rem' }}>
-          <img src="/logo.png" alt="OpticApp" style={{ width: 36, height: 36, objectFit: 'contain' }} />
+          <img src="/logo.png" alt="OpticApp" style={{ width: 50, height: 50, objectFit: 'contain' }} />
           <span style={{ fontWeight: 800, color: 'var(--text-primary)' }}>OpticApp</span>
         </div>
 
