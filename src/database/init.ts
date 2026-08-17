@@ -233,6 +233,17 @@ async function initializeDatabase() {
     await runQuery('CREATE INDEX IF NOT EXISTS idx_user_requests_status ON user_requests(status)');
     await runQuery('CREATE INDEX IF NOT EXISTS idx_deletion_logs_table_record ON deletion_logs(table_name, record_id)');
 
+    // Migración única: usuarios desactivados antes del fix de soft-delete
+    // (ver DELETE /admin/users/:id) quedaron con su username/email original,
+    // bloqueando el alta de una cuenta nueva con esos mismos datos. Se liberan
+    // acá para los que ya estén desactivados y no tengan el prefijo todavía.
+    await runQuery(`
+      UPDATE users
+      SET username = 'deleted_' || id || '_' || username,
+          email = 'deleted_' || id || '_' || email
+      WHERE is_active = 0 AND username NOT LIKE 'deleted\\_%'
+    `);
+
     // Crear usuario admin por defecto (si no existe)
     const adminExists = await getRow<User>('SELECT id FROM users WHERE username = ?', ['admin']);
 

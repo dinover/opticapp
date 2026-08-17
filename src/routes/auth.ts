@@ -466,10 +466,20 @@ router.delete('/admin/users/:id', authenticateToken, requireAdmin, async (req: A
 
     if (userId === adminId) return res.status(400).json({ error: 'No podés eliminar tu propio usuario' });
 
-    const user = await getRow<User>('SELECT id, username FROM users WHERE id = ? AND is_active = 1', [userId]);
+    const user = await getRow<User>('SELECT id, username, email FROM users WHERE id = ? AND is_active = 1', [userId]);
     if (!user) return res.status(404).json({ error: 'Usuario no encontrado' });
 
-    await runQuery('UPDATE users SET is_active = 0, updated_at = CURRENT_TIMESTAMP WHERE id = ?', [userId]);
+    // Se libera el username/email originales (con un prefijo) para que alguien
+    // pueda volver a registrarse con ellos: la fila se conserva desactivada
+    // por las referencias de otras tablas (ventas, revisiones de solicitudes),
+    // pero username/email tienen UNIQUE NOT NULL y bloquearían el alta nueva
+    // si se dejaran intactos.
+    const freedUsername = `deleted_${userId}_${user.username}`;
+    const freedEmail = `deleted_${userId}_${user.email}`;
+    await runQuery(
+      'UPDATE users SET is_active = 0, username = ?, email = ?, updated_at = CURRENT_TIMESTAMP WHERE id = ?',
+      [freedUsername, freedEmail, userId]
+    );
     res.json({ message: `Usuario "${user.username}" eliminado correctamente` });
   } catch (error: any) {
     console.error('Error al eliminar usuario:', error);
@@ -580,7 +590,7 @@ router.delete('/team/users/:id', authenticateToken, async (req: AuthRequest, res
     const opticsId = getOpticsScope(req.user);
 
     const targetUser = await getRow<User>(
-      'SELECT id, optics_id, role FROM users WHERE id = ? AND is_active = 1',
+      'SELECT id, optics_id, role, username, email FROM users WHERE id = ? AND is_active = 1',
       [userId]
     );
 
@@ -592,9 +602,13 @@ router.delete('/team/users/:id', authenticateToken, async (req: AuthRequest, res
       return res.status(403).json({ error: 'Solo se pueden desactivar empleados de tu equipo' });
     }
 
+    // Ver comentario equivalente en DELETE /admin/users/:id: se libera el
+    // username/email (UNIQUE NOT NULL) para poder reusarlos en una nueva alta.
+    const freedUsername = `deleted_${userId}_${targetUser.username}`;
+    const freedEmail = `deleted_${userId}_${targetUser.email}`;
     await runQuery(
-      `UPDATE users SET is_active = 0, updated_at = CURRENT_TIMESTAMP WHERE id = ? AND optics_id = ? AND role = 'user'`,
-      [userId, opticsId]
+      `UPDATE users SET is_active = 0, username = ?, email = ?, updated_at = CURRENT_TIMESTAMP WHERE id = ? AND optics_id = ? AND role = 'user'`,
+      [freedUsername, freedEmail, userId, opticsId]
     );
 
     res.json({ message: 'Usuario desactivado correctamente' });
