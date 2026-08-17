@@ -37,6 +37,15 @@ function getSmtpTransport(): Transporter | null {
       port: Number(process.env.SMTP_PORT) || 465,
       secure: (process.env.SMTP_PORT || '465') === '465',
       auth: { user, pass },
+      // Nota: smtp.gmail.com resuelve también a IPv6 y Render no tiene salida
+      // por esa vía (la conexión moría con ENETUNREACH). Nodemailer no expone
+      // una opción para elegir familia de IP, así que la preferencia por IPv4
+      // se fija a nivel proceso con dns.setDefaultResultOrder en index.ts.
+      //
+      // Cotas para que un SMTP que no responde no deje sockets colgados.
+      connectionTimeout: 10_000,
+      greetingTimeout: 10_000,
+      socketTimeout: 20_000,
     });
     return smtpTransport;
   } catch (error) {
