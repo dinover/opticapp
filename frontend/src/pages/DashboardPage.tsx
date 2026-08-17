@@ -1,7 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import Layout from '../components/Layout';
-import DashboardSettings from '../components/DashboardSettings';
 import EmptyState from '../components/EmptyState';
 import { SkeletonStats, SkeletonLine } from '../components/Skeleton';
 import { useDashboardConfig } from '../contexts/DashboardConfigContext';
@@ -94,7 +93,6 @@ const DashboardPage: React.FC = () => {
         <h1 className="page-title">Dashboard</h1>
         <p className="page-subtitle">Resumen de tu negocio</p>
       </div>
-      <DashboardSettings />
     </div>
   );
 

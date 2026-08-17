@@ -1,49 +1,39 @@
 import React, { useState } from 'react';
-import { Link, useLocation } from 'react-router-dom';
+import { Link } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContext';
-import { useCurrency } from '../contexts/CurrencyContext';
-import { useTheme } from '../contexts/ThemeContext';
+import Sidebar from './Sidebar';
+import SettingsModal from './SettingsModal';
 import {
-  HomeIcon,
-  UserGroupIcon,
-  ShoppingBagIcon,
-  ChartBarIcon,
   ArrowRightOnRectangleIcon,
   Bars3Icon,
   XMarkIcon,
-  ShieldCheckIcon,
-  TruckIcon,
-  ArrowUpTrayIcon,
-  DocumentChartBarIcon,
-  SunIcon,
-  MoonIcon,
-  UserCircleIcon,
 } from '@heroicons/react/24/outline';
 
 interface LayoutProps {
   children: React.ReactNode;
 }
 
+const SIDEBAR_COLLAPSED_KEY = 'opticapp.sidebar.collapsed';
+const TOPBAR_HEIGHT = 56;
+
 const Layout: React.FC<LayoutProps> = ({ children }) => {
   const { user, logout } = useAuth();
-  const { currency, toggleCurrency } = useCurrency();
-  const { theme, toggleTheme } = useTheme();
-  const location = useLocation();
   const [mobileOpen, setMobileOpen] = useState(false);
+  const [settingsOpen, setSettingsOpen] = useState(false);
+  // El sidebar abre expandido por default; el estado colapsado se recuerda entre sesiones.
+  const [collapsed, setCollapsed] = useState(
+    () => localStorage.getItem(SIDEBAR_COLLAPSED_KEY) === '1'
+  );
   // El hover de la user pill se maneja en estado porque el estilo es inline
   const [userPillHover, setUserPillHover] = useState(false);
 
-  const isActive = (path: string) => location.pathname === path;
-
-  const navItems = [
-    { path: '/dashboard', label: 'Dashboard',   icon: HomeIcon },
-    { path: '/clients',   label: 'Clientes',    icon: UserGroupIcon },
-    { path: '/products',  label: 'Productos',   icon: ShoppingBagIcon },
-    { path: '/sales',     label: 'Ventas',      icon: ChartBarIcon },
-    { path: '/suppliers', label: 'Proveedores', icon: TruckIcon },
-    { path: '/import',    label: 'Importar',    icon: ArrowUpTrayIcon },
-    { path: '/reports',   label: 'Reportes',    icon: DocumentChartBarIcon },
-  ];
+  const toggleCollapsed = () => {
+    setCollapsed(prev => {
+      const next = !prev;
+      localStorage.setItem(SIDEBAR_COLLAPSED_KEY, next ? '1' : '0');
+      return next;
+    });
+  };
 
   return (
     <div className="min-h-screen" style={{ background: 'var(--surface-2)' }}>
@@ -55,45 +45,24 @@ const Layout: React.FC<LayoutProps> = ({ children }) => {
           position: 'sticky', top: 0, zIndex: 40,
         }}
       >
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="flex items-center justify-between h-14">
-            {/* Logo */}
-            <div className="flex items-center gap-6">
-              <div className="flex items-center gap-2.5">
+        <div className="px-4 sm:px-6 lg:px-8">
+          <div className="flex items-center justify-between" style={{ height: TOPBAR_HEIGHT }}>
+            {/* Mobile hamburger + Logo */}
+            <div className="flex items-center gap-3">
+              <button
+                className="sm:hidden btn btn-ghost"
+                style={{ padding: '.4rem' }}
+                onClick={() => setMobileOpen(true)}
+                aria-label="Abrir menú"
+              >
+                <Bars3Icon className="w-5 h-5" />
+              </button>
+              <Link to="/dashboard" className="flex items-center gap-2.5" style={{ textDecoration: 'none' }}>
                 <img src="/logo.png" alt="OpticApp" style={{ width: 30, height: 30, objectFit: 'contain' }} />
                 <span style={{ fontWeight: 800, fontSize: '1rem', color: 'var(--text-primary)' }}>
                   OpticApp
                 </span>
-              </div>
-
-              {/* Desktop nav */}
-              <nav className="hidden sm:flex items-center gap-1">
-                {navItems.map(item => {
-                  const Icon = item.icon;
-                  return (
-                    <Link
-                      key={item.path}
-                      to={item.path}
-                      className={`nav-link ${isActive(item.path) ? 'active' : ''}`}
-                    >
-                      <Icon className="w-4 h-4" />
-                      {item.label}
-                    </Link>
-                  );
-                })}
-                {user?.role === 'admin' && (
-                  <Link to="/admin" className={`nav-link ${isActive('/admin') ? 'active' : ''}`}>
-                    <ShieldCheckIcon className="w-4 h-4" />
-                    Admin
-                  </Link>
-                )}
-                {user?.role === 'owner' && (
-                  <Link to="/team" className={`nav-link ${isActive('/team') ? 'active' : ''}`}>
-                    <UserGroupIcon className="w-4 h-4" />
-                    Equipo
-                  </Link>
-                )}
-              </nav>
+              </Link>
             </div>
 
             {/* Right side */}
@@ -101,7 +70,7 @@ const Layout: React.FC<LayoutProps> = ({ children }) => {
               {/* User pill → Mi cuenta */}
               <Link
                 to="/profile"
-                className="hidden sm:flex items-center gap-2.5"
+                className="flex items-center gap-2.5"
                 title="Mi cuenta"
                 aria-label="Mi cuenta"
                 onMouseEnter={() => setUserPillHover(true)}
@@ -125,33 +94,10 @@ const Layout: React.FC<LayoutProps> = ({ children }) => {
                 }}>
                   {user?.username?.charAt(0).toUpperCase()}
                 </div>
-                <span style={{ fontSize: '.8rem', fontWeight: 600, color: 'var(--text-secondary)' }}>
+                <span className="hidden sm:inline" style={{ fontSize: '.8rem', fontWeight: 600, color: 'var(--text-secondary)' }}>
                   {user?.username}
                 </span>
               </Link>
-
-              {/* Currency toggle */}
-              <button
-                onClick={toggleCurrency}
-                className="btn btn-ghost"
-                style={{ padding: '.35rem .6rem', fontSize: '.75rem', fontWeight: 700, fontFamily: 'DM Mono, monospace', minWidth: 52 }}
-                title={currency === 'UYU' ? 'Cambiar a dólares' : 'Cambiar a pesos'}
-              >
-                {currency === 'UYU' ? '$ UYU' : 'USD'}
-              </button>
-
-              {/* Theme toggle */}
-              <button
-                onClick={toggleTheme}
-                className="btn btn-ghost"
-                style={{ padding: '.4rem' }}
-                title={theme === 'dark' ? 'Cambiar a modo claro' : 'Cambiar a modo oscuro'}
-                aria-label={theme === 'dark' ? 'Cambiar a modo claro' : 'Cambiar a modo oscuro'}
-              >
-                {theme === 'dark'
-                  ? <SunIcon className="w-4 h-4" />
-                  : <MoonIcon className="w-4 h-4" />}
-              </button>
 
               <button
                 onClick={logout}
@@ -162,58 +108,79 @@ const Layout: React.FC<LayoutProps> = ({ children }) => {
                 <ArrowRightOnRectangleIcon className="w-4 h-4" />
                 <span className="hidden sm:inline">Salir</span>
               </button>
-
-              {/* Mobile hamburger */}
-              <button
-                className="sm:hidden btn btn-ghost"
-                style={{ padding: '.4rem' }}
-                onClick={() => setMobileOpen(!mobileOpen)}
-                aria-label={mobileOpen ? 'Cerrar menú' : 'Abrir menú'}
-                aria-expanded={mobileOpen}
-              >
-                {mobileOpen
-                  ? <XMarkIcon className="w-5 h-5" />
-                  : <Bars3Icon className="w-5 h-5" />}
-              </button>
             </div>
           </div>
         </div>
-
-        {/* Mobile menu */}
-        {mobileOpen && (
-          <div style={{
-            borderTop: '1px solid var(--border)',
-            background: 'var(--surface)',
-            padding: '0.5rem 1rem 1rem',
-          }}>
-            {[
-              ...navItems,
-              ...(user?.role === 'admin' ? [{ path: '/admin', label: 'Admin', icon: ShieldCheckIcon }] : []),
-              ...(user?.role === 'owner' ? [{ path: '/team', label: 'Equipo', icon: UserGroupIcon }] : []),
-              { path: '/profile', label: 'Mi cuenta', icon: UserCircleIcon },
-            ].map(item => {
-              const Icon = item.icon;
-              return (
-                <Link
-                  key={item.path}
-                  to={item.path}
-                  className={`nav-link ${isActive(item.path) ? 'active' : ''}`}
-                  style={{ display: 'flex', marginBottom: '.25rem' }}
-                  onClick={() => setMobileOpen(false)}
-                >
-                  <Icon className="w-4 h-4" />
-                  {item.label}
-                </Link>
-              );
-            })}
-          </div>
-        )}
       </header>
 
-      {/* ── Content ──────────────────────────────────────── */}
-      <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6 fade-in">
-        {children}
-      </main>
+      <div className="flex items-start">
+        {/* ── Sidebar de escritorio ──────────────────────── */}
+        <aside
+          className="hidden sm:block"
+          style={{
+            width: collapsed ? 68 : 220,
+            transition: 'width .2s',
+            borderRight: '1px solid var(--border)',
+            background: 'var(--surface)',
+            position: 'sticky', top: TOPBAR_HEIGHT,
+            height: `calc(100vh - ${TOPBAR_HEIGHT}px)`,
+            flexShrink: 0,
+          }}
+        >
+          <Sidebar
+            collapsed={collapsed}
+            onToggleCollapse={toggleCollapsed}
+            onOpenSettings={() => setSettingsOpen(true)}
+          />
+        </aside>
+
+        {/* ── Drawer mobile ──────────────────────────────── */}
+        {mobileOpen && (
+          <>
+            <div
+              onClick={() => setMobileOpen(false)}
+              style={{ position: 'fixed', inset: 0, background: 'rgba(15,23,42,.6)', zIndex: 59 }}
+            />
+            <div style={{
+              position: 'fixed', top: 0, left: 0, bottom: 0, width: 240,
+              background: 'var(--surface)', zIndex: 60, boxShadow: 'var(--shadow-lg)',
+              display: 'flex', flexDirection: 'column',
+            }}>
+              <div style={{
+                display: 'flex', alignItems: 'center', justifyContent: 'space-between',
+                padding: '0 1rem', height: TOPBAR_HEIGHT, borderBottom: '1px solid var(--border)', flexShrink: 0,
+              }}>
+                <div className="flex items-center gap-2">
+                  <img src="/logo.png" alt="OpticApp" style={{ width: 26, height: 26, objectFit: 'contain' }} />
+                  <span style={{ fontWeight: 800, fontSize: '.95rem', color: 'var(--text-primary)' }}>OpticApp</span>
+                </div>
+                <button
+                  className="btn btn-ghost"
+                  style={{ padding: '.4rem' }}
+                  onClick={() => setMobileOpen(false)}
+                  aria-label="Cerrar menú"
+                >
+                  <XMarkIcon className="w-5 h-5" />
+                </button>
+              </div>
+              <div style={{ flex: 1, overflowY: 'auto' }}>
+                <Sidebar
+                  collapsed={false}
+                  onNavigate={() => setMobileOpen(false)}
+                  onOpenSettings={() => { setMobileOpen(false); setSettingsOpen(true); }}
+                />
+              </div>
+            </div>
+          </>
+        )}
+
+        {/* ── Content ──────────────────────────────────────── */}
+        <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6 fade-in" style={{ flex: 1, minWidth: 0 }}>
+          {children}
+        </main>
+      </div>
+
+      <SettingsModal open={settingsOpen} onClose={() => setSettingsOpen(false)} />
     </div>
   );
 };
