@@ -79,16 +79,7 @@ const LoginPage: React.FC = () => {
           <div style={{
             display: 'flex', alignItems: 'center', gap: 12, marginBottom: '3rem',
           }}>
-            <div style={{
-              width: 44, height: 44, borderRadius: 12,
-              background: 'linear-gradient(135deg, #4f46e5, #7c3aed)',
-              display: 'flex', alignItems: 'center', justifyContent: 'center',
-              boxShadow: '0 8px 24px rgba(79,70,229,.35)',
-            }}>
-              <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth="2.5">
-                <circle cx="12" cy="12" r="3"/><path d="M20.188 10.934c.388.472.388 1.16 0 1.632C18.768 14.35 15.636 18 12 18c-3.636 0-6.768-3.65-8.188-5.434a1.3 1.3 0 0 1 0-1.632C5.232 9.65 8.364 6 12 6c3.636 0 6.768 3.65 8.188 5.434z"/>
-              </svg>
-            </div>
+            <img src="/logo.png" alt="OpticApp" style={{ width: 44, height: 44, objectFit: 'contain' }} />
             <span style={{ fontWeight: 800, fontSize: '1.25rem', color: 'var(--text-primary)' }}>OpticApp</span>
           </div>
 
@@ -133,15 +124,7 @@ const LoginPage: React.FC = () => {
       }}>
           {/* Logo mobile */}
           <div className="flex lg:hidden items-center gap-2 mb-6">
-            <div style={{
-              width: 36, height: 36, borderRadius: 10,
-              background: 'linear-gradient(135deg, #4f46e5, #7c3aed)',
-              display: 'flex', alignItems: 'center', justifyContent: 'center',
-            }}>
-              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth="2.5">
-                <circle cx="12" cy="12" r="3"/><path d="M20.188 10.934c.388.472.388 1.16 0 1.632C18.768 14.35 15.636 18 12 18c-3.636 0-6.768-3.65-8.188-5.434a1.3 1.3 0 0 1 0-1.632C5.232 9.65 8.364 6 12 6c3.636 0 6.768 3.65 8.188 5.434z"/>
-              </svg>
-            </div>
+            <img src="/logo.png" alt="OpticApp" style={{ width: 36, height: 36, objectFit: 'contain' }} />
             <span style={{ fontWeight: 800, fontSize: '1rem', color: 'var(--text-primary)' }}>OpticApp</span>
           </div>
 
