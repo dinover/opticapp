@@ -18,14 +18,19 @@ export function getDatabase(): Pool {
       throw new Error('DATABASE_URL no está configurada. Proporciona una URL de conexión PostgreSQL.');
     }
 
-    // Configurar SSL para producción (especialmente necesario para Render PostgreSQL)
-    const sslConfig = process.env.NODE_ENV === 'production' || connectionString.includes('render.com') || connectionString.includes('dpg-')
-      ? { rejectUnauthorized: false }
-      : false;
+    // Los proveedores gestionados (Supabase incluido) exigen SSL; la única
+    // excepción es una base local de desarrollo.
+    const isLocal = connectionString.includes('localhost') || connectionString.includes('127.0.0.1');
+    const sslConfig = isLocal ? false : { rejectUnauthorized: false };
 
     pool = new Pool({
       connectionString,
       ssl: sslConfig,
+      // En Vercel cada función serverless corre en su propio contenedor con
+      // su propio pool: no hace falta (ni conviene) el default de 10
+      // conexiones por instancia. El Transaction pooler de Supabase además
+      // multiplexa esto del lado del servidor.
+      max: 5,
     });
 
     pool.on('connect', () => {
