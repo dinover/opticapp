@@ -1,10 +1,3 @@
-databases:
-  - name: opticapp-database
-    databaseName: opticapp_database
-    user: opticapp_database_user
-    plan: free
-    region: oregon
-
 services:
   # Backend - Web Service
   - type: web
@@ -38,8 +31,9 @@ services:
         sync: false
       - key: APP_URL
         value: https://opticapp.onrender.com
+      # Base de datos: Supabase (Postgres). Configurar manualmente en el
+      # dashboard de Render con el connection string en modo "Session pooler"
+      # de Supabase (Settings > Database > Connection string).
       - key: DATABASE_URL
-        fromDatabase:
-          name: opticapp-database
-          property: connectionString
+        sync: false
 
