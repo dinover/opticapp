@@ -33,6 +33,17 @@ const Modal: React.FC<ModalProps> = ({
   const boxRef = useRef<HTMLDivElement>(null);
   const previouslyFocused = useRef<HTMLElement | null>(null);
 
+  // `onClose` casi siempre llega como una función inline nueva en cada render
+  // del padre (ej. `onClose={closeModal}` con `closeModal` redefinida en cada
+  // render). Si fuera dependencia del efecto de abajo, cualquier tecleo que
+  // actualice el estado del formulario reiniciaría el efecto entero: el foco
+  // saltaría de vuelta al primer campo del modal en medio de cada escritura.
+  // Guardarla en un ref evita eso sin arriesgar un closure viejo.
+  const onCloseRef = useRef(onClose);
+  useEffect(() => {
+    onCloseRef.current = onClose;
+  }, [onClose]);
+
   useEffect(() => {
     if (!open) return;
 
@@ -45,7 +56,7 @@ const Modal: React.FC<ModalProps> = ({
     const onKeyDown = (e: KeyboardEvent) => {
       if (e.key === 'Escape') {
         e.stopPropagation();
-        onClose();
+        onCloseRef.current();
         return;
       }
 
@@ -77,7 +88,7 @@ const Modal: React.FC<ModalProps> = ({
       document.body.style.overflow = prevOverflow;
       previouslyFocused.current?.focus();
     };
-  }, [open, onClose]);
+  }, [open]);
 
   if (!open) return null;
 

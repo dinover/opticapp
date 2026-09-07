@@ -1,0 +1,44 @@
+name: Sanity E2E
+
+# Vercel (conectado a este repo por su GitHub App) dispara un evento
+# `deployment_status` con la URL exacta apenas termina cada deploy, tanto en
+# producción como en un preview. Escuchamos ese evento en vez de `push` para
+# no correr contra la app vieja mientras Vercel todavía está buildeando.
+on:
+  deployment_status:
+
+jobs:
+  sanity:
+    if: github.event.deployment_status.state == 'success' && github.event.deployment_status.environment_url != ''
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20.x'
+          cache: 'npm'
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Run Cypress Sanity suite
+        run: npx cypress run --spec "cypress/e2e/sanity/**/*.cy.ts"
+        env:
+          CYPRESS_BASE_URL: ${{ github.event.deployment_status.environment_url }}
+          # Cuenta 'owner' dedicada a QA. Ver cypress/README.md para cómo se
+          # crea y por qué su licencia necesita renovarse a mano cada tanto.
+          CYPRESS_QA_USERNAME: ${{ secrets.CYPRESS_QA_USERNAME }}
+          CYPRESS_QA_PASSWORD: ${{ secrets.CYPRESS_QA_PASSWORD }}
+
+      - name: Subir capturas de fallos
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: sanity-screenshots
+          path: cypress/screenshots
+          retention-days: 7

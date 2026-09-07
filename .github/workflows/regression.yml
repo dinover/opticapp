@@ -1,0 +1,50 @@
+name: Regression E2E
+
+# A diferencia de Sanity, esta suite es más lenta y más invasiva (crea y
+# aprueba/rechaza solicitudes reales, cambia licencias, etc.), así que corre
+# solo a mano desde la pestaña Actions de GitHub, nunca en cada deploy.
+on:
+  workflow_dispatch:
+    inputs:
+      base_url:
+        description: 'URL contra la que correr la suite (vacío = el secret CYPRESS_PRODUCTION_URL)'
+        required: false
+        default: ''
+
+jobs:
+  regression:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20.x'
+          cache: 'npm'
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Run Cypress Regression suite
+        run: npx cypress run --spec "cypress/e2e/regression/**/*.cy.ts"
+        env:
+          CYPRESS_BASE_URL: ${{ github.event.inputs.base_url != '' && github.event.inputs.base_url || secrets.CYPRESS_PRODUCTION_URL }}
+          # Cuenta 'owner' dedicada a QA (mismo secret que usa Sanity).
+          CYPRESS_QA_USERNAME: ${{ secrets.CYPRESS_QA_USERNAME }}
+          CYPRESS_QA_PASSWORD: ${{ secrets.CYPRESS_QA_PASSWORD }}
+          # Cuenta admin real del sistema: solo la necesita Regression
+          # (aprobar/rechazar solicitudes, gestión de licencias).
+          CYPRESS_ADMIN_USERNAME: ${{ secrets.CYPRESS_ADMIN_USERNAME }}
+          CYPRESS_ADMIN_PASSWORD: ${{ secrets.CYPRESS_ADMIN_PASSWORD }}
+
+      - name: Subir capturas de fallos
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: regression-screenshots
+          path: cypress/screenshots
+          retention-days: 14
