@@ -14,6 +14,17 @@ const router = express.Router();
 const STATS_CACHE_TTL_MS = 45 * 1000; // 45 segundos
 const statsCache = new Map<string, { data: any; expiresAt: number }>();
 
+// Invalida el caché de /stats para una óptica puntual y para el caché 'admin'
+// (que agrega datos de todas las ópticas y por lo tanto también queda stale
+// ante cualquier cambio). Debe llamarse al crear/editar/eliminar clientes,
+// productos o ventas.
+export function invalidateDashboardCache(opticsId: number | null): void {
+  if (opticsId !== null) {
+    statsCache.delete(String(opticsId));
+  }
+  statsCache.delete('admin');
+}
+
 // Obtener estadísticas del dashboard
 router.get('/stats', authenticateToken, async (req: AuthRequest, res: Response) => {
   try {

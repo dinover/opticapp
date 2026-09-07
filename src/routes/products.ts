@@ -6,6 +6,7 @@ import { getRow, getRows, runQuery } from '../config/database';
 import { Product, PaginationParams, PaginatedResponse } from '../types';
 import { buildPaginationQuery, getPaginationMeta, createPaginatedResponse } from '../utils/pagination';
 import { logDeletion } from '../utils/deletion-log';
+import { invalidateDashboardCache } from './dashboard';
 
 const router = express.Router();
 
@@ -147,6 +148,7 @@ router.post('/', authenticateToken, validateBody(createProductSchema), async (re
       [result.lastID]
     );
 
+    invalidateDashboardCache(opticsId);
     res.status(201).json(product);
   } catch (error: any) {
     console.error('Error al crear producto:', error);
@@ -202,6 +204,7 @@ router.put('/:id', authenticateToken, validateBody(updateProductSchema), async (
     );
 
     const product = await getRow<Product>('SELECT * FROM products WHERE id = ?', [id]);
+    invalidateDashboardCache(existing.optics_id);
     res.json(product);
   } catch (error: any) {
     console.error('Error al actualizar producto:', error);
@@ -241,6 +244,7 @@ router.delete('/:id', authenticateToken, async (req: AuthRequest, res: Response)
       [id]
     );
 
+    invalidateDashboardCache(existing.optics_id);
     res.json({ message: 'Producto eliminado correctamente' });
   } catch (error: any) {
     console.error('Error al eliminar producto:', error);

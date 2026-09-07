@@ -6,6 +6,7 @@ import { getRow, getRows, runQuery } from '../config/database';
 import { Client, PaginationParams, PaginatedResponse } from '../types';
 import { buildPaginationQuery, getPaginationMeta, createPaginatedResponse } from '../utils/pagination';
 import { logDeletion } from '../utils/deletion-log';
+import { invalidateDashboardCache } from './dashboard';
 
 const router = express.Router();
 
@@ -136,6 +137,7 @@ router.post('/', authenticateToken, validateBody(createClientSchema), async (req
       [result.lastID]
     );
 
+    invalidateDashboardCache(opticsId);
     res.status(201).json(client);
   } catch (error: any) {
     console.error('Error al crear cliente:', error);
@@ -180,6 +182,7 @@ router.put('/:id', authenticateToken, validateBody(updateClientSchema), async (r
     );
 
     const client = await getRow<Client>('SELECT * FROM clients WHERE id = ?', [id]);
+    invalidateDashboardCache(existing.optics_id);
     res.json(client);
   } catch (error: any) {
     console.error('Error al actualizar cliente:', error);
@@ -219,6 +222,7 @@ router.delete('/:id', authenticateToken, async (req: AuthRequest, res: Response)
       [id]
     );
 
+    invalidateDashboardCache(existing.optics_id);
     res.json({ message: 'Cliente eliminado correctamente' });
   } catch (error: any) {
     console.error('Error al eliminar cliente:', error);

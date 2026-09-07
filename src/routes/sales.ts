@@ -7,6 +7,7 @@ import { getRow, getRows, runQuery, getDatabase } from '../config/database';
 import { Sale, SaleCreate, SaleProduct, SaleProductCreate, Product, PaginationParams, PaginatedResponse } from '../types';
 import { buildPaginationQuery, getPaginationMeta, createPaginatedResponse } from '../utils/pagination';
 import { logDeletion } from '../utils/deletion-log';
+import { invalidateDashboardCache } from './dashboard';
 
 const router = express.Router();
 
@@ -426,6 +427,7 @@ router.post('/', authenticateToken, validateBody(createSaleSchema), async (req: 
 
     sale.products = saleProducts;
 
+    invalidateDashboardCache(opticsId);
     res.status(201).json(sale);
   } catch (error: any) {
     if (error instanceof InsufficientStockError) {
@@ -601,6 +603,7 @@ router.put('/:id', authenticateToken, validateBody(updateSaleSchema), async (req
 
     sale.products = saleProducts;
 
+    invalidateDashboardCache(existing.optics_id);
     res.json(sale);
   } catch (error: any) {
     if (error instanceof InsufficientStockError) {
@@ -679,6 +682,7 @@ router.delete('/:id', authenticateToken, async (req: AuthRequest, res: Response)
       client.release();
     }
 
+    invalidateDashboardCache(existing.optics_id);
     res.json({ message: 'Venta eliminada correctamente' });
   } catch (error: any) {
     console.error('Error al eliminar venta:', error);

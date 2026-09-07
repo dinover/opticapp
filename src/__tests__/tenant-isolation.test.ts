@@ -200,6 +200,44 @@ describe.skipIf(!hasDatabase)('stock en ventas (UI-10)', () => {
   });
 });
 
+describe.skipIf(!hasDatabase)('caché de dashboard/stats (invalidación)', () => {
+  const app = createApp();
+  let optica: TestOptic;
+
+  beforeAll(async () => { await initializeDatabase(); });
+  afterAll(async () => { await closeDatabase(); });
+  beforeEach(async () => {
+    await resetDatabase();
+    optica = await createOptic('optica-cache');
+  });
+
+  it('refleja una venta nueva sin esperar el TTL de 45s del caché', async () => {
+    const cliente = await createClient(optica.opticsId, 'Paciente');
+    const producto = await createProduct(optica.opticsId, 'Armazón', 10);
+
+    // Primera llamada: puebla el caché con totalSales = 0.
+    const antes = await request(app)
+      .get('/api/dashboard/stats')
+      .set('Authorization', `Bearer ${optica.token}`);
+    expect(antes.status).toBe(200);
+    expect(Number(antes.body.totalSales)).toBe(0);
+
+    const venta = await request(app)
+      .post('/api/sales')
+      .set('Authorization', `Bearer ${optica.token}`)
+      .send({ client_id: cliente, products: [{ product_id: producto, quantity: 1, unit_price: 100 }] });
+    expect(venta.status).toBe(201);
+
+    // Llamada inmediata (dentro del TTL): tiene que reflejar la venta recién
+    // creada, no la respuesta cacheada de antes.
+    const despues = await request(app)
+      .get('/api/dashboard/stats')
+      .set('Authorization', `Bearer ${optica.token}`);
+    expect(despues.status).toBe(200);
+    expect(Number(despues.body.totalSales)).toBe(1);
+  });
+});
+
 /**
  * Estos casos existen por un incidente concreto: el guard que exige RETURNING id
  * en los INSERT rompió el registro y el arranque en base nueva, y ninguna prueba
