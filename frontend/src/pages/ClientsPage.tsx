@@ -320,7 +320,7 @@ const ClientsPage: React.FC = () => {
           <label htmlFor="client-name" style={{ display: 'block', marginBottom: '.375rem' }}>{t('Nombre completo *', 'Full name *')}</label>
           <input id="client-name" type="text" required value={formData.name} onChange={e => setFormData({ ...formData, name: e.target.value })} placeholder={t('Ej: María García', 'E.g. Mary Johnson')} />
         </div>
-        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem' }}>
+        <div className="form-grid-2">
           <div>
             <label htmlFor="client-document" style={{ display: 'block', marginBottom: '.375rem' }}>{t('Documento', 'ID number')}</label>
             <input id="client-document" type="text" value={formData.document_id} onChange={e => setFormData({ ...formData, document_id: e.target.value })} placeholder={t('CI / DNI', 'ID / Passport')} />

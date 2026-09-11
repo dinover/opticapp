@@ -297,7 +297,7 @@ const SuppliersPage: React.FC = () => {
           <label htmlFor="supplier-contact" style={{ display: 'block', marginBottom: '.375rem' }}>{t('Contacto', 'Contact')}</label>
           <input id="supplier-contact" type="text" value={form.contact_name} onChange={e => setForm({ ...form, contact_name: e.target.value })} placeholder={t('Nombre del contacto', 'Contact name')} />
         </div>
-        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem' }}>
+        <div className="form-grid-2">
           <div>
             <label htmlFor="supplier-phone" style={{ display: 'block', marginBottom: '.375rem' }}>{t('Teléfono', 'Phone')}</label>
             <input id="supplier-phone" type="tel" value={form.phone} onChange={e => setForm({ ...form, phone: e.target.value })} placeholder="+598 99..." />

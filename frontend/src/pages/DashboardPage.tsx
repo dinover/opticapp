@@ -102,13 +102,10 @@ const DashboardPage: React.FC = () => {
     <Layout>
       <div className="fade-in">
         {pageHeader}
-        <div
-          style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: '1rem', marginBottom: '1.5rem' }}
-          className="sm:grid-cols-2 lg:grid-cols-4"
-        >
+        <div className="stats-grid">
           <SkeletonStats count={4} />
         </div>
-        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem' }} className="lg:grid-cols-2 sm:grid-cols-1">
+        <div className="panels-grid">
           {[0, 1].map(i => (
             <div key={i} className="card" style={{ overflow: 'hidden' }} aria-hidden="true">
               <div style={{ padding: '1.25rem 1.5rem', borderBottom: '1px solid var(--border)' }}>
@@ -349,7 +346,7 @@ const DashboardPage: React.FC = () => {
     >
       <span style={{ fontSize: '.8rem', fontWeight: 700, color: 'var(--text-primary)' }}>
         {t(
-          `Te faltan ${pendingCount} ${pendingCount === 1 ? 'paso' : 'pasos'} para terminar de configurar tu óptica:`,
+          `Te ${pendingCount === 1 ? 'falta' : 'faltan'} ${pendingCount} ${pendingCount === 1 ? 'paso' : 'pasos'} para terminar de configurar tu óptica:`,
           `${pendingCount} ${pendingCount === 1 ? 'step' : 'steps'} left to finish setting up your store:`,
         )}
       </span>
@@ -420,12 +417,7 @@ const DashboardPage: React.FC = () => {
         {/* Stat cards — se ocultan mientras la óptica está vacía: mostrar cuatro ceros
             no aporta nada y le saca protagonismo al panel de primeros pasos. */}
         {!isNewOptics && statCards.length > 0 && (
-          <div style={{
-            display: 'grid',
-            gridTemplateColumns: `repeat(${Math.min(statCards.length, 4)}, 1fr)`,
-            gap: '1rem',
-            marginBottom: '1.5rem',
-          }} className="sm:grid-cols-2 lg:grid-cols-4">
+          <div className="stats-grid">
             {statCards.map((card) => {
               const Icon = card.icon;
               return (
@@ -458,7 +450,7 @@ const DashboardPage: React.FC = () => {
 
         {/* Bottom row */}
         {!isNewOptics && (sections.topProducts || sections.recentSales) && (
-          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem' }} className="lg:grid-cols-2 sm:grid-cols-1">
+          <div className="panels-grid">
             {/* Top products */}
             {sections.topProducts && (
               <div className="card" style={{ overflow: 'hidden' }}>

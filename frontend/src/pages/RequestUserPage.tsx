@@ -77,14 +77,14 @@ const RequestUserPage: React.FC = () => {
   );
 
   return (
-    <div style={{ minHeight: '100vh', display: 'flex', alignItems: 'center', justifyContent: 'center', background: 'var(--surface-2)', padding: '2rem', position: 'relative', overflow: 'hidden' }}>
+    <div className="auth-screen" style={{ minHeight: '100vh', display: 'flex', alignItems: 'center', justifyContent: 'center', background: 'var(--surface-2)', padding: '2rem', position: 'relative', overflow: 'hidden' }}>
       {langToggle}
 
       {/* Fondo decorativo. Usa un token para que en modo oscuro sea un halo
           apenas más claro que el fondo y no una mancha blanca. */}
       <div style={{ position: 'absolute', inset: 0, pointerEvents: 'none', background: 'radial-gradient(ellipse 80% 60% at 60% -10%, var(--surface-3) 0%, transparent 70%)' }} />
 
-      <div style={{ width: '100%', maxWidth: 460, background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: 20, padding: '2.5rem', boxShadow: '0 8px 32px rgba(15,23,42,.08)', position: 'relative' }}>
+      <div className="auth-card" style={{ width: '100%', maxWidth: 460, background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: 20, padding: '2.5rem', boxShadow: '0 8px 32px rgba(15,23,42,.08)', position: 'relative' }}>
         {/* Logo */}
         <Link to="/" style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: '2rem', textDecoration: 'none', width: 'fit-content' }}>
           <img src="/logo.png" alt="OpticApp" style={{ width: 50, height: 50, objectFit: 'contain' }} />
@@ -133,7 +133,7 @@ const RequestUserPage: React.FC = () => {
             <label style={{ display: 'block', marginBottom: '.375rem' }}>{t.opticsName}</label>
             <input type="text" required value={formData.optics_name} onChange={e => set('optics_name', e.target.value)} placeholder={t.opticsNamePh} />
           </div>
-          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem' }}>
+          <div className="form-grid-2">
             <div>
               <label style={{ display: 'block', marginBottom: '.375rem' }}>{t.password}</label>
               <input type="password" required value={formData.password} onChange={e => set('password', e.target.value)} placeholder={t.passwordPh} />

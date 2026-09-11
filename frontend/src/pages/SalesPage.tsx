@@ -447,7 +447,7 @@ const SalesPage: React.FC = () => {
         <div style={{ display: 'flex', flexDirection: 'column', gap: '1.25rem' }}>
 
           {/* Cliente + Fecha */}
-          <div style={{ display: 'grid', gridTemplateColumns: '1fr auto', gap: '1rem', alignItems: 'end' }}>
+          <div className="sale-head-grid">
             <div>
               <label htmlFor="sale-client" style={{ display: 'block', marginBottom: '.375rem' }}>{t('Cliente *', 'Client *')}</label>
               <div style={{ display: 'flex', gap: '.5rem' }}>
@@ -524,7 +524,7 @@ const SalesPage: React.FC = () => {
             <div className="section-title">{t('Productos *', 'Products *')}</div>
 
             {/* Add product row */}
-            <div style={{ background: 'var(--surface-2)', borderRadius: 'var(--radius)', padding: '1rem', border: '1px solid var(--border)', display: 'grid', gridTemplateColumns: '1fr 80px 110px auto auto', gap: '.5rem', alignItems: 'end', marginBottom: '.75rem' }}>
+            <div className="sale-add-row" style={{ background: 'var(--surface-2)', borderRadius: 'var(--radius)', padding: '1rem', border: '1px solid var(--border)', marginBottom: '.75rem' }}>
               <div>
                 <label htmlFor="sale-product" style={{ display: 'block', marginBottom: '.25rem', fontSize: '.7rem' }}>{t('Producto', 'Product')}</label>
                 <select id="sale-product" value={selProductId} onChange={e => handleProductSelect(e.target.value)}>
@@ -634,7 +634,7 @@ const SalesPage: React.FC = () => {
             <label htmlFor="qc-doc" style={{ display: 'block', marginBottom: '.25rem' }}>{t('Documento', 'ID number')}</label>
             <input id="qc-doc" type="text" value={newClient.document_id} onChange={e => setNewClient({ ...newClient, document_id: e.target.value })} placeholder={t('CI / DNI', 'ID / Passport')} />
           </div>
-          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '.75rem' }}>
+          <div className="form-grid-2 tight">
             <div>
               <label htmlFor="qc-email" style={{ display: 'block', marginBottom: '.25rem' }}>Email</label>
               <input id="qc-email" type="email" value={newClient.email} onChange={e => setNewClient({ ...newClient, email: e.target.value })} />
@@ -666,7 +666,7 @@ const SalesPage: React.FC = () => {
             <label htmlFor="qp-name" style={{ display: 'block', marginBottom: '.25rem' }}>{t('Nombre *', 'Name *')}</label>
             <input id="qp-name" type="text" required value={newProduct.name} onChange={e => setNewProduct({ ...newProduct, name: e.target.value })} placeholder={t('Nombre del producto', 'Product name')} />
           </div>
-          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '.75rem' }}>
+          <div className="form-grid-2 tight">
             <div>
               <label htmlFor="qp-price" style={{ display: 'block', marginBottom: '.25rem' }}>{t('Precio', 'Price')}</label>
               <input id="qp-price" type="number" step="0.01" min="0" value={newProduct.price} onChange={e => setNewProduct({ ...newProduct, price: e.target.value })} placeholder="0.00" />

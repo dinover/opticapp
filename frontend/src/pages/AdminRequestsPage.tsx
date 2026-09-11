@@ -226,7 +226,7 @@ const AdminRequestsPage: React.FC = () => {
           </div>
           <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
             <LangToggle lang={lang} onChange={setLang} label={t('Idioma', 'Language')} />
-            <span style={{ fontSize: '.8rem', color: 'var(--text-secondary)' }}>{user?.username}</span>
+            <span className="hidden sm:inline" style={{ fontSize: '.8rem', color: 'var(--text-secondary)' }}>{user?.username}</span>
             <button onClick={logout} className="btn btn-ghost" style={{ fontSize: '.8rem', padding: '.4rem .75rem' }}>
               <ArrowRightOnRectangleIcon className="w-4 h-4" />
               {t('Salir', 'Log out')}

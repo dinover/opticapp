@@ -415,7 +415,7 @@ const ProductsPage: React.FC = () => {
           <label htmlFor="product-name" style={{ display: 'block', marginBottom: '.375rem' }}>{t('Nombre *', 'Name *')}</label>
           <input id="product-name" type="text" required value={formData.name} onChange={e => setFormData({ ...formData, name: e.target.value })} placeholder={t('Nombre del producto', 'Product name')} />
         </div>
-        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem' }}>
+        <div className="form-grid-2">
           <div>
             <label htmlFor="product-price" style={{ display: 'block', marginBottom: '.375rem' }}>{t('Precio', 'Price')}</label>
             <input id="product-price" type="number" step="0.01" min="0" value={formData.price} onChange={e => setFormData({ ...formData, price: e.target.value })} placeholder="0.00" />

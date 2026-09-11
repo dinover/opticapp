@@ -62,7 +62,8 @@ const Layout: React.FC<LayoutProps> = ({ children }) => {
               </button>
               <Link to="/dashboard" className="flex items-center gap-2.5" style={{ textDecoration: 'none' }}>
                 <img src="/logo.png" alt="OpticApp" style={{ width: 50, height: 50, objectFit: 'contain' }} />
-                <span style={{ fontWeight: 800, fontSize: '1rem', color: 'var(--text-primary)' }}>
+                {/* En celular no entra junto al selector de idioma: queda solo el logo. */}
+                <span className="hidden sm:inline" style={{ fontWeight: 800, fontSize: '1rem', color: 'var(--text-primary)' }}>
                   OpticApp
                 </span>
               </Link>

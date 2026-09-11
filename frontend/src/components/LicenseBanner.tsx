@@ -38,7 +38,7 @@ const LicenseBanner: React.FC = () => {
       }}>
         <span style={{ fontSize: 15 }}>⏳</span>
         {t('Modo de prueba', 'Trial mode')} · {remaining}
-        <span style={{ opacity: .75, fontWeight: 400 }}>
+        <span className="hidden sm:inline" style={{ opacity: .75, fontWeight: 400 }}>
           — {t('Contactá al administrador para activar tu licencia', 'Contact the administrator to activate your license')}
         </span>
       </div>
@@ -68,7 +68,7 @@ const LicenseBanner: React.FC = () => {
       }}>
         <span style={{ fontSize: 15 }}>📅</span>
         {when}
-        <span style={{ opacity: .75, fontWeight: 400 }}>
+        <span className="hidden sm:inline" style={{ opacity: .75, fontWeight: 400 }}>
           — {t('Contactá al administrador para renovarla', 'Contact the administrator to renew it')}
         </span>
       </div>

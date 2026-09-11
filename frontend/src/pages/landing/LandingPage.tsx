@@ -581,14 +581,14 @@ const LandingPage: React.FC = () => {
             <LangSwitch lang={lang} onChange={setLang} label={t.nav.lang} />
             <button
               type="button"
-              className="lp-icon-btn"
+              className="lp-icon-btn lp-hide-sm"
               onClick={toggleTheme}
               aria-label={theme === 'dark' ? t.nav.toLight : t.nav.toDark}
               title={theme === 'dark' ? t.nav.toLight : t.nav.toDark}
             >
               {theme === 'dark' ? <SunIcon /> : <MoonIcon />}
             </button>
-            <Link to="/login" className="lp-btn lp-btn-ghost lp-btn-sm lp-hide-sm">{t.nav.login}</Link>
+            <Link to="/login" className="lp-btn lp-btn-ghost lp-btn-sm lp-nav-login">{t.nav.login}</Link>
             <Link to="/request-user" className="lp-btn lp-btn-primary lp-btn-sm">{t.nav.signup}</Link>
           </div>
         </div>
@@ -944,8 +944,20 @@ const LandingPage: React.FC = () => {
                 <Link to="/request-user">{t.nav.signup}</Link>
               </div>
               <div className="lp-footer-col">
-                <h4>{t.nav.lang}</h4>
-                <LangSwitch lang={lang} onChange={setLang} label={t.nav.lang} />
+                <h4>{t.footer.prefs}</h4>
+                {/* El botón de tema vive acá también: en celular no entra en la barra. */}
+                <div className="lp-footer-prefs">
+                  <LangSwitch lang={lang} onChange={setLang} label={t.nav.lang} />
+                  <button
+                    type="button"
+                    className="lp-icon-btn"
+                    onClick={toggleTheme}
+                    aria-label={theme === 'dark' ? t.nav.toLight : t.nav.toDark}
+                    title={theme === 'dark' ? t.nav.toLight : t.nav.toDark}
+                  >
+                    {theme === 'dark' ? <SunIcon /> : <MoonIcon />}
+                  </button>
+                </div>
               </div>
             </div>
           </div>

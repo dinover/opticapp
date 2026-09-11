@@ -245,12 +245,14 @@
   margin: 0 auto;
 }
 .lp-hero-ctas { display: flex; gap: .75rem; justify-content: center; flex-wrap: wrap; margin-top: 2rem; }
+/* Texto centrado con el ícono en línea: si la nota ocupa dos renglones, el
+   ícono acompaña al texto en vez de quedar suelto a la izquierda. */
 .lp-hero-note {
   margin: 1.1rem 0 0;
-  font-size: .82rem; color: var(--lp-ink-3);
-  display: flex; align-items: center; justify-content: center; gap: .4rem;
+  font-size: .82rem; line-height: 1.55; color: var(--lp-ink-3);
+  text-align: center;
 }
-.lp-hero-note svg { width: 15px; height: 15px; color: #22c55e; flex-shrink: 0; }
+.lp-hero-note svg { display: inline-block; width: 15px; height: 15px; margin-right: .35rem; vertical-align: -3px; color: #22c55e; }
 
 .lp-hero-stage { position: relative; margin: 4.5rem auto 0; max-width: 1240px; perspective: 2200px; }
 .lp-hero-tilt { transform-origin: 50% 0; }
@@ -933,9 +935,14 @@
   .lp-steps { grid-template-columns: 1fr; gap: 3rem; }
   .lp-steps-line { display: none; }
 }
+.lp-footer-prefs { display: flex; align-items: center; gap: .5rem; }
+
 @media (max-width: 640px) {
   .lp-hide-sm { display: none; }
+  .lp-wrap { padding: 0 1rem; }
   .lp-nav-right { gap: .35rem; }
+  /* En celular "Iniciar sesión" pasa a ser un link de texto para que entre en la barra. */
+  .lp-nav-login { background: none; border-color: transparent; backdrop-filter: none; padding: .5rem .4rem; }
   .lp-brand span { display: none; }
   .lp-hero { padding-top: 116px; }
   .lp-hero-stage { margin-top: 3rem; }

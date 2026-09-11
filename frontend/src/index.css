@@ -277,7 +277,43 @@ input[type="text"].search-input { padding-left: 2.75rem !important; }
 /* ── Page header ────────────────────────────── */
 .page-header {
   display: flex; align-items: center; justify-content: space-between;
+  flex-wrap: wrap; gap: .75rem;
   margin-bottom: 1.5rem;
+}
+
+/* ── Grillas responsive ─────────────────────── */
+/* Van en clases y no inline: un grid-template-columns inline no lo pisa
+   ninguna media query y en celular fuerza el ancho de toda la página. */
+.stats-grid {
+  display: grid; gap: 1rem; margin-bottom: 1.5rem;
+  grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
+}
+.panels-grid {
+  display: grid; gap: 1rem;
+  grid-template-columns: repeat(auto-fit, minmax(min(100%, 340px), 1fr));
+}
+/* Formularios de dos columnas: en celular se apilan. */
+.form-grid-2 { display: grid; grid-template-columns: 1fr 1fr; gap: 1rem; }
+.form-grid-2.tight { gap: .75rem; }
+/* Modal de venta: cliente + fecha, y la fila para agregar productos. */
+.sale-head-grid { display: grid; grid-template-columns: 1fr auto; gap: 1rem; align-items: end; }
+.sale-add-row { display: grid; grid-template-columns: 1fr 80px 110px auto auto; gap: .5rem; align-items: end; }
+
+@media (max-width: 560px) {
+  .form-grid-2 { grid-template-columns: 1fr; }
+  .sale-head-grid { grid-template-columns: 1fr; }
+  /* Producto a lo ancho; cantidad y precio en una fila; "+" y "Agregar" en otra. */
+  .sale-add-row { grid-template-columns: 1fr 1fr; }
+  .sale-add-row > :first-child { grid-column: 1 / -1; }
+  .sale-add-row > button { justify-content: center; }
+}
+
+/* ── Pantallas de acceso (login / registro) en celular ── */
+/* Dejan lugar arriba para el selector de idioma y achican el relleno. */
+@media (max-width: 640px) {
+  .auth-screen { padding: 4.5rem 1rem 2rem !important; align-items: flex-start !important; }
+  .auth-wrap { padding: 0 !important; }
+  .auth-card { padding: 1.75rem 1.25rem !important; }
 }
 .page-title { font-size: 1.5rem; font-weight: 800; color: var(--text-primary); margin: 0; }
 .page-subtitle { font-size: .875rem; color: var(--text-muted); margin: .25rem 0 0; }

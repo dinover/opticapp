@@ -39,7 +39,7 @@ const LoginPage: React.FC = () => {
   const errorText = error || t.fallbackError;
 
   return (
-    <div style={{
+    <div className="auth-screen" style={{
       minHeight: '100vh',
       display: 'flex',
       alignItems: 'center',
@@ -68,7 +68,7 @@ const LoginPage: React.FC = () => {
       }} />
 
       {/* Content wrapper - constrains and centers both panels */}
-      <div style={{
+      <div className="auth-wrap" style={{
         display: 'flex',
         alignItems: 'center',
         justifyContent: 'center',
@@ -124,7 +124,7 @@ const LoginPage: React.FC = () => {
       </div>
 
       {/* Right panel - form */}
-      <div style={{
+      <div className="auth-card" style={{
         flex: '0 0 auto',
         width: '100%',
         maxWidth: 400,
