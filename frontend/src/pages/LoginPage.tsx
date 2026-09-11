@@ -76,12 +76,13 @@ const LoginPage: React.FC = () => {
         justifyContent: 'center',
       }}>
         <div>
-          <div style={{
+          <Link to="/" style={{
             display: 'flex', alignItems: 'center', gap: 12, marginBottom: '3rem',
+            textDecoration: 'none', width: 'fit-content',
           }}>
             <img src="/logo.png" alt="OpticApp" style={{ width: 50, height: 50, objectFit: 'contain' }} />
             <span style={{ fontWeight: 800, fontSize: '1.25rem', color: 'var(--text-primary)' }}>OpticApp</span>
-          </div>
+          </Link>
 
           <h1 style={{
             fontSize: '2.25rem', fontWeight: 800, color: 'var(--text-primary)',
@@ -123,10 +124,10 @@ const LoginPage: React.FC = () => {
         boxShadow: 'var(--shadow-lg)',
       }}>
           {/* Logo mobile */}
-          <div className="flex lg:hidden items-center gap-2 mb-6">
+          <Link to="/" className="flex lg:hidden items-center gap-2 mb-6" style={{ textDecoration: 'none', width: 'fit-content' }}>
             <img src="/logo.png" alt="OpticApp" style={{ width: 50, height: 50, objectFit: 'contain' }} />
             <span style={{ fontWeight: 800, fontSize: '1rem', color: 'var(--text-primary)' }}>OpticApp</span>
-          </div>
+          </Link>
 
           <h2 style={{ fontWeight: 800, fontSize: '1.375rem', color: 'var(--text-primary)', margin: '0 0 .375rem' }}>
             Iniciar sesión
@@ -199,7 +200,7 @@ const LoginPage: React.FC = () => {
           <p style={{ textAlign: 'center', marginTop: '1.5rem', fontSize: '.875rem', color: 'var(--text-secondary)' }}>
             ¿No tenés cuenta?{' '}
             <Link to="/request-user" style={{ color: 'var(--brand)', fontWeight: 600, textDecoration: 'none' }}>
-              Solicitá acceso
+              Creá una gratis
             </Link>
           </p>
       </div>

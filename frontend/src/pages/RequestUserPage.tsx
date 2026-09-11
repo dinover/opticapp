@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import { Link } from 'react-router-dom';
 import { authService } from '../services/auth';
-import { CheckCircleIcon } from '@heroicons/react/24/outline';
+import { CheckCircleIcon, GiftIcon } from '@heroicons/react/24/outline';
 
 const RequestUserPage: React.FC = () => {
   const [formData, setFormData] = useState({
@@ -26,7 +26,7 @@ const RequestUserPage: React.FC = () => {
       });
       setSuccess(true);
     } catch (err: any) {
-      setError(err.response?.data?.error || 'Error al enviar la solicitud');
+      setError(err.response?.data?.error || 'Error al crear la cuenta');
     } finally {
       setLoading(false);
     }
@@ -39,17 +39,18 @@ const RequestUserPage: React.FC = () => {
           <CheckCircleIcon style={{ width: 32, height: 32, color: 'var(--success)' }} />
         </div>
         <h2 style={{ fontWeight: 800, fontSize: '1.375rem', color: 'var(--text-primary)', margin: '0 0 .75rem' }}>
-          ¡Solicitud enviada!
+          ¡Cuenta creada!
         </h2>
         <p style={{ color: 'var(--text-secondary)', lineHeight: 1.7, margin: '0 0 1.75rem', fontSize: '.9rem' }}>
-          Un administrador revisará tu solicitud y te notificará cuando sea aprobada. Podés verificar el estado en cualquier momento.
+          Ya podés iniciar sesión. Tenés <strong style={{ color: 'var(--text-primary)' }}>7 días de prueba gratis</strong> para
+          usar OpticApp con todas sus funciones.
         </p>
         <Link to="/login" style={{
           display: 'inline-flex', alignItems: 'center', justifyContent: 'center',
           padding: '.75rem 1.5rem', background: 'var(--brand)', color: '#fff',
           fontWeight: 700, borderRadius: 10, textDecoration: 'none', fontSize: '.9rem',
         }}>
-          Volver al login
+          Iniciar sesión
         </Link>
       </div>
     </div>
@@ -64,15 +65,30 @@ const RequestUserPage: React.FC = () => {
 
       <div style={{ width: '100%', maxWidth: 460, background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: 20, padding: '2.5rem', boxShadow: '0 8px 32px rgba(15,23,42,.08)', position: 'relative' }}>
         {/* Logo */}
-        <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: '2rem' }}>
+        <Link to="/" style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: '2rem', textDecoration: 'none', width: 'fit-content' }}>
           <img src="/logo.png" alt="OpticApp" style={{ width: 50, height: 50, objectFit: 'contain' }} />
           <span style={{ fontWeight: 800, color: 'var(--text-primary)' }}>OpticApp</span>
-        </div>
+        </Link>
 
-        <h2 style={{ fontWeight: 800, fontSize: '1.375rem', color: 'var(--text-primary)', margin: '0 0 .375rem' }}>Solicitar acceso</h2>
-        <p style={{ color: 'var(--text-secondary)', fontSize: '.875rem', marginBottom: '1.75rem', lineHeight: 1.5 }}>
-          Completá el formulario y un administrador revisará tu solicitud.
+        <h2 style={{ fontWeight: 800, fontSize: '1.375rem', color: 'var(--text-primary)', margin: '0 0 .375rem' }}>Crear cuenta</h2>
+        <p style={{ color: 'var(--text-secondary)', fontSize: '.875rem', marginBottom: '1rem', lineHeight: 1.5 }}>
+          Completá tus datos y empezá a usar OpticApp al instante.
         </p>
+
+        {/* Aviso de la prueba gratis: la cuenta nace en modo trial (ver TRIAL_DAYS en el backend) */}
+        <div style={{
+          display: 'flex', alignItems: 'center', gap: 10,
+          padding: '.7rem .9rem', marginBottom: '1.5rem',
+          borderRadius: 12, fontSize: '.84rem', lineHeight: 1.45,
+          background: 'color-mix(in srgb, var(--brand) 9%, transparent)',
+          border: '1px solid color-mix(in srgb, var(--brand) 25%, transparent)',
+          color: 'var(--text-secondary)',
+        }}>
+          <GiftIcon style={{ width: 20, height: 20, color: 'var(--brand-light)', flexShrink: 0 }} />
+          <span>
+            <strong style={{ color: 'var(--text-primary)' }}>7 días de prueba gratis</strong> con todas las funciones. Sin tarjeta.
+          </span>
+        </div>
 
         {error && (
           <div style={{ background: 'var(--surface-2)', border: '1px solid var(--danger)', borderRadius: 10, padding: '.75rem 1rem', marginBottom: '1.25rem', fontSize: '.875rem', color: 'var(--danger)', display: 'flex', gap: 8 }}>
@@ -122,7 +138,7 @@ const RequestUserPage: React.FC = () => {
             }}
           >
             {loading && <div className="spinner" style={{ width: 16, height: 16, borderWidth: 2 }} />}
-            {loading ? 'Enviando…' : 'Enviar solicitud'}
+            {loading ? 'Creando cuenta…' : 'Crear cuenta'}
           </button>
         </form>
 

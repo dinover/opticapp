@@ -27,8 +27,8 @@ describe('Regression · Alta de óptica y aprobación/rechazo del admin', () => 
     cy.get('input[type="text"]').eq(1).type(opticsName);
     cy.get('input[type="password"]').eq(0).type('password123');
     cy.get('input[type="password"]').eq(1).type('password123');
-    cy.contains('button', 'Enviar solicitud').click();
-    cy.contains('¡Solicitud enviada!').should('be.visible');
+    cy.contains('button', 'Crear cuenta').click();
+    cy.contains('¡Cuenta creada!').should('be.visible');
   }
 
   /** Se llama justo después de crear la solicitud, antes de aprobar/rechazar,

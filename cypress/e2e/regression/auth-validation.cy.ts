@@ -27,7 +27,7 @@ describe('Regression · Validaciones de autenticación', () => {
     cy.get('input[type="text"]').eq(1).type(uniqueName('Optica Regression'));
     cy.get('input[type="password"]').eq(0).type('password1');
     cy.get('input[type="password"]').eq(1).type('password2-distinto');
-    cy.contains('button', 'Enviar solicitud').click();
+    cy.contains('button', 'Crear cuenta').click();
     cy.contains('Las contraseñas no coinciden').should('be.visible');
   });
 
@@ -38,7 +38,7 @@ describe('Regression · Validaciones de autenticación', () => {
     cy.get('input[type="text"]').eq(1).type(uniqueName('Optica Regression'));
     cy.get('input[type="password"]').eq(0).type('abc');
     cy.get('input[type="password"]').eq(1).type('abc');
-    cy.contains('button', 'Enviar solicitud').click();
+    cy.contains('button', 'Crear cuenta').click();
     cy.contains('La contraseña debe tener al menos 6 caracteres').should('be.visible');
   });
 
@@ -49,7 +49,7 @@ describe('Regression · Validaciones de autenticación', () => {
     cy.get('input[type="text"]').eq(1).type(uniqueName('Optica Regression'));
     cy.get('input[type="password"]').eq(0).type('password123');
     cy.get('input[type="password"]').eq(1).type('password123');
-    cy.contains('button', 'Enviar solicitud').click();
+    cy.contains('button', 'Crear cuenta').click();
     cy.contains('El username ya está en uso').should('be.visible');
   });
 });

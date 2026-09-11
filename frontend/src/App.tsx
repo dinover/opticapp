@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { Suspense, lazy } from 'react';
 import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-dom';
 import { AuthProvider, useAuth } from './contexts/AuthContext';
 import { ThemeProvider } from './contexts/ThemeContext';
@@ -21,6 +21,9 @@ import ImportPage from './pages/ImportPage';
 import ReportsPage from './pages/ReportsPage';
 import TeamPage from './pages/TeamPage';
 import ProfilePage from './pages/ProfilePage';
+
+// La landing va en su propio chunk: trae anime.js y los mockups, que la app no necesita.
+const LandingPage = lazy(() => import('./pages/landing/LandingPage'));
 
 const PrivateRoute: React.FC<{ children: React.ReactNode; requireAdmin?: boolean; requireOwner?: boolean }> = ({
   children,
@@ -61,7 +64,7 @@ const PrivateRoute: React.FC<{ children: React.ReactNode; requireAdmin?: boolean
 };
 
 const AppRoutes: React.FC = () => {
-  const { user } = useAuth();
+  const { user, loading } = useAuth();
 
   return (
     <Routes>
@@ -153,7 +156,21 @@ const AppRoutes: React.FC = () => {
           </PrivateRoute>
         }
       />
-      <Route path="/" element={<Navigate to={user ? (user.role === 'admin' ? '/admin' : '/dashboard') : '/login'} replace />} />
+      {/* Con sesión se va directo a la app; sin sesión se ve la landing pública.
+          Mientras AuthProvider lee el storage no se renderiza nada, para no
+          mostrar un parpadeo de la landing a quien ya está logueado. */}
+      <Route
+        path="/"
+        element={
+          user ? (
+            <Navigate to={user.role === 'admin' ? '/admin' : '/dashboard'} replace />
+          ) : loading ? null : (
+            <Suspense fallback={null}>
+              <LandingPage />
+            </Suspense>
+          )
+        }
+      />
       <Route path="*" element={<NotFoundPage />} />
     </Routes>
   );
