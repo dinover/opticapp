@@ -5,6 +5,7 @@ import EmptyState from '../components/EmptyState';
 import { SkeletonLine } from '../components/Skeleton';
 import { useToast } from '../contexts/ToastContext';
 import { useCurrency } from '../contexts/CurrencyContext';
+import { useLanguage } from '../contexts/LanguageContext';
 import { suppliersService } from '../services/suppliers';
 import { reportsService, SalesReport, TopProductsReport } from '../services/reports';
 import { Supplier } from '../types';
@@ -37,6 +38,7 @@ const ReportCard: React.FC<{
   preview?: React.ReactNode;
 }> = ({ icon, title, description, children, onPreview, onDownload, preview }) => {
   const toast = useToast();
+  const { t } = useLanguage();
   const [previewing, setPreviewing] = useState(false);
   const [downloading, setDownloading] = useState(false);
   const [downloaded, setDownloaded] = useState(false);
@@ -47,7 +49,7 @@ const ReportCard: React.FC<{
       setPreviewing(true);
       await onPreview();
     } catch (err: any) {
-      toast.error(err.response?.data?.error || 'Error al generar el reporte');
+      toast.error(err.response?.data?.error || t('Error al generar el reporte', 'Could not generate the report'));
     } finally {
       setPreviewing(false);
     }
@@ -60,10 +62,10 @@ const ReportCard: React.FC<{
       setDownloaded(false);
       await onDownload();
       setDownloaded(true);
-      toast.success('Reporte descargado');
+      toast.success(t('Reporte descargado', 'Report downloaded'));
       setTimeout(() => setDownloaded(false), 3000);
     } catch (err: any) {
-      toast.error(err.response?.data?.error || 'Error al generar el reporte');
+      toast.error(err.response?.data?.error || t('Error al generar el reporte', 'Could not generate the report'));
     } finally {
       setDownloading(false);
     }
@@ -107,7 +109,7 @@ const ReportCard: React.FC<{
             ) : (
               <EyeIcon className="w-4 h-4" aria-hidden="true" />
             )}
-            Ver reporte
+            {t('Ver reporte', 'View report')}
           </button>
         )}
         <button
@@ -120,14 +122,14 @@ const ReportCard: React.FC<{
           {downloading ? (
             <>
               <div className="spinner" style={{ width: 16, height: 16, borderWidth: 2 }} aria-hidden="true" />
-              Generando…
+              {t('Generando…', 'Generating…')}
             </>
           ) : downloaded ? (
-            '✓ Descargado'
+            t('✓ Descargado', '✓ Downloaded')
           ) : (
             <>
               <ArrowDownTrayIcon className="w-4 h-4" aria-hidden="true" />
-              Descargar Excel
+              {t('Descargar Excel', 'Download Excel')}
             </>
           )}
         </button>
@@ -157,6 +159,7 @@ const ReportsPage: React.FC = () => {
   const navigate = useNavigate();
   const toast = useToast();
   const { fmt } = useCurrency();
+  const { t, lang } = useLanguage();
 
   const [suppliers, setSuppliers] = useState<Supplier[]>([]);
   const [loadingSuppliers, setLoadingSuppliers] = useState(true);
@@ -175,28 +178,38 @@ const ReportsPage: React.FC = () => {
     suppliersService.getAll()
       .then(setSuppliers)
       .catch((err: any) => {
-        toast.error(err.response?.data?.error || 'No pudimos cargar la lista de proveedores');
+        toast.error(err.response?.data?.error || t('No pudimos cargar la lista de proveedores', 'We couldn’t load the suppliers list'));
       })
       .finally(() => setLoadingSuppliers(false));
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
+  // Las vistas previas traen textos armados por el backend en el idioma del
+  // momento (etiquetas de período, "Sin proveedor"): al cambiar de idioma se descartan.
+  useEffect(() => {
+    setSalesReport(null);
+    setTopReport(null);
+  }, [lang]);
+
   const noSuppliers = !loadingSuppliers && suppliers.length === 0;
+  const allSuppliersLabel = t('Todos los proveedores', 'All suppliers');
+  const noSupplierLabel = t('Sin proveedor (óptica)', 'No supplier (store)');
   const selectedSupplierLabel = supplierId === 'all'
-    ? 'Todos los proveedores'
+    ? allSuppliersLabel
     : supplierId === 'none'
-      ? 'Sin proveedor (óptica)'
+      ? noSupplierLabel
       : suppliers.find(s => String(s.id) === supplierId)?.name || '';
 
   const maxPeriodRevenue = salesReport ? Math.max(1, ...salesReport.periods.map(p => p.revenue)) : 1;
+  const noSalesInRange = t('No hay ventas en ese rango de fechas.', 'There are no sales in that date range.');
 
   return (
     <Layout>
       <div className="fade-in" style={{ maxWidth: 640, margin: '0 auto' }}>
         <div className="page-header">
           <div>
-            <h1 className="page-title">Reportes</h1>
-            <p className="page-subtitle">Mirá o descargá información de tu óptica en Excel</p>
+            <h1 className="page-title">{t('Reportes', 'Reports')}</h1>
+            <p className="page-subtitle">{t('Mirá o descargá información de tu óptica en Excel', 'View or download your store’s data in Excel')}</p>
           </div>
         </div>
 
@@ -205,21 +218,24 @@ const ReportsPage: React.FC = () => {
           {/* Ventas por período */}
           <ReportCard
             icon={<ChartBarIcon style={{ width: 22, height: 22, color: 'var(--brand)' }} />}
-            title="Ventas por período"
-            description="Facturación y cantidad de ventas agrupadas por día, semana o mes."
+            title={t('Ventas por período', 'Sales by period')}
+            description={t(
+              'Facturación y cantidad de ventas agrupadas por día, semana o mes.',
+              'Revenue and number of sales grouped by day, week or month.',
+            )}
             onPreview={async () => setSalesReport(await reportsService.getSales(salesFrom, salesTo, groupBy))}
             onDownload={() => reportsService.downloadSales(salesFrom, salesTo, groupBy)}
             preview={salesReport && (
               salesReport.periods.length === 0 ? (
                 <p style={{ margin: 0, fontSize: '.85rem', color: 'var(--text-muted)', textAlign: 'center' }}>
-                  No hay ventas en ese rango de fechas.
+                  {noSalesInRange}
                 </p>
               ) : (
                 <>
                   <div style={{ display: 'flex', gap: '.625rem', marginBottom: '1rem' }}>
-                    <StatTile label="Facturado" value={fmt(salesReport.totalRevenue)} />
-                    <StatTile label="Ventas" value={String(salesReport.totalSales)} />
-                    <StatTile label="Ticket prom." value={fmt(salesReport.avgTicket)} />
+                    <StatTile label={t('Facturado', 'Revenue')} value={fmt(salesReport.totalRevenue)} />
+                    <StatTile label={t('Ventas', 'Sales')} value={String(salesReport.totalSales)} />
+                    <StatTile label={t('Ticket prom.', 'Avg. ticket')} value={fmt(salesReport.avgTicket)} />
                   </div>
                   <div style={{ display: 'flex', flexDirection: 'column', gap: '.5rem' }}>
                     {salesReport.periods.map(p => (
@@ -245,23 +261,23 @@ const ReportsPage: React.FC = () => {
           >
             <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '.75rem' }}>
               <div>
-                <label htmlFor="sales-from" style={fieldLabelStyle}>Desde</label>
+                <label htmlFor="sales-from" style={fieldLabelStyle}>{t('Desde', 'From')}</label>
                 <input id="sales-from" type="date" value={salesFrom} max={salesTo} onChange={e => { setSalesFrom(e.target.value); setSalesReport(null); }} />
               </div>
               <div>
-                <label htmlFor="sales-to" style={fieldLabelStyle}>Hasta</label>
+                <label htmlFor="sales-to" style={fieldLabelStyle}>{t('Hasta', 'To')}</label>
                 <input id="sales-to" type="date" value={salesTo} min={salesFrom} max={today()} onChange={e => { setSalesTo(e.target.value); setSalesReport(null); }} />
               </div>
               <div style={{ gridColumn: '1 / -1' }}>
-                <label htmlFor="sales-group" style={fieldLabelStyle}>Agrupar por</label>
+                <label htmlFor="sales-group" style={fieldLabelStyle}>{t('Agrupar por', 'Group by')}</label>
                 <select
                   id="sales-group"
                   value={groupBy}
                   onChange={e => { setGroupBy(e.target.value as 'day' | 'week' | 'month'); setSalesReport(null); }}
                 >
-                  <option value="day">Día</option>
-                  <option value="week">Semana</option>
-                  <option value="month">Mes</option>
+                  <option value="day">{t('Día', 'Day')}</option>
+                  <option value="week">{t('Semana', 'Week')}</option>
+                  <option value="month">{t('Mes', 'Month')}</option>
                 </select>
               </div>
             </div>
@@ -270,14 +286,17 @@ const ReportsPage: React.FC = () => {
           {/* Ranking de productos */}
           <ReportCard
             icon={<TrophyIcon style={{ width: 22, height: 22, color: 'var(--brand)' }} />}
-            title="Ranking de productos vendidos"
-            description="Los armazones más vendidos en el período, con unidades y % de la facturación."
+            title={t('Ranking de productos vendidos', 'Best-selling products ranking')}
+            description={t(
+              'Los armazones más vendidos en el período, con unidades y % de la facturación.',
+              'The best-selling frames in the period, with units and % of revenue.',
+            )}
             onPreview={async () => setTopReport(await reportsService.getTopProducts(topFrom, topTo))}
             onDownload={() => reportsService.downloadTopProducts(topFrom, topTo)}
             preview={topReport && (
               topReport.products.length === 0 ? (
                 <p style={{ margin: 0, fontSize: '.85rem', color: 'var(--text-muted)', textAlign: 'center' }}>
-                  No hay ventas en ese rango de fechas.
+                  {noSalesInRange}
                 </p>
               ) : (
                 <div className="table-scroll">
@@ -285,10 +304,10 @@ const ReportsPage: React.FC = () => {
                     <thead>
                       <tr>
                         <th>#</th>
-                        <th>Artículo</th>
-                        <th>Proveedor</th>
-                        <th style={{ textAlign: 'right' }}>Unidades</th>
-                        <th style={{ textAlign: 'right' }}>Facturación</th>
+                        <th>{t('Artículo', 'Item')}</th>
+                        <th>{t('Proveedor', 'Supplier')}</th>
+                        <th style={{ textAlign: 'right' }}>{t('Unidades', 'Units')}</th>
+                        <th style={{ textAlign: 'right' }}>{t('Facturación', 'Revenue')}</th>
                         <th style={{ textAlign: 'right' }}>%</th>
                       </tr>
                     </thead>
@@ -311,11 +330,11 @@ const ReportsPage: React.FC = () => {
           >
             <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '.75rem' }}>
               <div>
-                <label htmlFor="top-from" style={fieldLabelStyle}>Desde</label>
+                <label htmlFor="top-from" style={fieldLabelStyle}>{t('Desde', 'From')}</label>
                 <input id="top-from" type="date" value={topFrom} max={topTo} onChange={e => { setTopFrom(e.target.value); setTopReport(null); }} />
               </div>
               <div>
-                <label htmlFor="top-to" style={fieldLabelStyle}>Hasta</label>
+                <label htmlFor="top-to" style={fieldLabelStyle}>{t('Hasta', 'To')}</label>
                 <input id="top-to" type="date" value={topTo} min={topFrom} max={today()} onChange={e => { setTopTo(e.target.value); setTopReport(null); }} />
               </div>
             </div>
@@ -324,8 +343,8 @@ const ReportsPage: React.FC = () => {
           {/* Armazones disponibles */}
           <ReportCard
             icon={<TableCellsIcon style={{ width: 22, height: 22, color: 'var(--brand)' }} />}
-            title="Armazones disponibles"
-            description="Stock actual con precio, cantidad y proveedor."
+            title={t('Armazones disponibles', 'Available frames')}
+            description={t('Stock actual con precio, cantidad y proveedor.', 'Current stock with price, quantity and supplier.')}
             onDownload={() => reportsService.downloadProducts(supplierId)}
           >
             {loadingSuppliers ? (
@@ -337,23 +356,26 @@ const ReportsPage: React.FC = () => {
             ) : noSuppliers ? (
               <EmptyState
                 icon={<TruckIcon />}
-                title="Todavía no cargaste proveedores"
-                description="Sin proveedores no hay nada por lo que filtrar, pero igual podés descargar el listado completo."
-                actionLabel="Cargar proveedores"
+                title={t('Todavía no cargaste proveedores', 'You haven’t added suppliers yet')}
+                description={t(
+                  'Sin proveedores no hay nada por lo que filtrar, pero igual podés descargar el listado completo.',
+                  'Without suppliers there’s nothing to filter by, but you can still download the full list.',
+                )}
+                actionLabel={t('Cargar proveedores', 'Add suppliers')}
                 onAction={() => navigate('/suppliers')}
               />
             ) : (
               <div>
                 <label htmlFor="report-supplier" style={fieldLabelStyle}>
-                  Filtrar por proveedor
+                  {t('Filtrar por proveedor', 'Filter by supplier')}
                 </label>
                 <select
                   id="report-supplier"
                   value={supplierId}
                   onChange={e => setSupplierId(e.target.value)}
                 >
-                  <option value="all">Todos los proveedores</option>
-                  <option value="none">Sin proveedor (óptica)</option>
+                  <option value="all">{allSuppliersLabel}</option>
+                  <option value="none">{noSupplierLabel}</option>
                   {suppliers.map(s => (
                     <option key={s.id} value={String(s.id)}>{s.name}</option>
                   ))}

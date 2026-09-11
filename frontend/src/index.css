@@ -443,6 +443,24 @@ input[type="text"].search-input { padding-left: 2.75rem !important; }
 .status-icon-danger { background: var(--surface-3); color: var(--danger); }
 .status-icon-muted  { background: var(--surface-3); color: var(--text-muted); }
 
+/* ── Selector de idioma (páginas públicas) ──── */
+.lang-toggle {
+  display: inline-flex; gap: 2px; padding: 3px;
+  border-radius: 99px;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  box-shadow: var(--shadow-sm);
+}
+.lang-toggle button {
+  border: none; background: none;
+  padding: .28rem .62rem; border-radius: 99px;
+  font-size: .72rem; font-weight: 800; letter-spacing: .06em;
+  color: var(--text-muted);
+  transition: background .15s, color .15s;
+}
+.lang-toggle button:hover { color: var(--text-primary); }
+.lang-toggle button.is-on { background: var(--brand); color: #fff; }
+
 /* ── Foco visible ───────────────────────────── */
 :focus-visible {
   outline: 2px solid var(--border-focus);

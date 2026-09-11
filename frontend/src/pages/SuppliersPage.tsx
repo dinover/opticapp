@@ -6,6 +6,7 @@ import SortableTh, { SortOrder } from '../components/SortableTh';
 import { SkeletonRows } from '../components/Skeleton';
 import { useToast } from '../contexts/ToastContext';
 import { useConfirm } from '../contexts/ConfirmContext';
+import { useLanguage } from '../contexts/LanguageContext';
 import { useDebounce } from '../hooks/useDebounce';
 import { suppliersService } from '../services/suppliers';
 import { Supplier } from '../types';
@@ -29,6 +30,7 @@ type SortField = 'name' | 'contact_name' | 'email';
 const SuppliersPage: React.FC = () => {
   const toast = useToast();
   const confirm = useConfirm();
+  const { t, locale } = useLanguage();
 
   const [suppliers, setSuppliers] = useState<Supplier[]>([]);
   const [loading, setLoading] = useState(true);
@@ -64,9 +66,9 @@ const SuppliersPage: React.FC = () => {
       if (!av && !bv) return 0;
       if (!av) return 1;
       if (!bv) return -1;
-      return av.localeCompare(bv, 'es', { sensitivity: 'base' }) * dir;
+      return av.localeCompare(bv, locale, { sensitivity: 'base' }) * dir;
     });
-  }, [suppliers, debouncedSearch, sortBy, sortOrder]);
+  }, [suppliers, debouncedSearch, sortBy, sortOrder, locale]);
 
   const load = async () => {
     try {
@@ -74,7 +76,7 @@ const SuppliersPage: React.FC = () => {
       const data = await suppliersService.getAll();
       setSuppliers(data);
     } catch (err: any) {
-      toast.error(err.response?.data?.error || 'Error al cargar proveedores');
+      toast.error(err.response?.data?.error || t('Error al cargar proveedores', 'Could not load suppliers'));
     } finally {
       setLoading(false);
     }
@@ -99,15 +101,15 @@ const SuppliersPage: React.FC = () => {
       setSaving(true);
       if (editing) {
         await suppliersService.update(editing.id, form);
-        toast.success('Proveedor actualizado');
+        toast.success(t('Proveedor actualizado', 'Supplier updated'));
       } else {
         await suppliersService.create(form);
-        toast.success('Proveedor creado');
+        toast.success(t('Proveedor creado', 'Supplier created'));
       }
       closeModal();
       load();
     } catch (err: any) {
-      toast.error(err.response?.data?.error || 'Error al guardar');
+      toast.error(err.response?.data?.error || t('Error al guardar', 'Could not save'));
     } finally {
       setSaving(false);
     }
@@ -115,19 +117,22 @@ const SuppliersPage: React.FC = () => {
 
   const handleDelete = async (s: Supplier) => {
     const ok = await confirm({
-      title: 'Eliminar proveedor',
-      message: `¿Seguro que querés eliminar a ${s.name}? Los armazones asociados quedarán sin proveedor.`,
-      confirmLabel: 'Eliminar',
+      title: t('Eliminar proveedor', 'Delete supplier'),
+      message: t(
+        `¿Seguro que querés eliminar a ${s.name}? Los armazones asociados quedarán sin proveedor.`,
+        `Are you sure you want to delete ${s.name}? Its frames will be left without a supplier.`,
+      ),
+      confirmLabel: t('Eliminar', 'Delete'),
       danger: true,
     });
     if (!ok) return;
     try {
       setDeletingId(s.id);
       await suppliersService.delete(s.id);
-      toast.success('Proveedor eliminado');
+      toast.success(t('Proveedor eliminado', 'Supplier deleted'));
       load();
     } catch (err: any) {
-      toast.error(err.response?.data?.error || 'Error al eliminar');
+      toast.error(err.response?.data?.error || t('Error al eliminar', 'Could not delete'));
     } finally {
       setDeletingId(null);
     }
@@ -143,17 +148,24 @@ const SuppliersPage: React.FC = () => {
     display: 'flex',
   };
 
+  const n = suppliers.length;
+
   return (
     <Layout>
       <div className="fade-in">
         <div className="page-header">
           <div>
-            <h1 className="page-title">Proveedores</h1>
-            <p className="page-subtitle">{suppliers.length} proveedor{suppliers.length !== 1 ? 'es' : ''} registrado{suppliers.length !== 1 ? 's' : ''}</p>
+            <h1 className="page-title">{t('Proveedores', 'Suppliers')}</h1>
+            <p className="page-subtitle">
+              {t(
+                `${n} proveedor${n !== 1 ? 'es' : ''} registrado${n !== 1 ? 's' : ''}`,
+                `${n} registered supplier${n !== 1 ? 's' : ''}`,
+              )}
+            </p>
           </div>
           <button className="btn btn-primary" onClick={openCreate}>
             <PlusIcon className="w-4 h-4" />
-            Nuevo proveedor
+            {t('Nuevo proveedor', 'New supplier')}
           </button>
         </div>
 
@@ -162,8 +174,8 @@ const SuppliersPage: React.FC = () => {
           <input
             type="text"
             className="search-input"
-            placeholder="Buscar proveedores…"
-            aria-label="Buscar proveedores"
+            placeholder={t('Buscar proveedores…', 'Search suppliers…')}
+            aria-label={t('Buscar proveedores', 'Search suppliers')}
             value={search}
             onChange={e => setSearch(e.target.value)}
           />
@@ -175,17 +187,17 @@ const SuppliersPage: React.FC = () => {
               <thead>
                 <tr>
                   <SortableTh column="name" sortBy={sortBy} sortOrder={sortOrder} onSort={handleSort}>
-                    Nombre
+                    {t('Nombre', 'Name')}
                   </SortableTh>
                   <SortableTh column="contact_name" sortBy={sortBy} sortOrder={sortOrder} onSort={handleSort}>
-                    Contacto
+                    {t('Contacto', 'Contact')}
                   </SortableTh>
-                  <th>Teléfono</th>
+                  <th>{t('Teléfono', 'Phone')}</th>
                   <SortableTh column="email" sortBy={sortBy} sortOrder={sortOrder} onSort={handleSort}>
                     Email
                   </SortableTh>
-                  <th>Notas</th>
-                  <th style={{ textAlign: 'right' }}>Acciones</th>
+                  <th>{t('Notas', 'Notes')}</th>
+                  <th style={{ textAlign: 'right' }}>{t('Acciones', 'Actions')}</th>
                 </tr>
               </thead>
               <tbody>
@@ -219,8 +231,8 @@ const SuppliersPage: React.FC = () => {
                         <button
                           onClick={() => openEdit(s)}
                           style={{ ...rowActionBtn, color: 'var(--text-secondary)' }}
-                          title="Editar"
-                          aria-label={`Editar ${s.name}`}
+                          title={t('Editar', 'Edit')}
+                          aria-label={t(`Editar ${s.name}`, `Edit ${s.name}`)}
                         >
                           <PencilIcon className="w-3.5 h-3.5" />
                         </button>
@@ -233,8 +245,8 @@ const SuppliersPage: React.FC = () => {
                             opacity: deletingId === s.id ? 0.5 : 1,
                             cursor: deletingId === s.id ? 'default' : 'pointer',
                           }}
-                          title="Eliminar"
-                          aria-label={`Eliminar ${s.name}`}
+                          title={t('Eliminar', 'Delete')}
+                          aria-label={t(`Eliminar ${s.name}`, `Delete ${s.name}`)}
                         >
                           <TrashIcon className="w-3.5 h-3.5" />
                         </button>
@@ -246,9 +258,12 @@ const SuppliersPage: React.FC = () => {
                     <td colSpan={COLUMN_COUNT}>
                       <EmptyState
                         icon={<TruckIcon />}
-                        title="No hay proveedores registrados"
-                        description="Cargá tus proveedores para poder asociarlos a los armazones."
-                        actionLabel="Agregar primer proveedor"
+                        title={t('No hay proveedores registrados', 'No registered suppliers')}
+                        description={t(
+                          'Cargá tus proveedores para poder asociarlos a los armazones.',
+                          'Add your suppliers so you can link them to your frames.',
+                        )}
+                        actionLabel={t('Agregar primer proveedor', 'Add your first supplier')}
                         onAction={openCreate}
                         searchTerm={debouncedSearch}
                       />
@@ -264,37 +279,37 @@ const SuppliersPage: React.FC = () => {
       <Modal
         open={showModal}
         onClose={closeModal}
-        title={editing ? 'Editar proveedor' : 'Nuevo proveedor'}
+        title={editing ? t('Editar proveedor', 'Edit supplier') : t('Nuevo proveedor', 'New supplier')}
         maxWidth={480}
         onSubmit={handleSubmit}
         footer={<>
-          <button type="button" className="btn btn-ghost" onClick={closeModal}>Cancelar</button>
+          <button type="button" className="btn btn-ghost" onClick={closeModal}>{t('Cancelar', 'Cancel')}</button>
           <button type="submit" className="btn btn-primary" disabled={saving}>
-            {saving ? 'Guardando…' : (editing ? 'Guardar cambios' : 'Crear proveedor')}
+            {saving ? t('Guardando…', 'Saving…') : (editing ? t('Guardar cambios', 'Save changes') : t('Crear proveedor', 'Create supplier'))}
           </button>
         </>}
       >
         <div>
-          <label htmlFor="supplier-name" style={{ display: 'block', marginBottom: '.375rem' }}>Nombre *</label>
-          <input id="supplier-name" type="text" required value={form.name} onChange={e => setForm({ ...form, name: e.target.value })} placeholder="Nombre del proveedor" />
+          <label htmlFor="supplier-name" style={{ display: 'block', marginBottom: '.375rem' }}>{t('Nombre *', 'Name *')}</label>
+          <input id="supplier-name" type="text" required value={form.name} onChange={e => setForm({ ...form, name: e.target.value })} placeholder={t('Nombre del proveedor', 'Supplier name')} />
         </div>
         <div>
-          <label htmlFor="supplier-contact" style={{ display: 'block', marginBottom: '.375rem' }}>Contacto</label>
-          <input id="supplier-contact" type="text" value={form.contact_name} onChange={e => setForm({ ...form, contact_name: e.target.value })} placeholder="Nombre del contacto" />
+          <label htmlFor="supplier-contact" style={{ display: 'block', marginBottom: '.375rem' }}>{t('Contacto', 'Contact')}</label>
+          <input id="supplier-contact" type="text" value={form.contact_name} onChange={e => setForm({ ...form, contact_name: e.target.value })} placeholder={t('Nombre del contacto', 'Contact name')} />
         </div>
         <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem' }}>
           <div>
-            <label htmlFor="supplier-phone" style={{ display: 'block', marginBottom: '.375rem' }}>Teléfono</label>
+            <label htmlFor="supplier-phone" style={{ display: 'block', marginBottom: '.375rem' }}>{t('Teléfono', 'Phone')}</label>
             <input id="supplier-phone" type="tel" value={form.phone} onChange={e => setForm({ ...form, phone: e.target.value })} placeholder="+598 99..." />
           </div>
           <div>
             <label htmlFor="supplier-email" style={{ display: 'block', marginBottom: '.375rem' }}>Email</label>
-            <input id="supplier-email" type="email" value={form.email} onChange={e => setForm({ ...form, email: e.target.value })} placeholder="proveedor@..." />
+            <input id="supplier-email" type="email" value={form.email} onChange={e => setForm({ ...form, email: e.target.value })} placeholder={t('proveedor@...', 'supplier@...')} />
           </div>
         </div>
         <div>
-          <label htmlFor="supplier-notes" style={{ display: 'block', marginBottom: '.375rem' }}>Notas</label>
-          <textarea id="supplier-notes" value={form.notes} onChange={e => setForm({ ...form, notes: e.target.value })} placeholder="Notas opcionales…" rows={2} />
+          <label htmlFor="supplier-notes" style={{ display: 'block', marginBottom: '.375rem' }}>{t('Notas', 'Notes')}</label>
+          <textarea id="supplier-notes" value={form.notes} onChange={e => setForm({ ...form, notes: e.target.value })} placeholder={t('Notas opcionales…', 'Optional notes…')} rows={2} />
         </div>
       </Modal>
     </Layout>

@@ -7,6 +7,7 @@ import SortableTh, { SortOrder } from '../components/SortableTh';
 import { SkeletonRows } from '../components/Skeleton';
 import { useToast } from '../contexts/ToastContext';
 import { useConfirm } from '../contexts/ConfirmContext';
+import { useLanguage } from '../contexts/LanguageContext';
 import { useDebounce } from '../hooks/useDebounce';
 import { clientsService } from '../services/clients';
 import { Client, PaginatedResponse } from '../types';
@@ -28,6 +29,7 @@ const COLUMN_COUNT = 6;
 const ClientsPage: React.FC = () => {
   const toast = useToast();
   const confirm = useConfirm();
+  const { t, locale } = useLanguage();
 
   const [clients, setClients] = useState<PaginatedResponse<Client> | null>(null);
   const [loading, setLoading] = useState(true);
@@ -56,7 +58,7 @@ const ClientsPage: React.FC = () => {
       });
       setClients(data);
     } catch (err: any) {
-      toast.error(err.response?.data?.error || 'Error al cargar clientes');
+      toast.error(err.response?.data?.error || t('Error al cargar clientes', 'Could not load clients'));
     } finally {
       setLoading(false);
     }
@@ -74,15 +76,15 @@ const ClientsPage: React.FC = () => {
       setSaving(true);
       if (editingClient) {
         await clientsService.update(editingClient.id, formData);
-        toast.success('Cliente actualizado');
+        toast.success(t('Cliente actualizado', 'Client updated'));
       } else {
         await clientsService.create(formData);
-        toast.success('Cliente creado');
+        toast.success(t('Cliente creado', 'Client created'));
       }
       closeModal();
       loadClients();
     } catch (err: any) {
-      toast.error(err.response?.data?.error || 'Error al guardar cliente');
+      toast.error(err.response?.data?.error || t('Error al guardar cliente', 'Could not save client'));
     } finally {
       setSaving(false);
     }
@@ -107,19 +109,22 @@ const ClientsPage: React.FC = () => {
 
   const handleDelete = async (client: Client) => {
     const ok = await confirm({
-      title: 'Eliminar cliente',
-      message: `¿Seguro que querés eliminar a ${client.name}? Se perderá su ficha de la app.`,
-      confirmLabel: 'Eliminar',
+      title: t('Eliminar cliente', 'Delete client'),
+      message: t(
+        `¿Seguro que querés eliminar a ${client.name}? Se perderá su ficha de la app.`,
+        `Are you sure you want to delete ${client.name}? Their record will be removed from the app.`,
+      ),
+      confirmLabel: t('Eliminar', 'Delete'),
       danger: true,
     });
     if (!ok) return;
     try {
       setDeletingId(client.id);
       await clientsService.delete(client.id);
-      toast.success('Cliente eliminado');
+      toast.success(t('Cliente eliminado', 'Client deleted'));
       loadClients();
     } catch (err: any) {
-      toast.error(err.response?.data?.error || 'Error al eliminar');
+      toast.error(err.response?.data?.error || t('Error al eliminar', 'Could not delete'));
     } finally {
       setDeletingId(null);
     }
@@ -150,18 +155,22 @@ const ClientsPage: React.FC = () => {
   };
 
   const hasRows = Boolean(clients?.data && clients.data.length > 0);
+  const total = clients?.pagination.total ?? 0;
 
   return (
     <Layout>
       <div className="fade-in">
         <div className="page-header">
           <div>
-            <h1 className="page-title">Clientes</h1>
-            <p className="page-subtitle">{clients?.pagination.total ?? 0} clientes registrados</p>
+            <h1 className="page-title">{t('Clientes', 'Clients')}</h1>
+            <p className="page-subtitle">{t(
+              `${total} cliente${total !== 1 ? 's' : ''} registrado${total !== 1 ? 's' : ''}`,
+              `${total} registered client${total !== 1 ? 's' : ''}`,
+            )}</p>
           </div>
           <button className="btn btn-primary" onClick={openCreate}>
             <PlusIcon className="w-4 h-4" />
-            Nuevo cliente
+            {t('Nuevo cliente', 'New client')}
           </button>
         </div>
 
@@ -171,8 +180,8 @@ const ClientsPage: React.FC = () => {
           <input
             type="text"
             className="search-input"
-            placeholder="Buscar por nombre, email, teléfono…"
-            aria-label="Buscar clientes"
+            placeholder={t('Buscar por nombre, email, teléfono…', 'Search by name, email, phone…')}
+            aria-label={t('Buscar clientes', 'Search clients')}
             value={search}
             onChange={e => { setSearch(e.target.value); setPage(1); }}
           />
@@ -184,17 +193,17 @@ const ClientsPage: React.FC = () => {
               <thead>
                 <tr>
                   <SortableTh column="name" sortBy={sortBy} sortOrder={sortOrder} onSort={handleSort}>
-                    Cliente
+                    {t('Cliente', 'Client')}
                   </SortableTh>
-                  <th>Documento</th>
+                  <th>{t('Documento', 'ID')}</th>
                   <SortableTh column="email" sortBy={sortBy} sortOrder={sortOrder} onSort={handleSort}>
-                    Contacto
+                    {t('Contacto', 'Contact')}
                   </SortableTh>
-                  <th>Nacimiento</th>
+                  <th>{t('Nacimiento', 'Birthday')}</th>
                   <SortableTh column="created_at" sortBy={sortBy} sortOrder={sortOrder} onSort={handleSort}>
-                    Alta
+                    {t('Alta', 'Added')}
                   </SortableTh>
-                  <th style={{ textAlign: 'right' }}>Acciones</th>
+                  <th style={{ textAlign: 'right' }}>{t('Acciones', 'Actions')}</th>
                 </tr>
               </thead>
               <tbody>
@@ -233,12 +242,12 @@ const ClientsPage: React.FC = () => {
                       </td>
                       <td style={{ color: 'var(--text-secondary)', fontSize: '.8rem' }}>
                         {client.birth_date
-                          ? new Date(client.birth_date).toLocaleDateString('es-ES')
+                          ? new Date(client.birth_date).toLocaleDateString(locale)
                           : <span style={{ color: 'var(--text-muted)' }}>—</span>}
                       </td>
                       <td style={{ color: 'var(--text-muted)', fontSize: '.8rem' }}>
                         {client.created_at
-                          ? new Date(client.created_at).toLocaleDateString('es-ES')
+                          ? new Date(client.created_at).toLocaleDateString(locale)
                           : <span style={{ color: 'var(--text-muted)' }}>—</span>}
                       </td>
                       <td>
@@ -246,8 +255,8 @@ const ClientsPage: React.FC = () => {
                           <button
                             onClick={() => handleEdit(client)}
                             style={{ ...rowActionBtn, color: 'var(--text-secondary)' }}
-                            title="Editar"
-                            aria-label={`Editar ${client.name}`}
+                            title={t('Editar', 'Edit')}
+                            aria-label={t(`Editar ${client.name}`, `Edit ${client.name}`)}
                           >
                             <PencilIcon className="w-4 h-4" />
                           </button>
@@ -260,8 +269,8 @@ const ClientsPage: React.FC = () => {
                               opacity: deletingId === client.id ? 0.5 : 1,
                               cursor: deletingId === client.id ? 'default' : 'pointer',
                             }}
-                            title="Eliminar"
-                            aria-label={`Eliminar ${client.name}`}
+                            title={t('Eliminar', 'Delete')}
+                            aria-label={t(`Eliminar ${client.name}`, `Delete ${client.name}`)}
                           >
                             <TrashIcon className="w-4 h-4" />
                           </button>
@@ -274,9 +283,12 @@ const ClientsPage: React.FC = () => {
                     <td colSpan={COLUMN_COUNT}>
                       <EmptyState
                         icon={<UserCircleIcon />}
-                        title="No hay clientes registrados"
-                        description="Cargá tu primer cliente para empezar a asociarle ventas y recetas."
-                        actionLabel="Nuevo cliente"
+                        title={t('No hay clientes registrados', 'No registered clients')}
+                        description={t(
+                          'Cargá tu primer cliente para empezar a asociarle ventas y recetas.',
+                          'Add your first client to start linking sales and prescriptions to them.',
+                        )}
+                        actionLabel={t('Nuevo cliente', 'New client')}
                         onAction={openCreate}
                         searchTerm={debouncedSearch}
                       />
@@ -295,44 +307,44 @@ const ClientsPage: React.FC = () => {
       <Modal
         open={showModal}
         onClose={closeModal}
-        title={editingClient ? 'Editar cliente' : 'Nuevo cliente'}
+        title={editingClient ? t('Editar cliente', 'Edit client') : t('Nuevo cliente', 'New client')}
         onSubmit={handleSubmit}
         footer={<>
-          <button type="button" className="btn btn-ghost" onClick={closeModal}>Cancelar</button>
+          <button type="button" className="btn btn-ghost" onClick={closeModal}>{t('Cancelar', 'Cancel')}</button>
           <button type="submit" className="btn btn-primary" disabled={saving}>
-            {saving ? 'Guardando…' : (editingClient ? 'Guardar cambios' : 'Crear cliente')}
+            {saving ? t('Guardando…', 'Saving…') : (editingClient ? t('Guardar cambios', 'Save changes') : t('Crear cliente', 'Create client'))}
           </button>
         </>}
       >
         <div>
-          <label htmlFor="client-name" style={{ display: 'block', marginBottom: '.375rem' }}>Nombre completo *</label>
-          <input id="client-name" type="text" required value={formData.name} onChange={e => setFormData({ ...formData, name: e.target.value })} placeholder="Ej: María García" />
+          <label htmlFor="client-name" style={{ display: 'block', marginBottom: '.375rem' }}>{t('Nombre completo *', 'Full name *')}</label>
+          <input id="client-name" type="text" required value={formData.name} onChange={e => setFormData({ ...formData, name: e.target.value })} placeholder={t('Ej: María García', 'E.g. Mary Johnson')} />
         </div>
         <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem' }}>
           <div>
-            <label htmlFor="client-document" style={{ display: 'block', marginBottom: '.375rem' }}>Documento</label>
-            <input id="client-document" type="text" value={formData.document_id} onChange={e => setFormData({ ...formData, document_id: e.target.value })} placeholder="CI / DNI" />
+            <label htmlFor="client-document" style={{ display: 'block', marginBottom: '.375rem' }}>{t('Documento', 'ID number')}</label>
+            <input id="client-document" type="text" value={formData.document_id} onChange={e => setFormData({ ...formData, document_id: e.target.value })} placeholder={t('CI / DNI', 'ID / Passport')} />
           </div>
           <div>
-            <label htmlFor="client-birth" style={{ display: 'block', marginBottom: '.375rem' }}>Fecha de nac.</label>
+            <label htmlFor="client-birth" style={{ display: 'block', marginBottom: '.375rem' }}>{t('Fecha de nac.', 'Date of birth')}</label>
             <input id="client-birth" type="date" value={formData.birth_date} onChange={e => setFormData({ ...formData, birth_date: e.target.value })} />
           </div>
           <div>
             <label htmlFor="client-email" style={{ display: 'block', marginBottom: '.375rem' }}>Email</label>
-            <input id="client-email" type="email" value={formData.email} onChange={e => setFormData({ ...formData, email: e.target.value })} placeholder="email@ejemplo.com" />
+            <input id="client-email" type="email" value={formData.email} onChange={e => setFormData({ ...formData, email: e.target.value })} placeholder={t('email@ejemplo.com', 'email@example.com')} />
           </div>
           <div>
-            <label htmlFor="client-phone" style={{ display: 'block', marginBottom: '.375rem' }}>Teléfono</label>
+            <label htmlFor="client-phone" style={{ display: 'block', marginBottom: '.375rem' }}>{t('Teléfono', 'Phone')}</label>
             <input id="client-phone" type="text" value={formData.phone} onChange={e => setFormData({ ...formData, phone: e.target.value })} placeholder="+598 99 123 456" />
           </div>
         </div>
         <div>
-          <label htmlFor="client-address" style={{ display: 'block', marginBottom: '.375rem' }}>Dirección</label>
-          <input id="client-address" type="text" value={formData.address} onChange={e => setFormData({ ...formData, address: e.target.value })} placeholder="Calle 123, Ciudad" />
+          <label htmlFor="client-address" style={{ display: 'block', marginBottom: '.375rem' }}>{t('Dirección', 'Address')}</label>
+          <input id="client-address" type="text" value={formData.address} onChange={e => setFormData({ ...formData, address: e.target.value })} placeholder={t('Calle 123, Ciudad', '123 Main St, City')} />
         </div>
         <div>
-          <label htmlFor="client-notes" style={{ display: 'block', marginBottom: '.375rem' }}>Notas</label>
-          <textarea id="client-notes" value={formData.notes} onChange={e => setFormData({ ...formData, notes: e.target.value })} placeholder="Observaciones del cliente…" rows={3} />
+          <label htmlFor="client-notes" style={{ display: 'block', marginBottom: '.375rem' }}>{t('Notas', 'Notes')}</label>
+          <textarea id="client-notes" value={formData.notes} onChange={e => setFormData({ ...formData, notes: e.target.value })} placeholder={t('Observaciones del cliente…', 'Notes about the client…')} rows={3} />
         </div>
       </Modal>
     </Layout>

@@ -2,6 +2,7 @@ import React, { Suspense, lazy } from 'react';
 import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-dom';
 import { AuthProvider, useAuth } from './contexts/AuthContext';
 import { ThemeProvider } from './contexts/ThemeContext';
+import { LanguageProvider, useLanguage } from './contexts/LanguageContext';
 import { DashboardConfigProvider } from './contexts/DashboardConfigContext';
 import { CurrencyProvider } from './contexts/CurrencyContext';
 import { ToastProvider } from './contexts/ToastContext';
@@ -31,13 +32,14 @@ const PrivateRoute: React.FC<{ children: React.ReactNode; requireAdmin?: boolean
   requireOwner = false,
 }) => {
   const { user, loading } = useAuth();
+  const { t } = useLanguage();
 
   if (loading) {
     return (
       <div className="min-h-screen flex items-center justify-center bg-gray-50">
         <div className="text-center">
           <div className="inline-block animate-spin rounded-full h-8 w-8 border-b-2 border-indigo-600"></div>
-          <p className="mt-2 text-gray-600">Cargando...</p>
+          <p className="mt-2 text-gray-600">{t('Cargando...', 'Loading...')}</p>
         </div>
       </div>
     );
@@ -179,21 +181,23 @@ const AppRoutes: React.FC = () => {
 const App: React.FC = () => {
   return (
     <ErrorBoundary>
-      <Router>
-        <ThemeProvider>
-          <ToastProvider>
-            <ConfirmProvider>
-              <CurrencyProvider>
-                <AuthProvider>
-                  <DashboardConfigProvider>
-                    <AppRoutes />
-                  </DashboardConfigProvider>
-                </AuthProvider>
-              </CurrencyProvider>
-            </ConfirmProvider>
-          </ToastProvider>
-        </ThemeProvider>
-      </Router>
+      <LanguageProvider>
+        <Router>
+          <ThemeProvider>
+            <ToastProvider>
+              <ConfirmProvider>
+                <CurrencyProvider>
+                  <AuthProvider>
+                    <DashboardConfigProvider>
+                      <AppRoutes />
+                    </DashboardConfigProvider>
+                  </AuthProvider>
+                </CurrencyProvider>
+              </ConfirmProvider>
+            </ToastProvider>
+          </ThemeProvider>
+        </Router>
+      </LanguageProvider>
     </ErrorBoundary>
   );
 };

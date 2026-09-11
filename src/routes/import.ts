@@ -43,13 +43,15 @@ router.post('/products', authenticateToken, upload.single('file'), async (req: A
     // Detectar columnas (case-insensitive)
     const firstRow = rows[0];
     const headers = Object.keys(firstRow).map(k => k.toLowerCase().trim());
-    const articuloKey = Object.keys(firstRow).find(k => k.toLowerCase().trim() === 'articulo' || k.toLowerCase().trim() === 'artículo' || k.toLowerCase().trim() === 'nombre');
-    const cantidadKey = Object.keys(firstRow).find(k => k.toLowerCase().trim() === 'cantidad' || k.toLowerCase().trim() === 'stock' || k.toLowerCase().trim() === 'qty');
-    const precioKey   = Object.keys(firstRow).find(k => k.toLowerCase().trim() === 'precio' || k.toLowerCase().trim() === 'price');
+    // Se aceptan los nombres de columna en español y en inglés (la interfaz es bilingüe).
+    const findKey = (aliases: string[]) => Object.keys(firstRow).find(k => aliases.includes(k.toLowerCase().trim()));
+    const articuloKey = findKey(['articulo', 'artículo', 'nombre', 'name', 'article', 'item']);
+    const cantidadKey = findKey(['cantidad', 'stock', 'qty', 'quantity']);
+    const precioKey   = findKey(['precio', 'price']);
 
     if (!articuloKey) {
       return res.status(400).json({
-        error: 'El archivo debe tener una columna "articulo" (o "artículo" o "nombre")',
+        error: 'El archivo debe tener una columna "articulo" (o "artículo", "nombre" o "name")',
         columnasEncontradas: Object.keys(firstRow),
       });
     }

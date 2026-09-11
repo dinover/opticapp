@@ -2,31 +2,33 @@ import React, { useState } from 'react';
 import Layout from '../components/Layout';
 import { useAuth } from '../contexts/AuthContext';
 import { useToast } from '../contexts/ToastContext';
+import { useLanguage } from '../contexts/LanguageContext';
 import { authService } from '../services/auth';
 import { UserCircleIcon, KeyIcon } from '@heroicons/react/24/outline';
 
-const ROLE_LABELS: Record<string, string> = {
-  admin: 'Administrador del sistema',
-  owner: 'Dueño de óptica',
-  user: 'Empleado',
-};
-
 const emptyForm = { current_password: '', new_password: '', confirm_password: '' };
-
-const formatDate = (value?: string | null) => {
-  if (!value) return null;
-  const date = new Date(value);
-  if (isNaN(date.getTime())) return null;
-  return date.toLocaleDateString('es-AR', { day: '2-digit', month: 'long', year: 'numeric' });
-};
 
 const ProfilePage: React.FC = () => {
   const { user } = useAuth();
   const toast = useToast();
+  const { t, locale } = useLanguage();
 
   const [form, setForm] = useState(emptyForm);
   const [saving, setSaving] = useState(false);
   const [formError, setFormError] = useState('');
+
+  const roleLabels: Record<string, string> = {
+    admin: t('Administrador del sistema', 'System administrator'),
+    owner: t('Dueño de óptica', 'Store owner'),
+    user: t('Empleado', 'Employee'),
+  };
+
+  const formatDate = (value?: string | null) => {
+    if (!value) return null;
+    const date = new Date(value);
+    if (isNaN(date.getTime())) return null;
+    return date.toLocaleDateString(locale, { day: '2-digit', month: 'long', year: 'numeric' });
+  };
 
   const set = (field: keyof typeof emptyForm, value: string) => {
     setForm(prev => ({ ...prev, [field]: value }));
@@ -38,21 +40,21 @@ const ProfilePage: React.FC = () => {
     setFormError('');
 
     if (form.new_password.length < 6) {
-      const msg = 'La contraseña nueva debe tener al menos 6 caracteres';
+      const msg = t('La contraseña nueva debe tener al menos 6 caracteres', 'The new password must be at least 6 characters');
       setFormError(msg);
       toast.error(msg);
       return;
     }
 
     if (form.new_password !== form.confirm_password) {
-      const msg = 'La contraseña nueva y su confirmación no coinciden';
+      const msg = t('La contraseña nueva y su confirmación no coinciden', 'The new password and its confirmation don’t match');
       setFormError(msg);
       toast.error(msg);
       return;
     }
 
     if (form.new_password === form.current_password) {
-      const msg = 'La contraseña nueva debe ser distinta de la actual';
+      const msg = t('La contraseña nueva debe ser distinta de la actual', 'The new password must be different from the current one');
       setFormError(msg);
       toast.error(msg);
       return;
@@ -65,18 +67,18 @@ const ProfilePage: React.FC = () => {
         new_password: form.new_password,
       });
       setForm(emptyForm);
-      toast.success(data?.message || 'Contraseña actualizada correctamente');
+      toast.success(data?.message || t('Contraseña actualizada correctamente', 'Password updated successfully'));
     } catch (err: any) {
-      toast.error(err.response?.data?.error || 'No se pudo cambiar la contraseña');
+      toast.error(err.response?.data?.error || t('No se pudo cambiar la contraseña', 'Could not change the password'));
     } finally {
       setSaving(false);
     }
   };
 
   const licenseLabel = user?.license_type === 'active'
-    ? 'Licencia activa'
+    ? t('Licencia activa', 'Active license')
     : user?.license_type === 'trial'
-      ? 'Período de prueba'
+      ? t('Período de prueba', 'Trial period')
       : null;
 
   const licenseExpiry = user?.license_type === 'active'
@@ -85,18 +87,20 @@ const ProfilePage: React.FC = () => {
       ? formatDate(user?.trial_expires_at)
       : null;
 
+  const roleLabel = user?.role ? (roleLabels[user.role] || user.role) : '';
+
   const infoRows: { label: string; value: string }[] = [
-    { label: 'Usuario', value: user?.username || '—' },
+    { label: t('Usuario', 'Username'), value: user?.username || '—' },
     { label: 'Email', value: user?.email || '—' },
-    { label: 'Rol', value: user?.role ? (ROLE_LABELS[user.role] || user.role) : '—' },
+    { label: t('Rol', 'Role'), value: roleLabel || '—' },
   ];
 
   if (licenseLabel) {
-    infoRows.push({ label: 'Licencia', value: licenseLabel });
+    infoRows.push({ label: t('Licencia', 'License'), value: licenseLabel });
   }
   if (licenseExpiry) {
     infoRows.push({
-      label: user?.license_type === 'trial' ? 'Prueba vence el' : 'Licencia vence el',
+      label: user?.license_type === 'trial' ? t('Prueba vence el', 'Trial ends on') : t('Licencia vence el', 'License expires on'),
       value: licenseExpiry,
     });
   }
@@ -106,8 +110,8 @@ const ProfilePage: React.FC = () => {
       <div className="fade-in">
         <div className="page-header">
           <div>
-            <h1 className="page-title">Mi cuenta</h1>
-            <p className="page-subtitle">Tus datos de acceso y cambio de contraseña</p>
+            <h1 className="page-title">{t('Mi cuenta', 'My account')}</h1>
+            <p className="page-subtitle">{t('Tus datos de acceso y cambio de contraseña', 'Your login details and password change')}</p>
           </div>
         </div>
 
@@ -126,7 +130,7 @@ const ProfilePage: React.FC = () => {
               <div>
                 <h2 className="section-title" style={{ margin: 0 }}>{user?.username}</h2>
                 <p style={{ margin: 0, fontSize: '.8rem', color: 'var(--text-secondary)' }}>
-                  {user?.role ? (ROLE_LABELS[user.role] || user.role) : ''}
+                  {roleLabel}
                 </p>
               </div>
             </div>
@@ -155,10 +159,13 @@ const ProfilePage: React.FC = () => {
           <div className="card" style={{ padding: '1.5rem' }}>
             <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: '.375rem' }}>
               <KeyIcon className="w-5 h-5" style={{ color: 'var(--brand)' }} />
-              <h2 className="section-title" style={{ margin: 0 }}>Cambiar contraseña</h2>
+              <h2 className="section-title" style={{ margin: 0 }}>{t('Cambiar contraseña', 'Change password')}</h2>
             </div>
             <p style={{ fontSize: '.825rem', color: 'var(--text-secondary)', margin: '0 0 1.25rem' }}>
-              Necesitás tu contraseña actual. La nueva debe tener al menos 6 caracteres.
+              {t(
+                'Necesitás tu contraseña actual. La nueva debe tener al menos 6 caracteres.',
+                'You need your current password. The new one must be at least 6 characters.',
+              )}
             </p>
 
             {formError && (
@@ -181,7 +188,7 @@ const ProfilePage: React.FC = () => {
             <form onSubmit={handleSubmit} style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
               <div>
                 <label htmlFor="current_password" style={{ display: 'block', marginBottom: '.375rem' }}>
-                  Contraseña actual
+                  {t('Contraseña actual', 'Current password')}
                 </label>
                 <input
                   id="current_password"
@@ -190,12 +197,12 @@ const ProfilePage: React.FC = () => {
                   autoComplete="current-password"
                   value={form.current_password}
                   onChange={e => set('current_password', e.target.value)}
-                  placeholder="Tu contraseña actual"
+                  placeholder={t('Tu contraseña actual', 'Your current password')}
                 />
               </div>
               <div>
                 <label htmlFor="new_password" style={{ display: 'block', marginBottom: '.375rem' }}>
-                  Contraseña nueva
+                  {t('Contraseña nueva', 'New password')}
                 </label>
                 <input
                   id="new_password"
@@ -205,12 +212,12 @@ const ProfilePage: React.FC = () => {
                   autoComplete="new-password"
                   value={form.new_password}
                   onChange={e => set('new_password', e.target.value)}
-                  placeholder="Mín. 6 caracteres"
+                  placeholder={t('Mín. 6 caracteres', 'Min. 6 characters')}
                 />
               </div>
               <div>
                 <label htmlFor="confirm_password" style={{ display: 'block', marginBottom: '.375rem' }}>
-                  Confirmar contraseña nueva
+                  {t('Confirmar contraseña nueva', 'Confirm new password')}
                 </label>
                 <input
                   id="confirm_password"
@@ -220,7 +227,7 @@ const ProfilePage: React.FC = () => {
                   autoComplete="new-password"
                   value={form.confirm_password}
                   onChange={e => set('confirm_password', e.target.value)}
-                  placeholder="Repetir contraseña nueva"
+                  placeholder={t('Repetir contraseña nueva', 'Repeat new password')}
                 />
               </div>
 
@@ -230,7 +237,7 @@ const ProfilePage: React.FC = () => {
                 disabled={saving}
                 style={{ justifyContent: 'center', marginTop: '.25rem' }}
               >
-                {saving ? 'Guardando…' : 'Cambiar contraseña'}
+                {saving ? t('Guardando…', 'Saving…') : t('Cambiar contraseña', 'Change password')}
               </button>
             </form>
           </div>

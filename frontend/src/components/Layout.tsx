@@ -1,8 +1,10 @@
 import React, { useState } from 'react';
 import { Link } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContext';
+import { useLanguage } from '../contexts/LanguageContext';
 import Sidebar from './Sidebar';
 import SettingsModal from './SettingsModal';
+import LangToggle from './LangToggle';
 import {
   ArrowRightOnRectangleIcon,
   Bars3Icon,
@@ -18,6 +20,7 @@ const TOPBAR_HEIGHT = 56;
 
 const Layout: React.FC<LayoutProps> = ({ children }) => {
   const { user, logout } = useAuth();
+  const { lang, setLang, t } = useLanguage();
   const [mobileOpen, setMobileOpen] = useState(false);
   const [settingsOpen, setSettingsOpen] = useState(false);
   // El sidebar abre expandido por default; el estado colapsado se recuerda entre sesiones.
@@ -53,7 +56,7 @@ const Layout: React.FC<LayoutProps> = ({ children }) => {
                 className="sm:hidden btn btn-ghost"
                 style={{ padding: '.4rem' }}
                 onClick={() => setMobileOpen(true)}
-                aria-label="Abrir menú"
+                aria-label={t('Abrir menú', 'Open menu')}
               >
                 <Bars3Icon className="w-5 h-5" />
               </button>
@@ -67,12 +70,14 @@ const Layout: React.FC<LayoutProps> = ({ children }) => {
 
             {/* Right side */}
             <div className="flex items-center gap-2">
+              <LangToggle lang={lang} onChange={setLang} label={t('Idioma', 'Language')} />
+
               {/* User pill → Mi cuenta */}
               <Link
                 to="/profile"
                 className="flex items-center gap-2.5"
-                title="Mi cuenta"
-                aria-label="Mi cuenta"
+                title={t('Mi cuenta', 'My account')}
+                aria-label={t('Mi cuenta', 'My account')}
                 onMouseEnter={() => setUserPillHover(true)}
                 onMouseLeave={() => setUserPillHover(false)}
                 onFocus={() => setUserPillHover(true)}
@@ -103,10 +108,10 @@ const Layout: React.FC<LayoutProps> = ({ children }) => {
                 onClick={logout}
                 className="btn btn-ghost"
                 style={{ padding: '.4rem .75rem', fontSize: '.8rem' }}
-                title="Cerrar sesión"
+                title={t('Cerrar sesión', 'Log out')}
               >
                 <ArrowRightOnRectangleIcon className="w-4 h-4" />
-                <span className="hidden sm:inline">Salir</span>
+                <span className="hidden sm:inline">{t('Salir', 'Log out')}</span>
               </button>
             </div>
           </div>
@@ -158,7 +163,7 @@ const Layout: React.FC<LayoutProps> = ({ children }) => {
                   className="btn btn-ghost"
                   style={{ padding: '.4rem' }}
                   onClick={() => setMobileOpen(false)}
-                  aria-label="Cerrar menú"
+                  aria-label={t('Cerrar menú', 'Close menu')}
                 >
                   <XMarkIcon className="w-5 h-5" />
                 </button>

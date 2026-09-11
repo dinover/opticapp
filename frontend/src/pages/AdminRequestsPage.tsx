@@ -2,8 +2,10 @@ import React, { useState, useEffect, useCallback } from 'react';
 import { useAuth } from '../contexts/AuthContext';
 import { useToast } from '../contexts/ToastContext';
 import { useConfirm } from '../contexts/ConfirmContext';
+import { useLanguage } from '../contexts/LanguageContext';
 import Modal from '../components/Modal';
 import EmptyState from '../components/EmptyState';
+import LangToggle from '../components/LangToggle';
 import { SkeletonRows } from '../components/Skeleton';
 import { adminService } from '../services/admin';
 import { UserRequest, User } from '../types';
@@ -27,9 +29,9 @@ function daysUntil(dateStr: string | null | undefined): number | null {
   return Math.ceil(diff / (1000 * 60 * 60 * 24));
 }
 
-function formatDate(d: string | null | undefined) {
+function formatDate(d: string | null | undefined, locale: string) {
   if (!d) return '—';
-  return new Date(d).toLocaleDateString('es-ES', { day: '2-digit', month: 'short', year: 'numeric' });
+  return new Date(d).toLocaleDateString(locale, { day: '2-digit', month: 'short', year: 'numeric' });
 }
 
 type RequestAction = 'approve' | 'reject';
@@ -38,6 +40,7 @@ const AdminRequestsPage: React.FC = () => {
   const { user, logout } = useAuth();
   const toast = useToast();
   const confirm = useConfirm();
+  const { t, lang, setLang, locale } = useLanguage();
 
   const [requests, setRequests] = useState<UserRequest[]>([]);
   const [users, setUsers]       = useState<User[]>([]);
@@ -66,7 +69,7 @@ const AdminRequestsPage: React.FC = () => {
       setRequests(reqs);
       setUsers(usrs);
     } catch (err: any) {
-      setError(err.response?.data?.error || 'Error al cargar datos');
+      setError(err.response?.data?.error || t('Error al cargar datos', 'Could not load data'));
     } finally {
       setLoading(false);
     }
@@ -87,7 +90,7 @@ const AdminRequestsPage: React.FC = () => {
     if (!editTarget || saving) return;
     const usernameChanged = editUsername.trim() !== editTarget.username;
     if (!usernameChanged && !editPassword) {
-      toast.info('No hay cambios para guardar');
+      toast.info(t('No hay cambios para guardar', 'There are no changes to save'));
       return;
     }
     try {
@@ -96,11 +99,11 @@ const AdminRequestsPage: React.FC = () => {
       if (usernameChanged) data.username = editUsername.trim();
       if (editPassword) data.password = editPassword;
       const res = await adminService.updateUser(editTarget.id, data);
-      toast.success(res.message || 'Usuario actualizado');
+      toast.success(res.message || t('Usuario actualizado', 'User updated'));
       closeEdit();
       await loadAll();
     } catch (err: any) {
-      toast.error(err.response?.data?.error || 'Error al actualizar usuario');
+      toast.error(err.response?.data?.error || t('Error al actualizar usuario', 'Could not update the user'));
     } finally {
       setSaving(false);
     }
@@ -111,19 +114,22 @@ const AdminRequestsPage: React.FC = () => {
     // diálogos (dos trampas de foco compitiendo).
     closeEdit();
     if (!(await confirm({
-      title: 'Eliminar usuario',
-      message: `¿Seguro que querés eliminar a ${u.username}? Pierde el acceso a OpticApp de forma permanente y la acción no se puede deshacer.`,
-      confirmLabel: 'Eliminar',
+      title: t('Eliminar usuario', 'Delete user'),
+      message: t(
+        `¿Seguro que querés eliminar a ${u.username}? Pierde el acceso a OpticApp de forma permanente y la acción no se puede deshacer.`,
+        `Are you sure you want to delete ${u.username}? They permanently lose access to OpticApp and this can’t be undone.`,
+      ),
+      confirmLabel: t('Eliminar', 'Delete'),
       danger: true,
     }))) return;
 
     try {
       setBusyUserId(u.id);
       const res = await adminService.deleteUser(u.id);
-      toast.success(res.message || `Usuario ${u.username} eliminado`);
+      toast.success(res.message || t(`Usuario ${u.username} eliminado`, `User ${u.username} deleted`));
       await loadAll();
     } catch (err: any) {
-      toast.error(err.response?.data?.error || 'Error al eliminar usuario');
+      toast.error(err.response?.data?.error || t('Error al eliminar usuario', 'Could not delete the user'));
     } finally {
       setBusyUserId(null);
     }
@@ -134,10 +140,10 @@ const AdminRequestsPage: React.FC = () => {
     try {
       setBusyReq({ id: req.id, action: 'approve' });
       const res: any = await adminService.approveRequest(req.id);
-      toast.success(res?.message || `Solicitud de ${req.username} aprobada`);
+      toast.success(res?.message || t(`Solicitud de ${req.username} aprobada`, `${req.username}’s request approved`));
       await loadAll();
     } catch (err: any) {
-      toast.error(err.response?.data?.error || 'Error al aprobar');
+      toast.error(err.response?.data?.error || t('Error al aprobar', 'Could not approve'));
     } finally {
       setBusyReq(null);
     }
@@ -146,19 +152,22 @@ const AdminRequestsPage: React.FC = () => {
   const handleReject = async (req: UserRequest) => {
     if (busyReq) return;
     if (!(await confirm({
-      title: 'Rechazar solicitud',
-      message: `¿Seguro que querés rechazar la solicitud de ${req.username}? Se desactiva su cuenta y se le envía un email avisándole.`,
-      confirmLabel: 'Rechazar',
+      title: t('Rechazar solicitud', 'Reject request'),
+      message: t(
+        `¿Seguro que querés rechazar la solicitud de ${req.username}? Se desactiva su cuenta y se le envía un email avisándole.`,
+        `Are you sure you want to reject ${req.username}’s request? Their account is deactivated and they get an email letting them know.`,
+      ),
+      confirmLabel: t('Rechazar', 'Reject'),
       danger: true,
     }))) return;
 
     try {
       setBusyReq({ id: req.id, action: 'reject' });
       const res: any = await adminService.rejectRequest(req.id);
-      toast.success(res?.message || `Solicitud de ${req.username} rechazada`);
+      toast.success(res?.message || t(`Solicitud de ${req.username} rechazada`, `${req.username}’s request rejected`));
       await loadAll();
     } catch (err: any) {
-      toast.error(err.response?.data?.error || 'Error al rechazar');
+      toast.error(err.response?.data?.error || t('Error al rechazar', 'Could not reject'));
     } finally {
       setBusyReq(null);
     }
@@ -169,10 +178,10 @@ const AdminRequestsPage: React.FC = () => {
     try {
       setBusyUserId(u.id);
       const res = await adminService.extendLicense(u.id);
-      toast.success(res.message || `Licencia de ${u.username} extendida un mes`);
+      toast.success(res.message || t(`Licencia de ${u.username} extendida un mes`, `${u.username}’s license extended by one month`));
       await loadAll();
     } catch (err: any) {
-      toast.error(err.response?.data?.error || 'Error al extender licencia');
+      toast.error(err.response?.data?.error || t('Error al extender licencia', 'Could not extend the license'));
     } finally {
       setBusyUserId(null);
     }
@@ -189,6 +198,20 @@ const AdminRequestsPage: React.FC = () => {
     return days !== null && days <= 7;
   });
 
+  const tableHead = (
+    <thead>
+      <tr>
+        <th>{t('Usuario', 'User')}</th>
+        <th>{t('Óptica', 'Store')}</th>
+        <th>{t('Solicitado', 'Requested')}</th>
+        <th>{t('Revisado por', 'Reviewed by')}</th>
+        <th>{t('Estado', 'Status')}</th>
+      </tr>
+    </thead>
+  );
+
+  const expiringCount = expiringUsers.length;
+
   return (
     <div style={{ minHeight: '100vh', background: 'var(--surface-2)' }}>
       {/* Topbar */}
@@ -202,10 +225,11 @@ const AdminRequestsPage: React.FC = () => {
             </div>
           </div>
           <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
+            <LangToggle lang={lang} onChange={setLang} label={t('Idioma', 'Language')} />
             <span style={{ fontSize: '.8rem', color: 'var(--text-secondary)' }}>{user?.username}</span>
             <button onClick={logout} className="btn btn-ghost" style={{ fontSize: '.8rem', padding: '.4rem .75rem' }}>
               <ArrowRightOnRectangleIcon className="w-4 h-4" />
-              Salir
+              {t('Salir', 'Log out')}
             </button>
           </div>
         </div>
@@ -214,7 +238,7 @@ const AdminRequestsPage: React.FC = () => {
       <main className="max-w-5xl mx-auto px-4 sm:px-6 py-6 fade-in">
 
         {/* Alerta de licencias por vencer */}
-        {!loading && expiringUsers.length > 0 && (
+        {!loading && expiringCount > 0 && (
           <div
             role="status"
             style={{
@@ -231,13 +255,19 @@ const AdminRequestsPage: React.FC = () => {
             <ClockIcon style={{ width: 18, height: 18, flexShrink: 0, color: 'var(--warning)' }} aria-hidden="true" />
             <div>
               <p style={{ margin: '0 0 4px', fontWeight: 700, fontSize: '.875rem', color: 'var(--text-primary)' }}>
-                {expiringUsers.length} usuario{expiringUsers.length !== 1 ? 's' : ''} con licencia próxima a vencer
+                {t(
+                  `${expiringCount} usuario${expiringCount !== 1 ? 's' : ''} con licencia próxima a vencer`,
+                  `${expiringCount} user${expiringCount !== 1 ? 's' : ''} with a license about to expire`,
+                )}
               </p>
               <p style={{ margin: 0, fontSize: '.8rem', color: 'var(--text-secondary)' }}>
                 {expiringUsers.map(u => {
                   const expiry = u.license_type === 'trial' ? u.trial_expires_at : u.license_expires_at;
                   const days = daysUntil(expiry);
-                  return `${u.username} (${days !== null && days < 0 ? 'vencida' : days === 0 ? 'vence hoy' : `${days}d`})`;
+                  const status = days !== null && days < 0
+                    ? t('vencida', 'expired')
+                    : days === 0 ? t('vence hoy', 'expires today') : `${days}d`;
+                  return `${u.username} (${status})`;
                 }).join(' · ')}
               </p>
             </div>
@@ -247,14 +277,17 @@ const AdminRequestsPage: React.FC = () => {
         {/* Header */}
         <div className="page-header">
           <div>
-            <h1 className="page-title">Solicitudes de acceso</h1>
+            <h1 className="page-title">{t('Solicitudes de acceso', 'Access requests')}</h1>
             <p className="page-subtitle">
-              {pending.length} pendiente{pending.length !== 1 ? 's' : ''} · {processed.length} procesada{processed.length !== 1 ? 's' : ''}
+              {t(
+                `${pending.length} pendiente${pending.length !== 1 ? 's' : ''} · ${processed.length} procesada${processed.length !== 1 ? 's' : ''}`,
+                `${pending.length} pending · ${processed.length} processed`,
+              )}
             </p>
           </div>
           <button className="btn btn-ghost" onClick={loadAll} disabled={loading} style={{ fontSize: '.8rem' }}>
             <ArrowPathIcon className="w-4 h-4" />
-            Actualizar
+            {t('Actualizar', 'Refresh')}
           </button>
         </div>
 
@@ -281,15 +314,7 @@ const AdminRequestsPage: React.FC = () => {
           <div className="card" style={{ overflow: 'hidden' }}>
             <div className="table-scroll">
               <table className="tbl">
-                <thead>
-                  <tr>
-                    <th>Usuario</th>
-                    <th>Óptica</th>
-                    <th>Solicitado</th>
-                    <th>Revisado por</th>
-                    <th>Estado</th>
-                  </tr>
-                </thead>
+                {tableHead}
                 <tbody>
                   <SkeletonRows rows={4} columns={5} />
                 </tbody>
@@ -300,7 +325,7 @@ const AdminRequestsPage: React.FC = () => {
           <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
             {/* Pendientes */}
             <div>
-              <div className="section-title">Pendientes</div>
+              <div className="section-title">{t('Pendientes', 'Pending')}</div>
               {pending.length > 0 ? (
                 <div style={{ display: 'flex', flexDirection: 'column', gap: '.625rem' }}>
                   {pending.map(req => (
@@ -318,8 +343,11 @@ const AdminRequestsPage: React.FC = () => {
                 <div className="card">
                   <EmptyState
                     icon={<ShieldCheckIcon />}
-                    title="No hay solicitudes pendientes"
-                    description="Todo al día: ya revisaste cada pedido de acceso que llegó."
+                    title={t('No hay solicitudes pendientes', 'No pending requests')}
+                    description={t(
+                      'Todo al día: ya revisaste cada pedido de acceso que llegó.',
+                      'All caught up: you’ve reviewed every access request that came in.',
+                    )}
                   />
                 </div>
               )}
@@ -328,19 +356,11 @@ const AdminRequestsPage: React.FC = () => {
             {/* Historial */}
             {processed.length > 0 && (
               <div>
-                <div className="section-title">Historial</div>
+                <div className="section-title">{t('Historial', 'History')}</div>
                 <div className="card" style={{ overflow: 'hidden' }}>
                   <div className="table-scroll">
                     <table className="tbl">
-                      <thead>
-                        <tr>
-                          <th>Usuario</th>
-                          <th>Óptica</th>
-                          <th>Solicitado</th>
-                          <th>Revisado por</th>
-                          <th>Estado</th>
-                        </tr>
-                      </thead>
+                      {tableHead}
                       <tbody>
                         {processed.map(req => (
                           <tr key={req.id}>
@@ -350,7 +370,7 @@ const AdminRequestsPage: React.FC = () => {
                             </td>
                             <td style={{ fontSize: '.875rem', color: 'var(--text-secondary)' }}>{req.optics_name}</td>
                             <td style={{ fontSize: '.8rem', color: 'var(--text-muted)' }}>
-                              {formatDate(req.requested_at)}
+                              {formatDate(req.requested_at, locale)}
                             </td>
                             <td style={{ fontSize: '.8rem', color: 'var(--text-secondary)' }}>
                               {req.reviewer_username || '—'}
@@ -372,16 +392,16 @@ const AdminRequestsPage: React.FC = () => {
         {/* Sección usuarios con licencias */}
         {!loading && nonAdminUsers.length > 0 && (
           <div style={{ marginTop: '2rem' }}>
-            <div className="section-title">Usuarios y licencias</div>
+            <div className="section-title">{t('Usuarios y licencias', 'Users and licenses')}</div>
             <div className="card" style={{ overflow: 'hidden' }}>
               <div className="table-scroll">
                 <table className="tbl">
                   <thead>
                     <tr>
-                      <th>Usuario</th>
-                      <th>Licencia</th>
-                      <th>Vencimiento</th>
-                      <th style={{ textAlign: 'right' }}>Acciones</th>
+                      <th>{t('Usuario', 'User')}</th>
+                      <th>{t('Licencia', 'License')}</th>
+                      <th>{t('Vencimiento', 'Expires')}</th>
+                      <th style={{ textAlign: 'right' }}>{t('Acciones', 'Actions')}</th>
                     </tr>
                   </thead>
                   <tbody>
@@ -404,11 +424,13 @@ const AdminRequestsPage: React.FC = () => {
                           </td>
                           <td>
                             <div style={{ fontSize: '.85rem', fontWeight: 600, color: rowColor || 'var(--text-primary)' }}>
-                              {formatDate(expiry)}
+                              {formatDate(expiry, locale)}
                             </div>
                             {days !== null && (
                               <div style={{ fontSize: '.72rem', color: rowColor || 'var(--text-muted)', fontWeight: rowColor ? 600 : 400 }}>
-                                {isExpired ? 'Vencida' : days === 0 ? 'Vence hoy' : `${days}d restantes`}
+                                {isExpired
+                                  ? t('Vencida', 'Expired')
+                                  : days === 0 ? t('Vence hoy', 'Expires today') : t(`${days}d restantes`, `${days}d left`)}
                               </div>
                             )}
                           </td>
@@ -419,22 +441,22 @@ const AdminRequestsPage: React.FC = () => {
                                 className="btn btn-ghost"
                                 onClick={() => handleExtend(u)}
                                 disabled={busy}
-                                aria-label={`Extender un mes la licencia de ${u.username}`}
+                                aria-label={t(`Extender un mes la licencia de ${u.username}`, `Extend ${u.username}’s license by one month`)}
                                 style={{ fontSize: '.78rem', padding: '.4rem .75rem' }}
                               >
                                 <CalendarDaysIcon style={{ width: 13, height: 13 }} aria-hidden="true" />
-                                {busy ? 'Aplicando…' : '+1 mes'}
+                                {busy ? t('Aplicando…', 'Applying…') : t('+1 mes', '+1 month')}
                               </button>
                               <button
                                 type="button"
                                 className="btn btn-ghost"
                                 onClick={() => openEdit(u)}
                                 disabled={busy}
-                                aria-label={`Editar usuario ${u.username}`}
+                                aria-label={t(`Editar usuario ${u.username}`, `Edit user ${u.username}`)}
                                 style={{ fontSize: '.78rem', padding: '.4rem .75rem' }}
                               >
                                 <KeyIcon style={{ width: 13, height: 13 }} aria-hidden="true" />
-                                Editar
+                                {t('Editar', 'Edit')}
                               </button>
                             </div>
                           </td>
@@ -453,7 +475,7 @@ const AdminRequestsPage: React.FC = () => {
       <Modal
         open={editTarget !== null}
         onClose={closeEdit}
-        title="Editar usuario"
+        title={t('Editar usuario', 'Edit user')}
         maxWidth={440}
         onSubmit={handleEdit}
         footer={
@@ -464,23 +486,23 @@ const AdminRequestsPage: React.FC = () => {
                 className="btn btn-danger-solid"
                 onClick={() => handleDelete(editTarget)}
                 disabled={saving}
-                aria-label={`Eliminar usuario ${editTarget.username}`}
+                aria-label={t(`Eliminar usuario ${editTarget.username}`, `Delete user ${editTarget.username}`)}
                 style={{ marginRight: 'auto' }}
               >
                 <TrashIcon style={{ width: 14, height: 14 }} aria-hidden="true" />
-                Eliminar usuario
+                {t('Eliminar usuario', 'Delete user')}
               </button>
             )}
-            <button type="button" className="btn btn-ghost" onClick={closeEdit} disabled={saving}>Cancelar</button>
+            <button type="button" className="btn btn-ghost" onClick={closeEdit} disabled={saving}>{t('Cancelar', 'Cancel')}</button>
             <button type="submit" className="btn btn-primary" disabled={saving}>
-              {saving ? 'Guardando…' : 'Guardar cambios'}
+              {saving ? t('Guardando…', 'Saving…') : t('Guardar cambios', 'Save changes')}
             </button>
           </>
         }
       >
         <div>
           <label htmlFor="edit-username" style={{ display: 'block', marginBottom: '.375rem', fontSize: '.875rem', fontWeight: 600 }}>
-            Nombre de usuario
+            {t('Nombre de usuario', 'Username')}
           </label>
           <input
             id="edit-username"
@@ -489,16 +511,16 @@ const AdminRequestsPage: React.FC = () => {
             minLength={3}
             value={editUsername}
             onChange={e => setEditUsername(e.target.value.replace(/\s/g, ''))}
-            placeholder="Sin espacios"
+            placeholder={t('Sin espacios', 'No spaces')}
           />
           <p style={{ margin: '.25rem 0 0', fontSize: '.75rem', color: 'var(--text-muted)' }}>
-            Los espacios se eliminan automáticamente.
+            {t('Los espacios se eliminan automáticamente.', 'Spaces are removed automatically.')}
           </p>
         </div>
 
         <div>
           <label htmlFor="edit-password" style={{ display: 'block', marginBottom: '.375rem', fontSize: '.875rem', fontWeight: 600 }}>
-            Nueva contraseña <span style={{ fontWeight: 400, color: 'var(--text-muted)' }}>(opcional)</span>
+            {t('Nueva contraseña', 'New password')} <span style={{ fontWeight: 400, color: 'var(--text-muted)' }}>({t('opcional', 'optional')})</span>
           </label>
           <div style={{ position: 'relative' }}>
             <input
@@ -507,13 +529,13 @@ const AdminRequestsPage: React.FC = () => {
               minLength={6}
               value={editPassword}
               onChange={e => setEditPassword(e.target.value)}
-              placeholder="Dejar vacío para no cambiar"
+              placeholder={t('Dejar vacío para no cambiar', 'Leave empty to keep it')}
               style={{ paddingRight: '2.5rem' }}
             />
             <button
               type="button"
               onClick={() => setShowPass(v => !v)}
-              aria-label={showPass ? 'Ocultar contraseña' : 'Mostrar contraseña'}
+              aria-label={showPass ? t('Ocultar contraseña', 'Hide password') : t('Mostrar contraseña', 'Show password')}
               style={{ position: 'absolute', right: '.625rem', top: '50%', transform: 'translateY(-50%)', background: 'none', border: 'none', cursor: 'pointer', color: 'var(--text-muted)', display: 'flex', padding: 0 }}
             >
               {showPass
@@ -528,28 +550,30 @@ const AdminRequestsPage: React.FC = () => {
 };
 
 const StatusBadge: React.FC<{ status: string }> = ({ status }) => {
+  const { t } = useLanguage();
   if (status === 'approved') return (
     <span className="badge badge-green" style={{ gap: 4 }}>
-      <CheckCircleIcon style={{ width: 11, height: 11 }} aria-hidden="true" /> Aprobada
+      <CheckCircleIcon style={{ width: 11, height: 11 }} aria-hidden="true" /> {t('Aprobada', 'Approved')}
     </span>
   );
   if (status === 'rejected') return (
     <span className="badge badge-red" style={{ gap: 4 }}>
-      <XCircleIcon style={{ width: 11, height: 11 }} aria-hidden="true" /> Rechazada
+      <XCircleIcon style={{ width: 11, height: 11 }} aria-hidden="true" /> {t('Rechazada', 'Rejected')}
     </span>
   );
   return (
     <span className="badge badge-yellow" style={{ gap: 4 }}>
-      <ClockIcon style={{ width: 11, height: 11 }} aria-hidden="true" /> Pendiente
+      <ClockIcon style={{ width: 11, height: 11 }} aria-hidden="true" /> {t('Pendiente', 'Pending')}
     </span>
   );
 };
 
-const LicenseTypeBadge: React.FC<{ type?: 'trial' | 'active' }> = ({ type }) => (
-  type === 'active'
-    ? <span className="badge badge-green">Activa</span>
-    : <span className="badge badge-yellow">Prueba</span>
-);
+const LicenseTypeBadge: React.FC<{ type?: 'trial' | 'active' }> = ({ type }) => {
+  const { t } = useLanguage();
+  return type === 'active'
+    ? <span className="badge badge-green">{t('Activa', 'Active')}</span>
+    : <span className="badge badge-yellow">{t('Prueba', 'Trial')}</span>;
+};
 
 const RequestCard: React.FC<{
   req: UserRequest;
@@ -559,76 +583,82 @@ const RequestCard: React.FC<{
   blocked: boolean;
   onApprove: () => void;
   onReject: () => void;
-}> = ({ req, busy, blocked, onApprove, onReject }) => (
-  <div style={{
-    background: 'var(--surface)',
-    border: '1px solid var(--border)',
-    borderRadius: 'var(--radius-lg)',
-    padding: '1.125rem 1.25rem',
-    display: 'flex', alignItems: 'center', gap: '1rem',
-    boxShadow: 'var(--shadow-sm)',
-  }}>
+}> = ({ req, busy, blocked, onApprove, onReject }) => {
+  const { t, locale } = useLanguage();
+  return (
     <div style={{
-      width: 42, height: 42, borderRadius: 99, flexShrink: 0,
-      background: 'linear-gradient(135deg, #e0e7ff, #c7d2fe)',
-      display: 'flex', alignItems: 'center', justifyContent: 'center',
-      fontWeight: 800, fontSize: '.9rem', color: '#4338ca',
-    }} aria-hidden="true">
-      {req.username.charAt(0).toUpperCase()}
-    </div>
-
-    <div style={{ flex: 1, minWidth: 0 }}>
-      <div style={{ display: 'flex', alignItems: 'baseline', gap: 8, flexWrap: 'wrap' }}>
-        <span style={{ fontWeight: 700, fontSize: '.9rem', color: 'var(--text-primary)' }}>{req.username}</span>
-        <span style={{ fontSize: '.75rem', color: 'var(--text-muted)' }}>{req.email}</span>
+      background: 'var(--surface)',
+      border: '1px solid var(--border)',
+      borderRadius: 'var(--radius-lg)',
+      padding: '1.125rem 1.25rem',
+      display: 'flex', alignItems: 'center', gap: '1rem',
+      boxShadow: 'var(--shadow-sm)',
+    }}>
+      <div style={{
+        width: 42, height: 42, borderRadius: 99, flexShrink: 0,
+        background: 'linear-gradient(135deg, #e0e7ff, #c7d2fe)',
+        display: 'flex', alignItems: 'center', justifyContent: 'center',
+        fontWeight: 800, fontSize: '.9rem', color: '#4338ca',
+      }} aria-hidden="true">
+        {req.username.charAt(0).toUpperCase()}
       </div>
-      <div style={{ fontSize: '.8rem', color: 'var(--text-secondary)', marginTop: 2 }}>
-        Óptica: <strong style={{ color: 'var(--text-primary)' }}>{req.optics_name}</strong>
-        <span style={{ margin: '0 6px', color: 'var(--text-muted)' }}>·</span>
-        <span style={{ color: 'var(--text-muted)' }}>
-          {new Date(req.requested_at).toLocaleDateString('es-ES', { day: '2-digit', month: 'short', year: 'numeric' })}
-        </span>
+
+      <div style={{ flex: 1, minWidth: 0 }}>
+        <div style={{ display: 'flex', alignItems: 'baseline', gap: 8, flexWrap: 'wrap' }}>
+          <span style={{ fontWeight: 700, fontSize: '.9rem', color: 'var(--text-primary)' }}>{req.username}</span>
+          <span style={{ fontSize: '.75rem', color: 'var(--text-muted)' }}>{req.email}</span>
+        </div>
+        <div style={{ fontSize: '.8rem', color: 'var(--text-secondary)', marginTop: 2 }}>
+          {t('Óptica', 'Store')}: <strong style={{ color: 'var(--text-primary)' }}>{req.optics_name}</strong>
+          <span style={{ margin: '0 6px', color: 'var(--text-muted)' }}>·</span>
+          <span style={{ color: 'var(--text-muted)' }}>
+            {formatDate(req.requested_at, locale)}
+          </span>
+        </div>
+      </div>
+
+      <div style={{ display: 'flex', gap: '.5rem', flexShrink: 0 }}>
+        <button
+          type="button"
+          onClick={onReject}
+          disabled={blocked}
+          aria-label={t(`Rechazar solicitud de ${req.username}`, `Reject ${req.username}’s request`)}
+          style={{
+            padding: '.5rem .875rem',
+            background: 'var(--surface)', color: 'var(--danger)',
+            border: '1px solid var(--danger)', borderRadius: 'var(--radius)',
+            fontWeight: 600, fontSize: '.8rem',
+            transition: 'all .15s', opacity: blocked ? .6 : 1,
+            display: 'flex', alignItems: 'center', gap: 4,
+          }}
+        >
+          <XCircleIcon style={{ width: 14, height: 14 }} aria-hidden="true" />
+          {busy === 'reject' ? t('Rechazando…', 'Rejecting…') : t('Rechazar', 'Reject')}
+        </button>
+        <button
+          type="button"
+          onClick={onApprove}
+          disabled={blocked}
+          aria-label={t(
+            `Aprobar solicitud de ${req.username} y darle un mes de licencia`,
+            `Approve ${req.username}’s request and grant one month of license`,
+          )}
+          style={{
+            padding: '.5rem .875rem',
+            background: 'var(--success)', color: '#fff',
+            border: 'none', borderRadius: 'var(--radius)',
+            fontWeight: 600, fontSize: '.8rem',
+            transition: 'all .15s', opacity: blocked ? .6 : 1,
+            display: 'flex', alignItems: 'center', gap: 4,
+            boxShadow: blocked ? 'none' : 'var(--shadow-sm)',
+          }}
+        >
+          <CheckCircleIcon style={{ width: 14, height: 14 }} aria-hidden="true" />
+          {busy === 'approve' ? t('Aprobando…', 'Approving…') : t('Aprobar (+1 mes)', 'Approve (+1 month)')}
+        </button>
       </div>
     </div>
-
-    <div style={{ display: 'flex', gap: '.5rem', flexShrink: 0 }}>
-      <button
-        type="button"
-        onClick={onReject}
-        disabled={blocked}
-        aria-label={`Rechazar solicitud de ${req.username}`}
-        style={{
-          padding: '.5rem .875rem',
-          background: 'var(--surface)', color: 'var(--danger)',
-          border: '1px solid var(--danger)', borderRadius: 'var(--radius)',
-          fontWeight: 600, fontSize: '.8rem',
-          transition: 'all .15s', opacity: blocked ? .6 : 1,
-          display: 'flex', alignItems: 'center', gap: 4,
-        }}
-      >
-        <XCircleIcon style={{ width: 14, height: 14 }} aria-hidden="true" />
-        {busy === 'reject' ? 'Rechazando…' : 'Rechazar'}
-      </button>
-      <button
-        type="button"
-        onClick={onApprove}
-        disabled={blocked}
-        aria-label={`Aprobar solicitud de ${req.username} y darle un mes de licencia`}
-        style={{
-          padding: '.5rem .875rem',
-          background: 'var(--success)', color: '#fff',
-          border: 'none', borderRadius: 'var(--radius)',
-          fontWeight: 600, fontSize: '.8rem',
-          transition: 'all .15s', opacity: blocked ? .6 : 1,
-          display: 'flex', alignItems: 'center', gap: 4,
-          boxShadow: blocked ? 'none' : 'var(--shadow-sm)',
-        }}
-      >
-        <CheckCircleIcon style={{ width: 14, height: 14 }} aria-hidden="true" />
-        {busy === 'approve' ? 'Aprobando…' : 'Aprobar (+1 mes)'}
-      </button>
-    </div>
-  </div>
-);
+  );
+};
 
 export default AdminRequestsPage;

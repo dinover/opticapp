@@ -1,5 +1,6 @@
 import React, { useEffect, useRef, ReactNode } from 'react';
 import { XMarkIcon } from '@heroicons/react/24/outline';
+import { useLanguage } from '../contexts/LanguageContext';
 
 interface ModalProps {
   open: boolean;
@@ -30,6 +31,7 @@ const Modal: React.FC<ModalProps> = ({
   maxWidth = 560,
   onSubmit,
 }) => {
+  const { t } = useLanguage();
   const boxRef = useRef<HTMLDivElement>(null);
   const previouslyFocused = useRef<HTMLElement | null>(null);
 
@@ -119,7 +121,7 @@ const Modal: React.FC<ModalProps> = ({
             type="button"
             onClick={onClose}
             className="modal-close"
-            aria-label="Cerrar"
+            aria-label={t('Cerrar', 'Close')}
           >
             <XMarkIcon className="w-4 h-4" />
           </button>

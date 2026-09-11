@@ -1,4 +1,5 @@
 import React, { ReactNode } from 'react';
+import { useLanguage } from '../contexts/LanguageContext';
 
 interface EmptyStateProps {
   icon: ReactNode;
@@ -20,17 +21,18 @@ const EmptyState: React.FC<EmptyStateProps> = ({
   onAction,
   searchTerm,
 }) => {
+  const { t } = useLanguage();
   const searching = Boolean(searchTerm);
 
   return (
     <div className="empty-state">
       <span className="empty-state-icon" aria-hidden="true">{icon}</span>
       <p className="empty-state-title">
-        {searching ? `Sin resultados para “${searchTerm}”` : title}
+        {searching ? t(`Sin resultados para “${searchTerm}”`, `No results for “${searchTerm}”`) : title}
       </p>
       {(searching || description) && (
         <p className="empty-state-desc">
-          {searching ? 'Probá con otro término o revisá la ortografía.' : description}
+          {searching ? t('Probá con otro término o revisá la ortografía.', 'Try another term or check the spelling.') : description}
         </p>
       )}
       {!searching && actionLabel && onAction && (

@@ -2,6 +2,7 @@ import React from 'react';
 import Modal from './Modal';
 import { Sale, Client } from '../types';
 import { useCurrency } from '../contexts/CurrencyContext';
+import { useLanguage } from '../contexts/LanguageContext';
 import { PrinterIcon } from '@heroicons/react/24/outline';
 
 interface SaleReceiptProps {
@@ -67,9 +68,6 @@ const fmtAxis = (v?: number | null): string => {
   return `${Math.round(n)}°`;
 };
 
-const fmtDate = (d: string) =>
-  new Date(d).toLocaleDateString('es-ES', { day: '2-digit', month: '2-digit', year: 'numeric' });
-
 const cellStyle: React.CSSProperties = {
   padding: '.4rem .5rem',
   borderBottom: '1px solid var(--border)',
@@ -78,8 +76,12 @@ const cellStyle: React.CSSProperties = {
 
 const SaleReceipt: React.FC<SaleReceiptProps> = ({ open, onClose, sale, client }) => {
   const { fmt } = useCurrency();
+  const { t, locale } = useLanguage();
 
   if (!sale) return null;
+
+  const fmtDate = (d: string) =>
+    new Date(d).toLocaleDateString(locale, { day: '2-digit', month: '2-digit', year: 'numeric' });
 
   const products = sale.products || [];
   const hasPrescription = [
@@ -111,20 +113,25 @@ const SaleReceipt: React.FC<SaleReceiptProps> = ({ open, onClose, sale, client }
       </div>
     ) : null;
 
+  const sectionLabel: React.CSSProperties = {
+    fontSize: '.65rem', fontWeight: 700, letterSpacing: '.06em',
+    textTransform: 'uppercase', color: 'var(--text-muted)', marginBottom: '.35rem',
+  };
+
   return (
     <Modal
       open={open}
       onClose={onClose}
-      title={`Comprobante de venta #${sale.id}`}
+      title={t(`Comprobante de venta #${sale.id}`, `Sales receipt #${sale.id}`)}
       maxWidth={640}
       footer={
         <>
           <button type="button" className="btn btn-ghost no-print" onClick={onClose}>
-            Cerrar
+            {t('Cerrar', 'Close')}
           </button>
           <button type="button" className="btn btn-primary no-print" onClick={() => window.print()}>
             <PrinterIcon className="w-4 h-4" />
-            Imprimir
+            {t('Imprimir', 'Print')}
           </button>
         </>
       }
@@ -139,15 +146,15 @@ const SaleReceipt: React.FC<SaleReceiptProps> = ({ open, onClose, sale, client }
         }}>
           <div>
             <div style={{ fontSize: '1.15rem', fontWeight: 800, color: 'var(--text-primary)' }}>
-              {sale.optics_name || 'Óptica'}
+              {sale.optics_name || t('Óptica', 'Optical store')}
             </div>
             <div className="receipt-muted" style={{ fontSize: '.75rem', color: 'var(--text-muted)', marginTop: '.15rem' }}>
-              Comprobante de venta
+              {t('Comprobante de venta', 'Sales receipt')}
             </div>
           </div>
           <div style={{ textAlign: 'right' }}>
             <div style={{ fontWeight: 700, fontFamily: 'DM Mono, monospace', fontSize: '.9rem' }}>
-              N.º {sale.id}
+              {t('N.º', 'No.')} {sale.id}
             </div>
             <div className="receipt-muted" style={{ fontSize: '.75rem', color: 'var(--text-muted)' }}>
               {fmtDate(sale.sale_date)}
@@ -157,35 +164,29 @@ const SaleReceipt: React.FC<SaleReceiptProps> = ({ open, onClose, sale, client }
 
         {/* ── Cliente ─────────────────────────────────────────── */}
         <div style={{ padding: '.85rem 0', borderBottom: '1px solid var(--border)' }}>
-          <div className="receipt-muted" style={{
-            fontSize: '.65rem', fontWeight: 700, letterSpacing: '.06em',
-            textTransform: 'uppercase', color: 'var(--text-muted)', marginBottom: '.35rem',
-          }}>
-            Cliente
+          <div className="receipt-muted" style={sectionLabel}>
+            {t('Cliente', 'Client')}
           </div>
           <div style={{ fontWeight: 700, fontSize: '.95rem', marginBottom: '.2rem' }}>
-            {client?.name || sale.client_name || 'Cliente'}
+            {client?.name || sale.client_name || t('Cliente', 'Client')}
           </div>
-          {dataLine('Documento', client?.document_id)}
-          {dataLine('Teléfono', client?.phone)}
+          {dataLine(t('Documento', 'ID'), client?.document_id)}
+          {dataLine(t('Teléfono', 'Phone'), client?.phone)}
           {dataLine('Email', client?.email)}
         </div>
 
         {/* ── Ficha óptica ────────────────────────────────────── */}
         {hasPrescription && (
           <div style={{ padding: '.85rem 0', borderBottom: '1px solid var(--border)' }}>
-            <div className="receipt-muted" style={{
-              fontSize: '.65rem', fontWeight: 700, letterSpacing: '.06em',
-              textTransform: 'uppercase', color: 'var(--text-muted)', marginBottom: '.35rem',
-            }}>
-              Ficha óptica
+            <div className="receipt-muted" style={sectionLabel}>
+              {t('Ficha óptica', 'Prescription')}
             </div>
             <table className="receipt-table" style={{ width: '100%', borderCollapse: 'collapse' }}>
-              <caption className="no-print" style={{ display: 'none' }}>Graduación por ojo</caption>
+              <caption className="no-print" style={{ display: 'none' }}>{t('Graduación por ojo', 'Prescription per eye')}</caption>
               <thead>
                 <tr>
                   <th style={{ ...cellStyle, textAlign: 'left' }} />
-                  {['Esf', 'Cil', 'Eje', 'Add'].map(h => (
+                  {[t('Esf', 'Sph'), t('Cil', 'Cyl'), t('Eje', 'Axis'), 'Add'].map(h => (
                     <th key={h} scope="col" className="receipt-muted" style={{
                       ...cellStyle, textAlign: 'center', fontSize: '.65rem', fontWeight: 700,
                       letterSpacing: '.06em', textTransform: 'uppercase', color: 'var(--text-muted)',
@@ -197,7 +198,7 @@ const SaleReceipt: React.FC<SaleReceiptProps> = ({ open, onClose, sale, client }
               </thead>
               <tbody>
                 {eyeRow('OD', sale.od_esf, sale.od_cil, sale.od_eje, sale.od_add)}
-                {eyeRow('OI', sale.oi_esf, sale.oi_cil, sale.oi_eje, sale.oi_add)}
+                {eyeRow(t('OI', 'OS'), sale.oi_esf, sale.oi_cil, sale.oi_eje, sale.oi_add)}
               </tbody>
             </table>
           </div>
@@ -205,18 +206,15 @@ const SaleReceipt: React.FC<SaleReceiptProps> = ({ open, onClose, sale, client }
 
         {/* ── Detalle de productos ────────────────────────────── */}
         <div style={{ padding: '.85rem 0' }}>
-          <div className="receipt-muted" style={{
-            fontSize: '.65rem', fontWeight: 700, letterSpacing: '.06em',
-            textTransform: 'uppercase', color: 'var(--text-muted)', marginBottom: '.35rem',
-          }}>
-            Detalle
+          <div className="receipt-muted" style={sectionLabel}>
+            {t('Detalle', 'Details')}
           </div>
           <table className="receipt-table" style={{ width: '100%', borderCollapse: 'collapse' }}>
             <thead>
               <tr>
-                <th scope="col" style={{ ...cellStyle, textAlign: 'left', fontSize: '.7rem' }}>Producto</th>
-                <th scope="col" style={{ ...cellStyle, textAlign: 'center', fontSize: '.7rem' }}>Cant.</th>
-                <th scope="col" style={{ ...cellStyle, textAlign: 'right', fontSize: '.7rem' }}>P. unit.</th>
+                <th scope="col" style={{ ...cellStyle, textAlign: 'left', fontSize: '.7rem' }}>{t('Producto', 'Product')}</th>
+                <th scope="col" style={{ ...cellStyle, textAlign: 'center', fontSize: '.7rem' }}>{t('Cant.', 'Qty')}</th>
+                <th scope="col" style={{ ...cellStyle, textAlign: 'right', fontSize: '.7rem' }}>{t('P. unit.', 'Unit price')}</th>
                 <th scope="col" style={{ ...cellStyle, textAlign: 'right', fontSize: '.7rem' }}>Subtotal</th>
               </tr>
             </thead>
@@ -227,7 +225,7 @@ const SaleReceipt: React.FC<SaleReceiptProps> = ({ open, onClose, sale, client }
                 return (
                   <tr key={item.id ?? i}>
                     <td style={{ ...cellStyle, fontWeight: 600 }}>
-                      {item.product_name || item.product?.name || `Producto #${item.product_id}`}
+                      {item.product_name || item.product?.name || t(`Producto #${item.product_id}`, `Product #${item.product_id}`)}
                     </td>
                     <td style={{ ...cellStyle, textAlign: 'center', fontFamily: 'DM Mono, monospace' }}>{qty}</td>
                     <td style={{ ...cellStyle, textAlign: 'right', fontFamily: 'DM Mono, monospace' }}>{fmt(unit)}</td>
@@ -239,7 +237,7 @@ const SaleReceipt: React.FC<SaleReceiptProps> = ({ open, onClose, sale, client }
               }) : (
                 <tr>
                   <td colSpan={4} className="receipt-muted" style={{ ...cellStyle, color: 'var(--text-muted)' }}>
-                    Sin productos registrados
+                    {t('Sin productos registrados', 'No products recorded')}
                   </td>
                 </tr>
               )}
@@ -260,11 +258,8 @@ const SaleReceipt: React.FC<SaleReceiptProps> = ({ open, onClose, sale, client }
         {/* ── Notas ───────────────────────────────────────────── */}
         {sale.notes && (
           <div style={{ paddingTop: '.5rem', borderTop: '1px solid var(--border)' }}>
-            <div className="receipt-muted" style={{
-              fontSize: '.65rem', fontWeight: 700, letterSpacing: '.06em',
-              textTransform: 'uppercase', color: 'var(--text-muted)', marginBottom: '.25rem',
-            }}>
-              Notas
+            <div className="receipt-muted" style={{ ...sectionLabel, marginBottom: '.25rem' }}>
+              {t('Notas', 'Notes')}
             </div>
             <div style={{ fontSize: '.8rem', lineHeight: 1.6, whiteSpace: 'pre-wrap' }}>{sale.notes}</div>
           </div>

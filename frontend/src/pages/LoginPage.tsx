@@ -2,19 +2,25 @@ import React, { useState } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContext';
 import { authService } from '../services/auth';
+import LangToggle from '../components/LangToggle';
+import { AUTH_COPY } from '../i18n/auth';
+import { useLanguage } from '../contexts/LanguageContext';
 
 const LoginPage: React.FC = () => {
   const [username, setUsername] = useState('');
   const [password, setPassword] = useState('');
-  const [error, setError] = useState('');
+  // Mensaje del servidor, ya traducido por el interceptor de api.ts ('' = sin mensaje).
+  const [error, setError] = useState<string | null>(null);
   const [licenseExpired, setLicenseExpired] = useState(false);
   const [loading, setLoading] = useState(false);
   const { login } = useAuth();
   const navigate = useNavigate();
+  const { lang, setLang } = useLanguage();
+  const t = AUTH_COPY[lang].login;
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    setError('');
+    setError(null);
     setLicenseExpired(false);
     setLoading(true);
     try {
@@ -23,16 +29,14 @@ const LoginPage: React.FC = () => {
       navigate(response.user.role === 'admin' ? '/admin' : '/dashboard');
     } catch (err: any) {
       const data = err.response?.data;
-      if (data?.license_expired) {
-        setLicenseExpired(true);
-        setError(data.error);
-      } else {
-        setError(data?.error || 'Credenciales incorrectas');
-      }
+      setLicenseExpired(Boolean(data?.license_expired));
+      setError(data?.error || '');
     } finally {
       setLoading(false);
     }
   };
+
+  const errorText = error || t.fallbackError;
 
   return (
     <div style={{
@@ -44,6 +48,13 @@ const LoginPage: React.FC = () => {
       position: 'relative',
       overflow: 'hidden',
     }}>
+      <LangToggle
+        lang={lang}
+        onChange={setLang}
+        label={AUTH_COPY[lang].langLabel}
+        style={{ position: 'absolute', top: '1.25rem', right: '1.25rem', zIndex: 2 }}
+      />
+
       {/* Background decoration: tinte de marca translúcido, funciona en claro y oscuro */}
       <div style={{
         position: 'absolute', inset: 0, pointerEvents: 'none',
@@ -88,15 +99,15 @@ const LoginPage: React.FC = () => {
             fontSize: '2.25rem', fontWeight: 800, color: 'var(--text-primary)',
             lineHeight: 1.15, marginBottom: '1rem',
           }}>
-            Gestión de óptica<br />
-            <span style={{ color: 'var(--brand)' }}>simplificada.</span>
+            {t.heroLine1}<br />
+            <span style={{ color: 'var(--brand)' }}>{t.heroLine2}</span>
           </h1>
           <p style={{ color: 'var(--text-secondary)', fontSize: '1rem', lineHeight: 1.7 }}>
-            Clientes, productos, ventas y fichas ópticas en un solo lugar.
+            {t.heroSub}
           </p>
 
           {/* Feature list */}
-          {['Fichas técnicas de cristales', 'Control de stock y ventas', 'Dashboard con métricas clave'].map(f => (
+          {t.features.map(f => (
             <div key={f} style={{ display: 'flex', alignItems: 'center', gap: 10, marginTop: '1rem' }}>
               <div style={{
                 width: 20, height: 20, borderRadius: 99,
@@ -130,13 +141,13 @@ const LoginPage: React.FC = () => {
           </Link>
 
           <h2 style={{ fontWeight: 800, fontSize: '1.375rem', color: 'var(--text-primary)', margin: '0 0 .375rem' }}>
-            Iniciar sesión
+            {t.title}
           </h2>
           <p style={{ color: 'var(--text-secondary)', fontSize: '.875rem', marginBottom: '1.75rem' }}>
-            Ingresá tus credenciales para continuar
+            {t.sub}
           </p>
 
-          {error && (
+          {error !== null && (
             <div role="alert" style={{
               background: 'var(--surface-2)',
               border: `1px solid ${licenseExpired ? 'var(--warning)' : 'var(--danger)'}`,
@@ -148,31 +159,31 @@ const LoginPage: React.FC = () => {
                 <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
                   <circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/>
                 </svg>
-                {licenseExpired ? 'Licencia vencida' : error}
+                {licenseExpired ? t.licenseExpired : errorText}
               </div>
               {licenseExpired && (
-                <p style={{ margin: 0, fontSize: '.8rem', color: 'var(--text-secondary)' }}>{error}</p>
+                <p style={{ margin: 0, fontSize: '.8rem', color: 'var(--text-secondary)' }}>{errorText}</p>
               )}
             </div>
           )}
 
           <form onSubmit={handleSubmit} style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
             <div>
-              <label style={{ display: 'block', marginBottom: '.375rem' }}>Usuario</label>
+              <label style={{ display: 'block', marginBottom: '.375rem' }}>{t.username}</label>
               <input
                 type="text"
                 required
-                placeholder="Nombre de usuario"
+                placeholder={t.usernamePh}
                 value={username}
                 onChange={e => setUsername(e.target.value)}
               />
             </div>
             <div>
-              <label style={{ display: 'block', marginBottom: '.375rem' }}>Contraseña</label>
+              <label style={{ display: 'block', marginBottom: '.375rem' }}>{t.password}</label>
               <input
                 type="password"
                 required
-                placeholder="Tu contraseña"
+                placeholder={t.passwordPh}
                 value={password}
                 onChange={e => setPassword(e.target.value)}
               />
@@ -193,14 +204,14 @@ const LoginPage: React.FC = () => {
               }}
             >
               {loading && <div className="spinner" style={{ width: 16, height: 16, borderWidth: 2 }} />}
-              {loading ? 'Ingresando...' : 'Ingresar'}
+              {loading ? t.submitting : t.submit}
             </button>
           </form>
 
           <p style={{ textAlign: 'center', marginTop: '1.5rem', fontSize: '.875rem', color: 'var(--text-secondary)' }}>
-            ¿No tenés cuenta?{' '}
+            {t.noAccount}{' '}
             <Link to="/request-user" style={{ color: 'var(--brand)', fontWeight: 600, textDecoration: 'none' }}>
-              Creá una gratis
+              {t.createOne}
             </Link>
           </p>
       </div>

@@ -1,5 +1,6 @@
 import React from 'react';
 import { ChevronLeftIcon, ChevronRightIcon } from '@heroicons/react/24/outline';
+import { useLanguage } from '../contexts/LanguageContext';
 
 interface PaginationProps {
   page: number;
@@ -8,6 +9,7 @@ interface PaginationProps {
 }
 
 const Pagination: React.FC<PaginationProps> = ({ page, totalPages, onPageChange }) => {
+  const { t } = useLanguage();
   if (totalPages <= 1) return null;
 
   const maxVisible = 5;
@@ -34,13 +36,14 @@ const Pagination: React.FC<PaginationProps> = ({ page, totalPages, onPageChange 
       borderTop: '1px solid var(--border)',
     }}>
       <span style={{ fontSize: '.8rem', color: 'var(--text-muted)' }}>
-        Página <strong style={{ color: 'var(--text-primary)' }}>{page}</strong> de <strong style={{ color: 'var(--text-primary)' }}>{totalPages}</strong>
+        {t('Página', 'Page')} <strong style={{ color: 'var(--text-primary)' }}>{page}</strong> {t('de', 'of')} <strong style={{ color: 'var(--text-primary)' }}>{totalPages}</strong>
       </span>
 
       <div style={{ display: 'flex', alignItems: 'center', gap: '.25rem' }}>
         <button
           onClick={() => onPageChange(page - 1)}
           disabled={page === 1}
+          aria-label={t('Página anterior', 'Previous page')}
           style={{ ...btnBase, opacity: page === 1 ? .4 : 1, cursor: page === 1 ? 'not-allowed' : 'pointer' }}
         >
           <ChevronLeftIcon className="w-4 h-4" />
@@ -79,6 +82,7 @@ const Pagination: React.FC<PaginationProps> = ({ page, totalPages, onPageChange 
         <button
           onClick={() => onPageChange(page + 1)}
           disabled={page === totalPages}
+          aria-label={t('Página siguiente', 'Next page')}
           style={{ ...btnBase, opacity: page === totalPages ? .4 : 1, cursor: page === totalPages ? 'not-allowed' : 'pointer' }}
         >
           <ChevronRightIcon className="w-4 h-4" />

@@ -8,6 +8,7 @@ import { SkeletonRows, SkeletonCards } from '../components/Skeleton';
 import { useDebounce } from '../hooks/useDebounce';
 import { useToast } from '../contexts/ToastContext';
 import { useConfirm } from '../contexts/ConfirmContext';
+import { useLanguage } from '../contexts/LanguageContext';
 import { productsService } from '../services/products';
 import { Product, PaginatedResponse } from '../types';
 import { getDirectImageUrl } from '../utils/imageUtils';
@@ -42,6 +43,7 @@ const ProductsPage: React.FC = () => {
   const debouncedSearch = useDebounce(search, 350);
   const toast = useToast();
   const confirm = useConfirm();
+  const { t, locale } = useLanguage();
   const { fmt } = useCurrency();
 
   useEffect(() => { loadProducts(); }, [page, debouncedSearch, sortBy, sortOrder]);
@@ -59,7 +61,7 @@ const ProductsPage: React.FC = () => {
       setProducts(data);
       setError('');
     } catch (err: any) {
-      setError(err.response?.data?.error || 'Error al cargar productos');
+      setError(err.response?.data?.error || t('Error al cargar productos', 'Could not load products'));
     } finally {
       setLoading(false);
     }
@@ -72,15 +74,15 @@ const ProductsPage: React.FC = () => {
       const data = { ...formData, price: formData.price ? parseFloat(formData.price) : 0, quantity: formData.quantity ? parseInt(formData.quantity) : 0 };
       if (editingProduct) {
         await productsService.update(editingProduct.id, data);
-        toast.success('Producto actualizado');
+        toast.success(t('Producto actualizado', 'Product updated'));
       } else {
         await productsService.create(data);
-        toast.success('Producto creado');
+        toast.success(t('Producto creado', 'Product created'));
       }
       closeModal();
       loadProducts();
     } catch (err: any) {
-      toast.error(err.response?.data?.error || 'Error al guardar');
+      toast.error(err.response?.data?.error || t('Error al guardar', 'Could not save'));
     } finally {
       setSaving(false);
     }
@@ -94,18 +96,21 @@ const ProductsPage: React.FC = () => {
 
   const handleDelete = async (product: Product) => {
     const ok = await confirm({
-      title: 'Eliminar producto',
-      message: `¿Seguro que querés eliminar ${product.name}? Esta acción no se puede deshacer.`,
-      confirmLabel: 'Eliminar',
+      title: t('Eliminar producto', 'Delete product'),
+      message: t(
+        `¿Seguro que querés eliminar ${product.name}? Esta acción no se puede deshacer.`,
+        `Are you sure you want to delete ${product.name}? This can’t be undone.`,
+      ),
+      confirmLabel: t('Eliminar', 'Delete'),
       danger: true,
     });
     if (!ok) return;
     try {
       await productsService.delete(product.id);
-      toast.success('Producto eliminado');
+      toast.success(t('Producto eliminado', 'Product deleted'));
       loadProducts();
     } catch (err: any) {
-      toast.error(err.response?.data?.error || 'Error al eliminar');
+      toast.error(err.response?.data?.error || t('Error al eliminar', 'Could not delete'));
     }
   };
 
@@ -145,18 +150,22 @@ const ProductsPage: React.FC = () => {
 
   const items = products?.data ?? [];
   const isEmpty = !loading && items.length === 0;
+  const total = products?.pagination.total ?? 0;
 
   return (
     <Layout>
       <div className="fade-in">
         <div className="page-header">
           <div>
-            <h1 className="page-title">Productos</h1>
-            <p className="page-subtitle">{products?.pagination.total ?? 0} productos en catálogo</p>
+            <h1 className="page-title">{t('Productos', 'Products')}</h1>
+            <p className="page-subtitle">{t(
+              `${total} producto${total !== 1 ? 's' : ''} en catálogo`,
+              `${total} product${total !== 1 ? 's' : ''} in catalog`,
+            )}</p>
           </div>
           <button className="btn btn-primary" onClick={openCreate}>
             <PlusIcon className="w-4 h-4" />
-            Nuevo producto
+            {t('Nuevo producto', 'New product')}
           </button>
         </div>
 
@@ -166,8 +175,8 @@ const ProductsPage: React.FC = () => {
             <input
               type="text"
               className="search-input"
-              placeholder="Buscar productos…"
-              aria-label="Buscar productos"
+              placeholder={t('Buscar productos…', 'Search products…')}
+              aria-label={t('Buscar productos', 'Search products')}
               value={search}
               onChange={e => { setSearch(e.target.value); setPage(1); }}
             />
@@ -175,7 +184,7 @@ const ProductsPage: React.FC = () => {
 
           {viewMode === 'grid' && (
             <select
-              aria-label="Ordenar productos"
+              aria-label={t('Ordenar productos', 'Sort products')}
               value={`${sortBy}:${sortOrder}`}
               onChange={e => {
                 const [column, order] = e.target.value.split(':');
@@ -183,32 +192,32 @@ const ProductsPage: React.FC = () => {
               }}
               style={{ width: 'auto', minWidth: 190 }}
             >
-              <option value="created_at:DESC">Más recientes</option>
-              <option value="created_at:ASC">Más antiguos</option>
-              <option value="name:ASC">Nombre (A–Z)</option>
-              <option value="name:DESC">Nombre (Z–A)</option>
-              <option value="price:DESC">Precio (mayor)</option>
-              <option value="price:ASC">Precio (menor)</option>
-              <option value="quantity:DESC">Stock (mayor)</option>
-              <option value="quantity:ASC">Stock (menor)</option>
+              <option value="created_at:DESC">{t('Más recientes', 'Newest')}</option>
+              <option value="created_at:ASC">{t('Más antiguos', 'Oldest')}</option>
+              <option value="name:ASC">{t('Nombre (A–Z)', 'Name (A–Z)')}</option>
+              <option value="name:DESC">{t('Nombre (Z–A)', 'Name (Z–A)')}</option>
+              <option value="price:DESC">{t('Precio (mayor)', 'Price (highest)')}</option>
+              <option value="price:ASC">{t('Precio (menor)', 'Price (lowest)')}</option>
+              <option value="quantity:DESC">{t('Stock (mayor)', 'Stock (highest)')}</option>
+              <option value="quantity:ASC">{t('Stock (menor)', 'Stock (lowest)')}</option>
             </select>
           )}
 
           <div style={{ display: 'flex', gap: 2, background: 'var(--surface-3)', borderRadius: 8, padding: 3 }}>
             <button
               onClick={() => switchView('grid')}
-              aria-label="Ver como cuadrícula"
+              aria-label={t('Ver como cuadrícula', 'Grid view')}
               aria-pressed={viewMode === 'grid'}
-              title="Vista cuadrícula"
+              title={t('Vista cuadrícula', 'Grid view')}
               style={toggleStyle(viewMode === 'grid')}
             >
               <Squares2X2Icon className="w-4 h-4" />
             </button>
             <button
               onClick={() => switchView('list')}
-              aria-label="Ver como lista"
+              aria-label={t('Ver como lista', 'List view')}
               aria-pressed={viewMode === 'list'}
-              title="Vista lista"
+              title={t('Vista lista', 'List view')}
               style={toggleStyle(viewMode === 'list')}
             >
               <ListBulletIcon className="w-4 h-4" />
@@ -237,9 +246,9 @@ const ProductsPage: React.FC = () => {
           <div className="card">
             <EmptyState
               icon={<CubeIcon />}
-              title="No hay productos en el catálogo"
-              description="Cargá tu primer armazón o accesorio para empezar a vender."
-              actionLabel="Nuevo producto"
+              title={t('No hay productos en el catálogo', 'No products in the catalog')}
+              description={t('Cargá tu primer armazón o accesorio para empezar a vender.', 'Add your first frame or accessory to start selling.')}
+              actionLabel={t('Nuevo producto', 'New product')}
               onAction={openCreate}
               searchTerm={debouncedSearch}
             />
@@ -292,10 +301,10 @@ const ProductsPage: React.FC = () => {
                         </div>
                       </div>
                       <div style={{ display: 'flex', gap: 4 }}>
-                        <button onClick={() => handleEdit(product)} style={iconBtnStyle('brand')} aria-label={`Editar ${product.name}`} title="Editar">
+                        <button onClick={() => handleEdit(product)} style={iconBtnStyle('brand')} aria-label={t(`Editar ${product.name}`, `Edit ${product.name}`)} title={t('Editar', 'Edit')}>
                           <PencilIcon className="w-3.5 h-3.5" />
                         </button>
-                        <button onClick={() => handleDelete(product)} style={iconBtnStyle('danger')} aria-label={`Eliminar ${product.name}`} title="Eliminar">
+                        <button onClick={() => handleDelete(product)} style={iconBtnStyle('danger')} aria-label={t(`Eliminar ${product.name}`, `Delete ${product.name}`)} title={t('Eliminar', 'Delete')}>
                           <TrashIcon className="w-3.5 h-3.5" />
                         </button>
                       </div>
@@ -311,12 +320,12 @@ const ProductsPage: React.FC = () => {
               <table className="tbl">
                 <thead>
                   <tr>
-                    <SortableTh column="name" sortBy={sortBy} sortOrder={sortOrder} onSort={handleSort}>Producto</SortableTh>
-                    <th>Descripción</th>
-                    <SortableTh column="price" sortBy={sortBy} sortOrder={sortOrder} onSort={handleSort}>Precio</SortableTh>
+                    <SortableTh column="name" sortBy={sortBy} sortOrder={sortOrder} onSort={handleSort}>{t('Producto', 'Product')}</SortableTh>
+                    <th>{t('Descripción', 'Description')}</th>
+                    <SortableTh column="price" sortBy={sortBy} sortOrder={sortOrder} onSort={handleSort}>{t('Precio', 'Price')}</SortableTh>
                     <SortableTh column="quantity" sortBy={sortBy} sortOrder={sortOrder} onSort={handleSort}>Stock</SortableTh>
-                    <SortableTh column="created_at" sortBy={sortBy} sortOrder={sortOrder} onSort={handleSort}>Alta</SortableTh>
-                    <th aria-label="Acciones" />
+                    <SortableTh column="created_at" sortBy={sortBy} sortOrder={sortOrder} onSort={handleSort}>{t('Alta', 'Added')}</SortableTh>
+                    <th aria-label={t('Acciones', 'Actions')} />
                   </tr>
                 </thead>
                 <tbody>
@@ -361,14 +370,14 @@ const ProductsPage: React.FC = () => {
                           </span>
                         </td>
                         <td style={{ color: 'var(--text-muted)', fontSize: '.8rem', whiteSpace: 'nowrap' }}>
-                          {product.created_at ? new Date(product.created_at).toLocaleDateString('es-AR') : '—'}
+                          {product.created_at ? new Date(product.created_at).toLocaleDateString(locale) : '—'}
                         </td>
                         <td>
                           <div style={{ display: 'flex', gap: 4, justifyContent: 'flex-end' }}>
-                            <button onClick={() => handleEdit(product)} style={iconBtnStyle('brand')} aria-label={`Editar ${product.name}`} title="Editar">
+                            <button onClick={() => handleEdit(product)} style={iconBtnStyle('brand')} aria-label={t(`Editar ${product.name}`, `Edit ${product.name}`)} title={t('Editar', 'Edit')}>
                               <PencilIcon className="w-3.5 h-3.5" />
                             </button>
-                            <button onClick={() => handleDelete(product)} style={iconBtnStyle('danger')} aria-label={`Eliminar ${product.name}`} title="Eliminar">
+                            <button onClick={() => handleDelete(product)} style={iconBtnStyle('danger')} aria-label={t(`Eliminar ${product.name}`, `Delete ${product.name}`)} title={t('Eliminar', 'Delete')}>
                               <TrashIcon className="w-3.5 h-3.5" />
                             </button>
                           </div>
@@ -390,25 +399,25 @@ const ProductsPage: React.FC = () => {
       <Modal
         open={showModal}
         onClose={closeModal}
-        title={editingProduct ? 'Editar producto' : 'Nuevo producto'}
+        title={editingProduct ? t('Editar producto', 'Edit product') : t('Nuevo producto', 'New product')}
         maxWidth={500}
         onSubmit={handleSubmit}
         footer={
           <>
-            <button type="button" className="btn btn-ghost" onClick={closeModal}>Cancelar</button>
+            <button type="button" className="btn btn-ghost" onClick={closeModal}>{t('Cancelar', 'Cancel')}</button>
             <button type="submit" className="btn btn-primary" disabled={saving}>
-              {saving ? 'Guardando…' : editingProduct ? 'Guardar cambios' : 'Crear producto'}
+              {saving ? t('Guardando…', 'Saving…') : editingProduct ? t('Guardar cambios', 'Save changes') : t('Crear producto', 'Create product')}
             </button>
           </>
         }
       >
         <div>
-          <label htmlFor="product-name" style={{ display: 'block', marginBottom: '.375rem' }}>Nombre *</label>
-          <input id="product-name" type="text" required value={formData.name} onChange={e => setFormData({ ...formData, name: e.target.value })} placeholder="Nombre del producto" />
+          <label htmlFor="product-name" style={{ display: 'block', marginBottom: '.375rem' }}>{t('Nombre *', 'Name *')}</label>
+          <input id="product-name" type="text" required value={formData.name} onChange={e => setFormData({ ...formData, name: e.target.value })} placeholder={t('Nombre del producto', 'Product name')} />
         </div>
         <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem' }}>
           <div>
-            <label htmlFor="product-price" style={{ display: 'block', marginBottom: '.375rem' }}>Precio</label>
+            <label htmlFor="product-price" style={{ display: 'block', marginBottom: '.375rem' }}>{t('Precio', 'Price')}</label>
             <input id="product-price" type="number" step="0.01" min="0" value={formData.price} onChange={e => setFormData({ ...formData, price: e.target.value })} placeholder="0.00" />
           </div>
           <div>
@@ -417,19 +426,22 @@ const ProductsPage: React.FC = () => {
           </div>
         </div>
         <div>
-          <label htmlFor="product-description" style={{ display: 'block', marginBottom: '.375rem' }}>Descripción</label>
-          <textarea id="product-description" value={formData.description} onChange={e => setFormData({ ...formData, description: e.target.value })} placeholder="Descripción opcional…" rows={2} />
+          <label htmlFor="product-description" style={{ display: 'block', marginBottom: '.375rem' }}>{t('Descripción', 'Description')}</label>
+          <textarea id="product-description" value={formData.description} onChange={e => setFormData({ ...formData, description: e.target.value })} placeholder={t('Descripción opcional…', 'Optional description…')} rows={2} />
         </div>
         <div>
-          <label htmlFor="product-image" style={{ display: 'block', marginBottom: '.375rem' }}>URL de imagen</label>
-          <input id="product-image" type="url" value={formData.image_url} onChange={e => setFormData({ ...formData, image_url: e.target.value })} placeholder="https://... o Google Drive" />
+          <label htmlFor="product-image" style={{ display: 'block', marginBottom: '.375rem' }}>{t('URL de imagen', 'Image URL')}</label>
+          <input id="product-image" type="url" value={formData.image_url} onChange={e => setFormData({ ...formData, image_url: e.target.value })} placeholder={t('https://... o Google Drive', 'https://... or Google Drive')} />
           <p style={{ fontSize: '.72rem', color: 'var(--text-muted)', margin: '.375rem 0 0' }}>
-            Acepta URLs directas o links de Google Drive compartidos como público
+            {t(
+              'Acepta URLs directas o links de Google Drive compartidos como público',
+              'Accepts direct URLs or Google Drive links shared publicly',
+            )}
           </p>
           {formData.image_url && (
             <img
               src={getDirectImageUrl(formData.image_url)}
-              alt={formData.name ? `Vista previa de ${formData.name}` : 'Vista previa de la imagen'}
+              alt={formData.name ? t(`Vista previa de ${formData.name}`, `Preview of ${formData.name}`) : t('Vista previa de la imagen', 'Image preview')}
               crossOrigin="anonymous"
               style={{ width: 80, height: 80, objectFit: 'cover', borderRadius: 8, marginTop: '.5rem', border: '1px solid var(--border)' }}
               onError={e => { (e.target as HTMLImageElement).style.display = 'none'; }}

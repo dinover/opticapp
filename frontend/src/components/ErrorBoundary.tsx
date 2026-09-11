@@ -1,5 +1,6 @@
 import { Component, ErrorInfo, ReactNode } from 'react';
 import { ExclamationTriangleIcon } from '@heroicons/react/24/outline';
+import { getCurrentLang } from '../utils/lang';
 
 interface Props {
   children: ReactNode;
@@ -12,6 +13,9 @@ interface State {
 /**
  * Sin esto, cualquier excepción durante el render deja la pantalla en blanco
  * sin ninguna pista de qué pasó, ni para el usuario ni para soporte.
+ *
+ * Es una clase (no puede usar hooks) y envuelve al LanguageProvider, así que
+ * lee el idioma actual directo de utils/lang.
  */
 class ErrorBoundary extends Component<Props, State> {
   state: State = { error: null };
@@ -27,6 +31,8 @@ class ErrorBoundary extends Component<Props, State> {
   render() {
     if (!this.state.error) return this.props.children;
 
+    const en = getCurrentLang() === 'en';
+
     return (
       <div className="centered-screen">
         <div style={{ maxWidth: 460, textAlign: 'center' }}>
@@ -34,18 +40,19 @@ class ErrorBoundary extends Component<Props, State> {
             <ExclamationTriangleIcon style={{ width: 30, height: 30 }} />
           </div>
           <h1 style={{ fontWeight: 800, fontSize: '1.35rem', color: 'var(--text-primary)', margin: '0 0 .625rem' }}>
-            Algo se rompió en esta pantalla
+            {en ? 'Something broke on this screen' : 'Algo se rompió en esta pantalla'}
           </h1>
           <p style={{ color: 'var(--text-secondary)', fontSize: '.9rem', lineHeight: 1.65, margin: '0 0 1.5rem' }}>
-            El error quedó registrado. Podés volver al inicio y seguir trabajando; si vuelve a pasar,
-            contactá al administrador contándole qué estabas haciendo.
+            {en
+              ? 'The error was logged. You can go back home and keep working; if it happens again, contact the administrator and tell them what you were doing.'
+              : 'El error quedó registrado. Podés volver al inicio y seguir trabajando; si vuelve a pasar, contactá al administrador contándole qué estabas haciendo.'}
           </p>
           <div style={{ display: 'flex', gap: '.75rem', justifyContent: 'center' }}>
             <button className="btn btn-ghost" onClick={() => this.setState({ error: null })}>
-              Reintentar
+              {en ? 'Try again' : 'Reintentar'}
             </button>
             <button className="btn btn-primary" onClick={() => { window.location.href = '/'; }}>
-              Volver al inicio
+              {en ? 'Back to home' : 'Volver al inicio'}
             </button>
           </div>
         </div>

@@ -5,6 +5,7 @@ import EmptyState from '../components/EmptyState';
 import { SkeletonStats, SkeletonLine } from '../components/Skeleton';
 import { useDashboardConfig } from '../contexts/DashboardConfigContext';
 import { useToast } from '../contexts/ToastContext';
+import { useLanguage } from '../contexts/LanguageContext';
 import { dashboardService } from '../services/dashboard';
 import { suppliersService } from '../services/suppliers';
 import { DashboardStats } from '../types';
@@ -47,6 +48,7 @@ const DashboardPage: React.FC = () => {
   const { sections } = useDashboardConfig();
   const navigate = useNavigate();
   const toast = useToast();
+  const { t, locale } = useLanguage();
   const [stats, setStats] = useState<DashboardStats | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
@@ -76,7 +78,7 @@ const DashboardPage: React.FC = () => {
         }
       }
     } catch (err: any) {
-      const msg = err.response?.data?.error || 'Error al cargar estadísticas';
+      const msg = err.response?.data?.error || t('Error al cargar estadísticas', 'Could not load statistics');
       setError(msg);
       toast.error(msg);
     } finally {
@@ -85,13 +87,13 @@ const DashboardPage: React.FC = () => {
   };
 
   const { fmt } = useCurrency();
-  const fmtDate = (d: string) => new Date(d).toLocaleDateString('es-ES', { day: 'numeric', month: 'short' });
+  const fmtDate = (d: string) => new Date(d).toLocaleDateString(locale, { day: 'numeric', month: 'short' });
 
   const pageHeader = (
     <div className="page-header">
       <div>
         <h1 className="page-title">Dashboard</h1>
-        <p className="page-subtitle">Resumen de tu negocio</p>
+        <p className="page-subtitle">{t('Resumen de tu negocio', 'Your business at a glance')}</p>
       </div>
     </div>
   );
@@ -146,9 +148,12 @@ const DashboardPage: React.FC = () => {
     <Layout>
       <EmptyState
         icon={<ChartBarIcon />}
-        title="No hay datos disponibles"
-        description="No pudimos armar el resumen de tu negocio. Probá recargar en unos segundos."
-        actionLabel="Reintentar"
+        title={t('No hay datos disponibles', 'No data available')}
+        description={t(
+          'No pudimos armar el resumen de tu negocio. Probá recargar en unos segundos.',
+          'We couldn’t build your business summary. Try reloading in a few seconds.',
+        )}
+        actionLabel={t('Reintentar', 'Try again')}
         onAction={loadData}
       />
     </Layout>
@@ -157,38 +162,50 @@ const DashboardPage: React.FC = () => {
   const steps: OnboardingStep[] = [
     {
       key: 'suppliers',
-      title: 'Cargá tus proveedores',
-      description: 'Empezá por las ópticas y distribuidoras que te venden los armazones.',
+      title: t('Cargá tus proveedores', 'Add your suppliers'),
+      description: t(
+        'Empezá por las ópticas y distribuidoras que te venden los armazones.',
+        'Start with the labs and distributors that sell you your frames.',
+      ),
       to: '/suppliers',
-      actionLabel: 'Ir a proveedores',
+      actionLabel: t('Ir a proveedores', 'Go to suppliers'),
       icon: TruckIcon,
       done: supplierCount === null ? null : supplierCount > 0,
     },
     {
       key: 'products',
-      title: 'Cargá tu catálogo de armazones',
-      description: 'Importá el Excel del proveedor y se crean todos los artículos de una.',
+      title: t('Cargá tu catálogo de armazones', 'Load your frames catalog'),
+      description: t(
+        'Importá el Excel del proveedor y se crean todos los artículos de una.',
+        'Import your supplier’s Excel file and every item is created at once.',
+      ),
       to: '/import',
-      actionLabel: 'Importar Excel',
+      actionLabel: t('Importar Excel', 'Import Excel'),
       icon: ArrowUpTrayIcon,
       done: stats.totalProducts > 0,
-      secondary: { to: '/products', label: 'o cargalos a mano' },
+      secondary: { to: '/products', label: t('o cargalos a mano', 'or add them manually') },
     },
     {
       key: 'clients',
-      title: 'Registrá tus clientes',
-      description: 'Guardá sus datos y su receta para tenerlos a mano en cada venta.',
+      title: t('Registrá tus clientes', 'Register your clients'),
+      description: t(
+        'Guardá sus datos y su receta para tenerlos a mano en cada venta.',
+        'Save their details and prescription to have them at hand on every sale.',
+      ),
       to: '/clients',
-      actionLabel: 'Ir a clientes',
+      actionLabel: t('Ir a clientes', 'Go to clients'),
       icon: UserPlusIcon,
       done: stats.totalClients > 0,
     },
     {
       key: 'sales',
-      title: 'Registrá tu primera venta',
-      description: 'Al cargar ventas el dashboard empieza a mostrar ingresos y ranking de productos.',
+      title: t('Registrá tu primera venta', 'Record your first sale'),
+      description: t(
+        'Al cargar ventas el dashboard empieza a mostrar ingresos y ranking de productos.',
+        'Once you record sales, the dashboard starts showing revenue and product rankings.',
+      ),
       to: '/sales',
-      actionLabel: 'Ir a ventas',
+      actionLabel: t('Ir a ventas', 'Go to sales'),
       icon: ShoppingCartIcon,
       done: stats.totalSales > 0,
     },
@@ -222,13 +239,16 @@ const DashboardPage: React.FC = () => {
         </div>
         <div style={{ flex: 1, minWidth: 0 }}>
           <h2 id="onboarding-title" style={{ margin: 0, fontSize: '1.15rem', fontWeight: 800, color: 'var(--text-primary)' }}>
-            Primeros pasos
+            {t('Primeros pasos', 'Getting started')}
           </h2>
           <p style={{ margin: '.25rem 0 0', fontSize: '.875rem', color: 'var(--text-secondary)' }}>
-            Tu óptica todavía no tiene datos cargados. Seguí estos pasos y el dashboard se llena solo.
+            {t(
+              'Tu óptica todavía no tiene datos cargados. Seguí estos pasos y el dashboard se llena solo.',
+              'Your store has no data yet. Follow these steps and the dashboard fills itself in.',
+            )}
           </p>
           <p style={{ margin: '.5rem 0 0', fontSize: '.75rem', fontWeight: 700, color: 'var(--text-muted)', letterSpacing: '.03em' }}>
-            {completedCount} de {steps.length} completados
+            {t(`${completedCount} de ${steps.length} completados`, `${completedCount} of ${steps.length} completed`)}
           </p>
         </div>
       </div>
@@ -277,7 +297,7 @@ const DashboardPage: React.FC = () => {
                       color: 'var(--success)', background: tint('var(--success)', 14),
                       borderRadius: 999, padding: '.125rem .5rem',
                     }}>
-                      Hecho
+                      {t('Hecho', 'Done')}
                     </span>
                   )}
                 </p>
@@ -308,23 +328,30 @@ const DashboardPage: React.FC = () => {
 
       {supplierCount === null && (
         <p style={{ margin: '1rem 0 0', fontSize: '.75rem', color: 'var(--text-muted)' }}>
-          No pudimos verificar si ya cargaste proveedores; si ya los tenés, seguí con el paso 2.
+          {t(
+            'No pudimos verificar si ya cargaste proveedores; si ya los tenés, seguí con el paso 2.',
+            'We couldn’t check whether you already added suppliers; if you did, continue with step 2.',
+          )}
         </p>
       )}
     </section>
   );
 
+  const pendingCount = pendingSteps.length;
   const compactChecklist = (
     <section
       className="card"
-      aria-label="Pasos pendientes de configuración"
+      aria-label={t('Pasos pendientes de configuración', 'Pending setup steps')}
       style={{
         padding: '.875rem 1.125rem', marginBottom: '1.5rem',
         display: 'flex', alignItems: 'center', gap: '.875rem', flexWrap: 'wrap',
       }}
     >
       <span style={{ fontSize: '.8rem', fontWeight: 700, color: 'var(--text-primary)' }}>
-        Te faltan {pendingSteps.length} {pendingSteps.length === 1 ? 'paso' : 'pasos'} para terminar de configurar tu óptica:
+        {t(
+          `Te faltan ${pendingCount} ${pendingCount === 1 ? 'paso' : 'pasos'} para terminar de configurar tu óptica:`,
+          `${pendingCount} ${pendingCount === 1 ? 'step' : 'steps'} left to finish setting up your store:`,
+        )}
       </span>
       <span style={{ display: 'flex', alignItems: 'center', gap: '.5rem', flexWrap: 'wrap', flex: 1 }}>
         {pendingSteps.map(step => (
@@ -345,7 +372,7 @@ const DashboardPage: React.FC = () => {
         type="button"
         className="btn btn-ghost"
         onClick={hideCompact}
-        aria-label="Ocultar los pasos pendientes"
+        aria-label={t('Ocultar los pasos pendientes', 'Hide pending steps')}
         style={{ padding: '.25rem', flexShrink: 0 }}
       >
         <XMarkIcon style={{ width: 16, height: 16 }} />
@@ -355,23 +382,23 @@ const DashboardPage: React.FC = () => {
 
   const statCards = [
     sections.totalSales && {
-      label: 'Total Ventas', value: stats.totalSales.toLocaleString(),
-      sub: `${stats.monthSales} este mes`,
+      label: t('Total Ventas', 'Total Sales'), value: stats.totalSales.toLocaleString(locale),
+      sub: t(`${stats.monthSales} este mes`, `${stats.monthSales} this month`),
       icon: ShoppingBagIcon, color: 'var(--brand-light)',
     },
     sections.totalRevenue && {
-      label: 'Total Ingresos', value: fmt(Number(stats.totalRevenue) || 0),
-      sub: `${fmt(Number(stats.monthRevenue) || 0)} este mes`,
+      label: t('Total Ingresos', 'Total Revenue'), value: fmt(Number(stats.totalRevenue) || 0),
+      sub: t(`${fmt(Number(stats.monthRevenue) || 0)} este mes`, `${fmt(Number(stats.monthRevenue) || 0)} this month`),
       icon: CurrencyDollarIcon, color: 'var(--success)',
     },
     sections.totalClients && {
-      label: 'Clientes', value: stats.totalClients.toLocaleString(),
-      sub: 'clientes activos',
+      label: t('Clientes', 'Clients'), value: stats.totalClients.toLocaleString(locale),
+      sub: t('clientes activos', 'active clients'),
       icon: UserGroupIcon, color: 'var(--brand)',
     },
     sections.totalProducts && {
-      label: 'Productos', value: stats.totalProducts.toLocaleString(),
-      sub: 'en catálogo',
+      label: t('Productos', 'Products'), value: stats.totalProducts.toLocaleString(locale),
+      sub: t('en catálogo', 'in catalog'),
       icon: CubeIcon, color: 'var(--warning)',
     },
   ].filter(Boolean) as any[];
@@ -437,7 +464,7 @@ const DashboardPage: React.FC = () => {
               <div className="card" style={{ overflow: 'hidden' }}>
                 <div style={{ padding: '1.25rem 1.5rem', borderBottom: '1px solid var(--border)', display: 'flex', alignItems: 'center', gap: 8 }}>
                   <ChartBarIcon style={{ width: 16, height: 16, color: 'var(--brand-light)' }} />
-                  <span style={{ fontWeight: 700, fontSize: '.9rem', color: 'var(--text-primary)' }}>Productos más vendidos</span>
+                  <span style={{ fontWeight: 700, fontSize: '.9rem', color: 'var(--text-primary)' }}>{t('Productos más vendidos', 'Best-selling products')}</span>
                 </div>
                 <div style={{ padding: '0.75rem' }}>
                   {stats.topProducts && stats.topProducts.length > 0 ? stats.topProducts.map((p, i) => (
@@ -461,7 +488,7 @@ const DashboardPage: React.FC = () => {
                           {p.name}
                         </p>
                         <p style={{ fontSize: '.75rem', color: 'var(--text-muted)', margin: 0 }}>
-                          {p.total_quantity_sold} unidades vendidas
+                          {t(`${p.total_quantity_sold} unidades vendidas`, `${p.total_quantity_sold} units sold`)}
                         </p>
                       </div>
                       <span style={{ fontWeight: 700, fontSize: '.85rem', color: 'var(--text-primary)', fontFamily: 'DM Mono, monospace', flexShrink: 0 }}>
@@ -471,13 +498,13 @@ const DashboardPage: React.FC = () => {
                   )) : (
                     <EmptyState
                       icon={<ChartBarIcon />}
-                      title="Todavía no hay ranking de productos"
+                      title={t('Todavía no hay ranking de productos', 'No product ranking yet')}
                       description={
                         stats.totalProducts === 0
-                          ? 'Cargá tu catálogo de armazones y el ranking se arma con las ventas.'
-                          : 'En cuanto registres ventas vas a ver acá los armazones que más salen.'
+                          ? t('Cargá tu catálogo de armazones y el ranking se arma con las ventas.', 'Load your frames catalog and the ranking builds up with your sales.')
+                          : t('En cuanto registres ventas vas a ver acá los armazones que más salen.', 'As soon as you record sales you’ll see your best-selling frames here.')
                       }
-                      actionLabel={stats.totalProducts === 0 ? 'Importar catálogo' : 'Registrar una venta'}
+                      actionLabel={stats.totalProducts === 0 ? t('Importar catálogo', 'Import catalog') : t('Registrar una venta', 'Record a sale')}
                       onAction={() => navigate(stats.totalProducts === 0 ? '/import' : '/sales')}
                     />
                   )}
@@ -490,7 +517,7 @@ const DashboardPage: React.FC = () => {
               <div className="card" style={{ overflow: 'hidden' }}>
                 <div style={{ padding: '1.25rem 1.5rem', borderBottom: '1px solid var(--border)', display: 'flex', alignItems: 'center', gap: 8 }}>
                   <CalendarDaysIcon style={{ width: 16, height: 16, color: 'var(--success)' }} />
-                  <span style={{ fontWeight: 700, fontSize: '.9rem', color: 'var(--text-primary)' }}>Ventas recientes</span>
+                  <span style={{ fontWeight: 700, fontSize: '.9rem', color: 'var(--text-primary)' }}>{t('Ventas recientes', 'Recent sales')}</span>
                 </div>
                 <div style={{ padding: '0.75rem' }}>
                   {stats.recentSales && stats.recentSales.length > 0 ? stats.recentSales.map(sale => (
@@ -512,7 +539,7 @@ const DashboardPage: React.FC = () => {
                       </div>
                       <div style={{ flex: 1, minWidth: 0 }}>
                         <p style={{ fontWeight: 600, fontSize: '.85rem', color: 'var(--text-primary)', margin: 0 }}>
-                          {sale.client_name || 'Cliente'}
+                          {sale.client_name || t('Cliente', 'Client')}
                         </p>
                         <p style={{ fontSize: '.75rem', color: 'var(--text-muted)', margin: 0 }}>
                           {fmtDate(sale.sale_date)}
@@ -525,13 +552,13 @@ const DashboardPage: React.FC = () => {
                   )) : (
                     <EmptyState
                       icon={<CalendarDaysIcon />}
-                      title="Todavía no hay ventas recientes"
+                      title={t('Todavía no hay ventas recientes', 'No recent sales yet')}
                       description={
                         stats.totalClients === 0
-                          ? 'Registrá primero un cliente y después vas a poder cargar la venta.'
-                          : 'Cuando cargues una venta va a aparecer acá, con el cliente y el importe.'
+                          ? t('Registrá primero un cliente y después vas a poder cargar la venta.', 'Register a client first, then you’ll be able to record the sale.')
+                          : t('Cuando cargues una venta va a aparecer acá, con el cliente y el importe.', 'When you record a sale it will show up here, with the client and the amount.')
                       }
-                      actionLabel={stats.totalClients === 0 ? 'Cargar un cliente' : 'Registrar una venta'}
+                      actionLabel={stats.totalClients === 0 ? t('Cargar un cliente', 'Add a client') : t('Registrar una venta', 'Record a sale')}
                       onAction={() => navigate(stats.totalClients === 0 ? '/clients' : '/sales')}
                     />
                   )}

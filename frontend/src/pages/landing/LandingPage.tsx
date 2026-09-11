@@ -19,7 +19,8 @@ import {
   GiftIcon,
 } from '@heroicons/react/24/outline';
 import { useTheme } from '../../contexts/ThemeContext';
-import { COPY, detectLang, saveLang, type Copy, type Lang } from './i18n';
+import { useLanguage } from '../../contexts/LanguageContext';
+import { COPY, type Copy, type Lang } from './i18n';
 import {
   AppFrame,
   ClientsFeature,
@@ -291,7 +292,7 @@ const LangSwitch: React.FC<{ lang: Lang; onChange: (l: Lang) => void; label: str
 /* ═══════════════════════════════════════════════════════════ */
 
 const LandingPage: React.FC = () => {
-  const [lang, setLangState] = useState<Lang>(detectLang);
+  const { lang, setLang } = useLanguage();
   const t = COPY[lang];
   const langRef = useRef(lang);
   langRef.current = lang;
@@ -309,24 +310,17 @@ const LandingPage: React.FC = () => {
   const tourScreenRef = useRef<HTMLDivElement>(null);
   const progressRefs = useRef<(HTMLSpanElement | null)[]>([]);
 
-  const setLang = (l: Lang) => {
-    setLangState(l);
-    saveLang(l);
-  };
-
   const goTo = (id: SectionId) => {
     document.getElementById(id)?.scrollIntoView({ behavior: reduced ? 'auto' : 'smooth', block: 'start' });
   };
 
   const scrollTop = () => window.scrollTo({ top: 0, behavior: reduced ? 'auto' : 'smooth' });
 
-  // Idioma y título del documento
+  // Título del documento (el atributo lang de <html> lo maneja LanguageProvider)
   useEffect(() => {
-    document.documentElement.lang = lang;
     document.title = t.meta.title;
-  }, [lang, t.meta.title]);
+  }, [t.meta.title]);
   useEffect(() => () => {
-    document.documentElement.lang = 'es';
     document.title = 'OpticApp';
   }, []);
 

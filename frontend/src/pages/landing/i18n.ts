@@ -1,25 +1,7 @@
-export type Lang = 'es' | 'en';
+import type { Lang } from '../../utils/lang';
 
-const LANG_KEY = 'opticapp.lang';
-
-/** Idioma guardado por el visitante; si no hay, el del navegador (cualquier variante de español → es). */
-export function detectLang(): Lang {
-  try {
-    const saved = localStorage.getItem(LANG_KEY);
-    if (saved === 'es' || saved === 'en') return saved;
-  } catch {
-    /* storage bloqueado: seguimos con el navegador */
-  }
-  return (navigator.language || 'es').toLowerCase().startsWith('es') ? 'es' : 'en';
-}
-
-export function saveLang(lang: Lang) {
-  try {
-    localStorage.setItem(LANG_KEY, lang);
-  } catch {
-    /* sin storage el idioma no se recuerda, nada más */
-  }
-}
+// El idioma lo maneja LanguageContext (compartido con toda la app).
+export type { Lang };
 
 const es = {
   meta: { title: 'OpticApp — Software de gestión para ópticas' },

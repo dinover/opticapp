@@ -1,5 +1,6 @@
 import React, { createContext, useContext, useCallback, useState, ReactNode } from 'react';
 import { CheckCircleIcon, ExclamationTriangleIcon, InformationCircleIcon, XMarkIcon } from '@heroicons/react/24/outline';
+import { useLanguage } from './LanguageContext';
 
 type ToastKind = 'success' | 'error' | 'info';
 
@@ -22,6 +23,7 @@ const AUTO_DISMISS_MS = 4000;
 let nextId = 1;
 
 export const ToastProvider: React.FC<{ children: ReactNode }> = ({ children }) => {
+  const { t } = useLanguage();
   const [toasts, setToasts] = useState<Toast[]>([]);
 
   const dismiss = useCallback((id: number) => {
@@ -45,24 +47,24 @@ export const ToastProvider: React.FC<{ children: ReactNode }> = ({ children }) =
   return (
     <ToastContext.Provider value={api}>
       {children}
-      <div className="toast-stack" role="region" aria-label="Notificaciones">
-        {toasts.map(t => (
+      <div className="toast-stack" role="region" aria-label={t('Notificaciones', 'Notifications')}>
+        {toasts.map(toast => (
           <div
-            key={t.id}
-            className={`toast toast-${t.kind}`}
-            role={t.kind === 'error' ? 'alert' : 'status'}
+            key={toast.id}
+            className={`toast toast-${toast.kind}`}
+            role={toast.kind === 'error' ? 'alert' : 'status'}
           >
             <span className="toast-icon" aria-hidden="true">
-              {t.kind === 'success' && <CheckCircleIcon className="w-5 h-5" />}
-              {t.kind === 'error' && <ExclamationTriangleIcon className="w-5 h-5" />}
-              {t.kind === 'info' && <InformationCircleIcon className="w-5 h-5" />}
+              {toast.kind === 'success' && <CheckCircleIcon className="w-5 h-5" />}
+              {toast.kind === 'error' && <ExclamationTriangleIcon className="w-5 h-5" />}
+              {toast.kind === 'info' && <InformationCircleIcon className="w-5 h-5" />}
             </span>
-            <span className="toast-msg">{t.message}</span>
+            <span className="toast-msg">{toast.message}</span>
             <button
               type="button"
               className="toast-close"
-              onClick={() => dismiss(t.id)}
-              aria-label="Cerrar notificación"
+              onClick={() => dismiss(toast.id)}
+              aria-label={t('Cerrar notificación', 'Close notification')}
             >
               <XMarkIcon className="w-4 h-4" />
             </button>

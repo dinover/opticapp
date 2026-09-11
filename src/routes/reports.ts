@@ -5,12 +5,70 @@ import { getRow, getRows } from '../config/database';
 
 const router = express.Router();
 
-// GET /api/reports/products?supplier_id=X — Descargar Excel de armazones disponibles
+type Lang = 'es' | 'en';
+type GroupBy = 'day' | 'week' | 'month';
+
+/**
+ * La interfaz es bilingüe: el frontend manda `lang` y los textos que arma el
+ * reporte (encabezados del Excel, etiquetas de período, nombres de archivo)
+ * salen en ese idioma. Sin `lang`, en español como siempre.
+ */
+const reportLang = (req: AuthRequest): Lang => (req.query.lang === 'en' ? 'en' : 'es');
+
+const TEXTS = {
+  es: {
+    locale: 'es-UY',
+    article: 'Artículo',
+    quantity: 'Cantidad',
+    price: 'Precio',
+    description: 'Descripción',
+    supplier: 'Proveedor',
+    opticsNoSupplier: 'Óptica (sin proveedor)',
+    noSupplier: 'Sin proveedor',
+    framesSheet: 'Armazones',
+    framesFile: (supplier?: string) => (supplier ? `armazones_proveedor_${supplier}.xlsx` : 'armazones_todos.xlsx'),
+    groups: { day: 'Día', week: 'Semana', month: 'Mes' } as Record<GroupBy, string>,
+    weekOf: 'Semana del',
+    salesCount: 'Cantidad de ventas',
+    revenue: 'Facturación',
+    salesSheet: 'Ventas por período',
+    salesFile: (groupBy: GroupBy) => `ventas_${groupBy}.xlsx`,
+    unitsSold: 'Unidades vendidas',
+    share: '% del total',
+    rankingSheet: 'Ranking productos',
+    rankingFile: 'ranking_productos.xlsx',
+  },
+  en: {
+    locale: 'en-US',
+    article: 'Item',
+    quantity: 'Quantity',
+    price: 'Price',
+    description: 'Description',
+    supplier: 'Supplier',
+    opticsNoSupplier: 'Store (no supplier)',
+    noSupplier: 'No supplier',
+    framesSheet: 'Frames',
+    framesFile: (supplier?: string) => (supplier ? `frames_supplier_${supplier}.xlsx` : 'frames_all.xlsx'),
+    groups: { day: 'Day', week: 'Week', month: 'Month' } as Record<GroupBy, string>,
+    weekOf: 'Week of',
+    salesCount: 'Number of sales',
+    revenue: 'Revenue',
+    salesSheet: 'Sales by period',
+    salesFile: (groupBy: GroupBy) => `sales_${groupBy}.xlsx`,
+    unitsSold: 'Units sold',
+    share: '% of total',
+    rankingSheet: 'Top products',
+    rankingFile: 'top_products.xlsx',
+  },
+};
+
+// GET /api/reports/products?supplier_id=X&lang=es|en — Descargar Excel de armazones disponibles
 router.get('/products', authenticateToken, async (req: AuthRequest, res: Response) => {
   try {
     const user = req.user;
     if (!user) return res.status(401).json({ error: 'Usuario no autenticado' });
 
+    const txt = TEXTS[reportLang(req)];
     const opticsId = getOpticsScope(user);
     const supplierIdParam = req.query.supplier_id as string | undefined;
 
@@ -43,11 +101,11 @@ router.get('/products', authenticateToken, async (req: AuthRequest, res: Respons
 
     // Construir Excel
     const data = products.map(p => ({
-      'Artículo': p.name,
-      'Cantidad': p.quantity ?? 0,
-      'Precio': p.price ?? 0,
-      'Descripción': p.description || '',
-      'Proveedor': p.supplier_name || 'Óptica (sin proveedor)',
+      [txt.article]: p.name,
+      [txt.quantity]: p.quantity ?? 0,
+      [txt.price]: p.price ?? 0,
+      [txt.description]: p.description || '',
+      [txt.supplier]: p.supplier_name || txt.opticsNoSupplier,
     }));
 
     const worksheet = XLSX.utils.json_to_sheet(data);
@@ -58,13 +116,11 @@ router.get('/products', authenticateToken, async (req: AuthRequest, res: Respons
     ];
 
     const workbook = XLSX.utils.book_new();
-    XLSX.utils.book_append_sheet(workbook, worksheet, 'Armazones');
+    XLSX.utils.book_append_sheet(workbook, worksheet, txt.framesSheet);
 
     const buffer = XLSX.write(workbook, { type: 'buffer', bookType: 'xlsx' });
 
-    const filename = supplierIdParam && supplierIdParam !== 'all'
-      ? `armazones_proveedor_${supplierIdParam}.xlsx`
-      : 'armazones_todos.xlsx';
+    const filename = txt.framesFile(supplierIdParam && supplierIdParam !== 'all' ? supplierIdParam : undefined);
 
     res.setHeader('Content-Type', 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet');
     res.setHeader('Content-Disposition', `attachment; filename="${filename}"`);
@@ -74,8 +130,6 @@ router.get('/products', authenticateToken, async (req: AuthRequest, res: Respons
     res.status(500).json({ error: 'Error al generar el reporte' });
   }
 });
-
-type GroupBy = 'day' | 'week' | 'month';
 
 /** Rango por defecto cuando no se pasan fechas: últimos 30 días, incluyendo hoy. */
 function resolveDateRange(fromParam: unknown, toParam: unknown): { from: string; toExclusive: string } {
@@ -92,22 +146,23 @@ function resolveDateRange(fromParam: unknown, toParam: unknown): { from: string;
   return { from: from.toISOString().slice(0, 10), toExclusive: toExclusive.toISOString().slice(0, 10) };
 }
 
-const GROUP_LABELS: Record<GroupBy, string> = { day: 'Día', week: 'Semana', month: 'Mes' };
-
-function formatPeriodLabel(period: string, groupBy: GroupBy): string {
+function formatPeriodLabel(period: string, groupBy: GroupBy, lang: Lang): string {
+  const { locale, weekOf } = TEXTS[lang];
   const d = new Date(period);
-  if (groupBy === 'month') return d.toLocaleDateString('es-UY', { month: 'long', year: 'numeric' });
-  if (groupBy === 'week') return `Semana del ${d.toLocaleDateString('es-UY', { day: '2-digit', month: '2-digit' })}`;
-  return d.toLocaleDateString('es-UY', { day: '2-digit', month: '2-digit', year: 'numeric' });
+  if (groupBy === 'month') return d.toLocaleDateString(locale, { month: 'long', year: 'numeric' });
+  if (groupBy === 'week') return `${weekOf} ${d.toLocaleDateString(locale, { day: '2-digit', month: '2-digit' })}`;
+  return d.toLocaleDateString(locale, { day: '2-digit', month: '2-digit', year: 'numeric' });
 }
 
-// GET /api/reports/sales?from=&to=&group_by=day|week|month&format=json|xlsx
+// GET /api/reports/sales?from=&to=&group_by=day|week|month&format=json|xlsx&lang=es|en
 // Ventas agregadas por período: format=json para verlo en pantalla (default), format=xlsx para descargarlo.
 router.get('/sales', authenticateToken, async (req: AuthRequest, res: Response) => {
   try {
     const user = req.user;
     if (!user) return res.status(401).json({ error: 'Usuario no autenticado' });
 
+    const lang = reportLang(req);
+    const txt = TEXTS[lang];
     const opticsId = getOpticsScope(user);
     const groupBy: GroupBy = ['day', 'week', 'month'].includes(req.query.group_by as string)
       ? (req.query.group_by as GroupBy)
@@ -134,7 +189,7 @@ router.get('/sales', authenticateToken, async (req: AuthRequest, res: Response) 
     const rows = await getRows<{ period: string; sales_count: string; revenue: string }>(query, params);
 
     const periods = rows.map(r => ({
-      label: formatPeriodLabel(r.period, groupBy),
+      label: formatPeriodLabel(r.period, groupBy, lang),
       salesCount: Number(r.sales_count),
       revenue: Number(r.revenue),
     }));
@@ -152,19 +207,19 @@ router.get('/sales', authenticateToken, async (req: AuthRequest, res: Response) 
     }
 
     const data = periods.map(p => ({
-      [GROUP_LABELS[groupBy]]: p.label,
-      'Cantidad de ventas': p.salesCount,
-      'Facturación': p.revenue,
+      [txt.groups[groupBy]]: p.label,
+      [txt.salesCount]: p.salesCount,
+      [txt.revenue]: p.revenue,
     }));
     const worksheet = XLSX.utils.json_to_sheet(data);
     worksheet['!cols'] = [{ wch: 28 }, { wch: 18 }, { wch: 16 }];
 
     const workbook = XLSX.utils.book_new();
-    XLSX.utils.book_append_sheet(workbook, worksheet, 'Ventas por período');
+    XLSX.utils.book_append_sheet(workbook, worksheet, txt.salesSheet);
 
     const buffer = XLSX.write(workbook, { type: 'buffer', bookType: 'xlsx' });
     res.setHeader('Content-Type', 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet');
-    res.setHeader('Content-Disposition', `attachment; filename="ventas_${groupBy}.xlsx"`);
+    res.setHeader('Content-Disposition', `attachment; filename="${txt.salesFile(groupBy)}"`);
     res.send(buffer);
   } catch (error) {
     console.error('Error al generar reporte de ventas:', error);
@@ -172,13 +227,14 @@ router.get('/sales', authenticateToken, async (req: AuthRequest, res: Response) 
   }
 });
 
-// GET /api/reports/top-products?from=&to=&limit=&format=json|xlsx
+// GET /api/reports/top-products?from=&to=&limit=&format=json|xlsx&lang=es|en
 // Ranking de productos vendidos: format=json para verlo en pantalla (default), format=xlsx para descargarlo.
 router.get('/top-products', authenticateToken, async (req: AuthRequest, res: Response) => {
   try {
     const user = req.user;
     if (!user) return res.status(401).json({ error: 'Usuario no autenticado' });
 
+    const txt = TEXTS[reportLang(req)];
     const opticsId = getOpticsScope(user);
     const { from, toExclusive } = resolveDateRange(req.query.from, req.query.to);
     const limitParam = parseInt(req.query.limit as string);
@@ -213,7 +269,7 @@ router.get('/top-products', authenticateToken, async (req: AuthRequest, res: Res
       rank: i + 1,
       id: r.id,
       name: r.name,
-      supplierName: r.supplier_name || 'Sin proveedor',
+      supplierName: r.supplier_name || txt.noSupplier,
       quantitySold: Number(r.quantity_sold),
       revenue: Number(r.revenue),
       revenueShare: totalRevenue > 0 ? Number(r.revenue) / totalRevenue : 0,
@@ -225,21 +281,21 @@ router.get('/top-products', authenticateToken, async (req: AuthRequest, res: Res
 
     const data = products.map(p => ({
       '#': p.rank,
-      'Artículo': p.name,
-      'Proveedor': p.supplierName,
-      'Unidades vendidas': p.quantitySold,
-      'Facturación': p.revenue,
-      '% del total': `${(p.revenueShare * 100).toFixed(1)}%`,
+      [txt.article]: p.name,
+      [txt.supplier]: p.supplierName,
+      [txt.unitsSold]: p.quantitySold,
+      [txt.revenue]: p.revenue,
+      [txt.share]: `${(p.revenueShare * 100).toFixed(1)}%`,
     }));
     const worksheet = XLSX.utils.json_to_sheet(data);
     worksheet['!cols'] = [{ wch: 4 }, { wch: 36 }, { wch: 26 }, { wch: 16 }, { wch: 14 }, { wch: 12 }];
 
     const workbook = XLSX.utils.book_new();
-    XLSX.utils.book_append_sheet(workbook, worksheet, 'Ranking productos');
+    XLSX.utils.book_append_sheet(workbook, worksheet, txt.rankingSheet);
 
     const buffer = XLSX.write(workbook, { type: 'buffer', bookType: 'xlsx' });
     res.setHeader('Content-Type', 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet');
-    res.setHeader('Content-Disposition', 'attachment; filename="ranking_productos.xlsx"');
+    res.setHeader('Content-Disposition', `attachment; filename="${txt.rankingFile}"`);
     res.send(buffer);
   } catch (error) {
     console.error('Error al generar ranking de productos:', error);

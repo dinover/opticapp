@@ -1,6 +1,7 @@
 import React from 'react';
 import { Link, useLocation } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContext';
+import { useLanguage } from '../contexts/LanguageContext';
 import {
   HomeIcon,
   UserGroupIcon,
@@ -27,19 +28,20 @@ interface SidebarProps {
 
 const Sidebar: React.FC<SidebarProps> = ({ collapsed, onToggleCollapse, onNavigate, onOpenSettings }) => {
   const { user } = useAuth();
+  const { t } = useLanguage();
   const location = useLocation();
   const isActive = (path: string) => location.pathname === path;
 
   const navItems = [
-    { path: '/dashboard', label: 'Dashboard',   icon: HomeIcon },
-    { path: '/clients',   label: 'Clientes',    icon: UserGroupIcon },
-    { path: '/products',  label: 'Productos',   icon: ShoppingBagIcon },
-    { path: '/sales',     label: 'Ventas',      icon: ChartBarIcon },
-    { path: '/suppliers', label: 'Proveedores', icon: TruckIcon },
-    { path: '/import',    label: 'Importar',    icon: ArrowUpTrayIcon },
-    { path: '/reports',   label: 'Reportes',    icon: DocumentChartBarIcon },
+    { path: '/dashboard', label: 'Dashboard',                       icon: HomeIcon },
+    { path: '/clients',   label: t('Clientes', 'Clients'),          icon: UserGroupIcon },
+    { path: '/products',  label: t('Productos', 'Products'),        icon: ShoppingBagIcon },
+    { path: '/sales',     label: t('Ventas', 'Sales'),              icon: ChartBarIcon },
+    { path: '/suppliers', label: t('Proveedores', 'Suppliers'),     icon: TruckIcon },
+    { path: '/import',    label: t('Importar', 'Import'),           icon: ArrowUpTrayIcon },
+    { path: '/reports',   label: t('Reportes', 'Reports'),          icon: DocumentChartBarIcon },
     ...(user?.role === 'admin' ? [{ path: '/admin', label: 'Admin', icon: ShieldCheckIcon }] : []),
-    ...(user?.role === 'owner' ? [{ path: '/team', label: 'Equipo', icon: UserGroupIcon }] : []),
+    ...(user?.role === 'owner' ? [{ path: '/team', label: t('Equipo', 'Team'), icon: UserGroupIcon }] : []),
   ];
 
   const itemLayout: React.CSSProperties = {
@@ -53,6 +55,9 @@ const Sidebar: React.FC<SidebarProps> = ({ collapsed, onToggleCollapse, onNaviga
     whiteSpace: 'nowrap',
     overflow: 'hidden',
   };
+
+  const settingsLabel = t('Ajustes', 'Settings');
+  const collapseLabel = collapsed ? t('Expandir menú', 'Expand menu') : t('Colapsar menú', 'Collapse menu');
 
   return (
     <div style={{ display: 'flex', flexDirection: 'column', height: '100%' }}>
@@ -80,27 +85,27 @@ const Sidebar: React.FC<SidebarProps> = ({ collapsed, onToggleCollapse, onNaviga
         <button
           type="button"
           onClick={onOpenSettings}
-          title={collapsed ? 'Ajustes' : undefined}
+          title={collapsed ? settingsLabel : undefined}
           className="nav-link"
           style={{ ...itemLayout, border: 'none', background: 'transparent', cursor: 'pointer', fontFamily: 'inherit' }}
         >
           <Cog6ToothIcon className="w-4 h-4" style={{ flexShrink: 0 }} />
-          {!collapsed && <span>Ajustes</span>}
+          {!collapsed && <span>{settingsLabel}</span>}
         </button>
 
         {onToggleCollapse && (
           <button
             type="button"
             onClick={onToggleCollapse}
-            aria-label={collapsed ? 'Expandir menú' : 'Colapsar menú'}
-            title={collapsed ? 'Expandir menú' : 'Colapsar menú'}
+            aria-label={collapseLabel}
+            title={collapseLabel}
             className="nav-link"
             style={{ ...itemLayout, marginBottom: 0, border: 'none', background: 'transparent', cursor: 'pointer', fontFamily: 'inherit', color: 'var(--text-muted)' }}
           >
             {collapsed
               ? <ChevronDoubleRightIcon className="w-4 h-4" style={{ flexShrink: 0 }} />
               : <ChevronDoubleLeftIcon className="w-4 h-4" style={{ flexShrink: 0 }} />}
-            {!collapsed && <span>Colapsar</span>}
+            {!collapsed && <span>{t('Colapsar', 'Collapse')}</span>}
           </button>
         )}
       </div>

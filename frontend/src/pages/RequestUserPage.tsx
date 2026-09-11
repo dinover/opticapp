@@ -2,22 +2,30 @@ import React, { useState } from 'react';
 import { Link } from 'react-router-dom';
 import { authService } from '../services/auth';
 import { CheckCircleIcon, GiftIcon } from '@heroicons/react/24/outline';
+import LangToggle from '../components/LangToggle';
+import { AUTH_COPY, type RegisterErrorKey } from '../i18n/auth';
+import { useLanguage } from '../contexts/LanguageContext';
+
+/** Error de validación propio (se traduce por clave) o mensaje del servidor (ya traducido por api.ts). */
+type FormError = { key: RegisterErrorKey } | { server: string } | null;
 
 const RequestUserPage: React.FC = () => {
   const [formData, setFormData] = useState({
     username: '', email: '', password: '', confirmPassword: '', optics_name: '',
   });
-  const [error, setError]     = useState('');
+  const [error, setError]     = useState<FormError>(null);
   const [success, setSuccess] = useState(false);
   const [loading, setLoading] = useState(false);
+  const { lang, setLang } = useLanguage();
+  const t = AUTH_COPY[lang].register;
 
   const set = (field: string, value: string) => setFormData(prev => ({ ...prev, [field]: value }));
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    setError('');
-    if (formData.password !== formData.confirmPassword) { setError('Las contraseñas no coinciden'); return; }
-    if (formData.password.length < 6) { setError('La contraseña debe tener al menos 6 caracteres'); return; }
+    setError(null);
+    if (formData.password !== formData.confirmPassword) { setError({ key: 'mismatch' }); return; }
+    if (formData.password.length < 6) { setError({ key: 'short' }); return; }
     setLoading(true);
     try {
       await authService.requestUser({
@@ -26,31 +34,43 @@ const RequestUserPage: React.FC = () => {
       });
       setSuccess(true);
     } catch (err: any) {
-      setError(err.response?.data?.error || 'Error al crear la cuenta');
+      const message = err.response?.data?.error;
+      setError(message ? { server: message } : { key: 'fallback' });
     } finally {
       setLoading(false);
     }
   };
 
+  const errorText = !error ? '' : 'server' in error ? error.server : t.errors[error.key];
+
+  const langToggle = (
+    <LangToggle
+      lang={lang}
+      onChange={setLang}
+      label={AUTH_COPY[lang].langLabel}
+      style={{ position: 'absolute', top: '1.25rem', right: '1.25rem', zIndex: 2 }}
+    />
+  );
+
   if (success) return (
-    <div style={{ minHeight: '100vh', display: 'flex', alignItems: 'center', justifyContent: 'center', background: 'var(--surface-2)', padding: '2rem' }}>
+    <div style={{ minHeight: '100vh', display: 'flex', alignItems: 'center', justifyContent: 'center', background: 'var(--surface-2)', padding: '2rem', position: 'relative' }}>
+      {langToggle}
       <div style={{ maxWidth: 420, textAlign: 'center' }}>
         <div style={{ width: 64, height: 64, borderRadius: 99, background: 'var(--surface-3)', display: 'flex', alignItems: 'center', justifyContent: 'center', margin: '0 auto 1.25rem' }}>
           <CheckCircleIcon style={{ width: 32, height: 32, color: 'var(--success)' }} />
         </div>
         <h2 style={{ fontWeight: 800, fontSize: '1.375rem', color: 'var(--text-primary)', margin: '0 0 .75rem' }}>
-          ¡Cuenta creada!
+          {t.successTitle}
         </h2>
         <p style={{ color: 'var(--text-secondary)', lineHeight: 1.7, margin: '0 0 1.75rem', fontSize: '.9rem' }}>
-          Ya podés iniciar sesión. Tenés <strong style={{ color: 'var(--text-primary)' }}>7 días de prueba gratis</strong> para
-          usar OpticApp con todas sus funciones.
+          {t.successBefore} <strong style={{ color: 'var(--text-primary)' }}>{t.successStrong}</strong> {t.successAfter}
         </p>
         <Link to="/login" style={{
           display: 'inline-flex', alignItems: 'center', justifyContent: 'center',
           padding: '.75rem 1.5rem', background: 'var(--brand)', color: '#fff',
           fontWeight: 700, borderRadius: 10, textDecoration: 'none', fontSize: '.9rem',
         }}>
-          Iniciar sesión
+          {t.successCta}
         </Link>
       </div>
     </div>
@@ -58,7 +78,8 @@ const RequestUserPage: React.FC = () => {
 
   return (
     <div style={{ minHeight: '100vh', display: 'flex', alignItems: 'center', justifyContent: 'center', background: 'var(--surface-2)', padding: '2rem', position: 'relative', overflow: 'hidden' }}>
-      {/* BG decoration */}
+      {langToggle}
+
       {/* Fondo decorativo. Usa un token para que en modo oscuro sea un halo
           apenas más claro que el fondo y no una mancha blanca. */}
       <div style={{ position: 'absolute', inset: 0, pointerEvents: 'none', background: 'radial-gradient(ellipse 80% 60% at 60% -10%, var(--surface-3) 0%, transparent 70%)' }} />
@@ -70,9 +91,9 @@ const RequestUserPage: React.FC = () => {
           <span style={{ fontWeight: 800, color: 'var(--text-primary)' }}>OpticApp</span>
         </Link>
 
-        <h2 style={{ fontWeight: 800, fontSize: '1.375rem', color: 'var(--text-primary)', margin: '0 0 .375rem' }}>Crear cuenta</h2>
+        <h2 style={{ fontWeight: 800, fontSize: '1.375rem', color: 'var(--text-primary)', margin: '0 0 .375rem' }}>{t.title}</h2>
         <p style={{ color: 'var(--text-secondary)', fontSize: '.875rem', marginBottom: '1rem', lineHeight: 1.5 }}>
-          Completá tus datos y empezá a usar OpticApp al instante.
+          {t.sub}
         </p>
 
         {/* Aviso de la prueba gratis: la cuenta nace en modo trial (ver TRIAL_DAYS en el backend) */}
@@ -86,40 +107,40 @@ const RequestUserPage: React.FC = () => {
         }}>
           <GiftIcon style={{ width: 20, height: 20, color: 'var(--brand-light)', flexShrink: 0 }} />
           <span>
-            <strong style={{ color: 'var(--text-primary)' }}>7 días de prueba gratis</strong> con todas las funciones. Sin tarjeta.
+            <strong style={{ color: 'var(--text-primary)' }}>{t.trialStrong}</strong> {t.trialRest}
           </span>
         </div>
 
         {error && (
-          <div style={{ background: 'var(--surface-2)', border: '1px solid var(--danger)', borderRadius: 10, padding: '.75rem 1rem', marginBottom: '1.25rem', fontSize: '.875rem', color: 'var(--danger)', display: 'flex', gap: 8 }}>
+          <div role="alert" style={{ background: 'var(--surface-2)', border: '1px solid var(--danger)', borderRadius: 10, padding: '.75rem 1rem', marginBottom: '1.25rem', fontSize: '.875rem', color: 'var(--danger)', display: 'flex', gap: 8 }}>
             <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" style={{ flexShrink: 0, marginTop: 1 }}>
               <circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/>
             </svg>
-            {error}
+            {errorText}
           </div>
         )}
 
         <form onSubmit={handleSubmit} style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
           <div>
-            <label style={{ display: 'block', marginBottom: '.375rem' }}>Nombre de usuario</label>
-            <input type="text" required value={formData.username} onChange={e => set('username', e.target.value)} placeholder="tunombredeusuario" />
+            <label style={{ display: 'block', marginBottom: '.375rem' }}>{t.username}</label>
+            <input type="text" required value={formData.username} onChange={e => set('username', e.target.value)} placeholder={t.usernamePh} />
           </div>
           <div>
-            <label style={{ display: 'block', marginBottom: '.375rem' }}>Email</label>
-            <input type="email" required value={formData.email} onChange={e => set('email', e.target.value)} placeholder="tu@email.com" />
+            <label style={{ display: 'block', marginBottom: '.375rem' }}>{t.email}</label>
+            <input type="email" required value={formData.email} onChange={e => set('email', e.target.value)} placeholder={t.emailPh} />
           </div>
           <div>
-            <label style={{ display: 'block', marginBottom: '.375rem' }}>Nombre de la óptica</label>
-            <input type="text" required value={formData.optics_name} onChange={e => set('optics_name', e.target.value)} placeholder="Ej: Óptica Central" />
+            <label style={{ display: 'block', marginBottom: '.375rem' }}>{t.opticsName}</label>
+            <input type="text" required value={formData.optics_name} onChange={e => set('optics_name', e.target.value)} placeholder={t.opticsNamePh} />
           </div>
           <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem' }}>
             <div>
-              <label style={{ display: 'block', marginBottom: '.375rem' }}>Contraseña</label>
-              <input type="password" required value={formData.password} onChange={e => set('password', e.target.value)} placeholder="Mín. 6 caracteres" />
+              <label style={{ display: 'block', marginBottom: '.375rem' }}>{t.password}</label>
+              <input type="password" required value={formData.password} onChange={e => set('password', e.target.value)} placeholder={t.passwordPh} />
             </div>
             <div>
-              <label style={{ display: 'block', marginBottom: '.375rem' }}>Confirmar</label>
-              <input type="password" required value={formData.confirmPassword} onChange={e => set('confirmPassword', e.target.value)} placeholder="Repetir contraseña" />
+              <label style={{ display: 'block', marginBottom: '.375rem' }}>{t.confirm}</label>
+              <input type="password" required value={formData.confirmPassword} onChange={e => set('confirmPassword', e.target.value)} placeholder={t.confirmPh} />
             </div>
           </div>
 
@@ -138,13 +159,13 @@ const RequestUserPage: React.FC = () => {
             }}
           >
             {loading && <div className="spinner" style={{ width: 16, height: 16, borderWidth: 2 }} />}
-            {loading ? 'Creando cuenta…' : 'Crear cuenta'}
+            {loading ? t.submitting : t.submit}
           </button>
         </form>
 
         <p style={{ textAlign: 'center', marginTop: '1.5rem', fontSize: '.875rem', color: 'var(--text-secondary)' }}>
-          ¿Ya tenés cuenta?{' '}
-          <Link to="/login" style={{ color: 'var(--brand)', fontWeight: 600, textDecoration: 'none' }}>Iniciar sesión</Link>
+          {t.haveAccount}{' '}
+          <Link to="/login" style={{ color: 'var(--brand)', fontWeight: 600, textDecoration: 'none' }}>{t.login}</Link>
         </p>
       </div>
     </div>

@@ -1,5 +1,6 @@
 import React, { createContext, useContext, useState, useCallback, useRef, ReactNode } from 'react';
 import Modal from '../components/Modal';
+import { useLanguage } from './LanguageContext';
 
 export interface ConfirmOptions {
   title: string;
@@ -23,6 +24,7 @@ const ConfirmContext = createContext<ConfirmFn | undefined>(undefined);
  *   if (!(await confirm({ title: '...', message: '...', danger: true }))) return;
  */
 export const ConfirmProvider: React.FC<{ children: ReactNode }> = ({ children }) => {
+  const { t } = useLanguage();
   const [options, setOptions] = useState<ConfirmOptions | null>(null);
   const resolver = useRef<((value: boolean) => void) | null>(null);
 
@@ -51,14 +53,14 @@ export const ConfirmProvider: React.FC<{ children: ReactNode }> = ({ children })
           footer={
             <>
               <button type="button" className="btn btn-ghost" onClick={() => settle(false)}>
-                {options.cancelLabel || 'Cancelar'}
+                {options.cancelLabel || t('Cancelar', 'Cancel')}
               </button>
               <button
                 type="button"
                 className={`btn ${options.danger ? 'btn-danger-solid' : 'btn-primary'}`}
                 onClick={() => settle(true)}
               >
-                {options.confirmLabel || 'Confirmar'}
+                {options.confirmLabel || t('Confirmar', 'Confirm')}
               </button>
             </>
           }
