@@ -8,7 +8,6 @@ import { CurrencyProvider } from './contexts/CurrencyContext';
 import { ToastProvider } from './contexts/ToastContext';
 import { ConfirmProvider } from './contexts/ConfirmContext';
 import ErrorBoundary from './components/ErrorBoundary';
-import LicenseBanner from './components/LicenseBanner';
 import NotFoundPage from './pages/NotFoundPage';
 import LoginPage from './pages/LoginPage';
 import RequestUserPage from './pages/RequestUserPage';
@@ -57,12 +56,8 @@ const PrivateRoute: React.FC<{ children: React.ReactNode; requireAdmin?: boolean
     return <Navigate to="/dashboard" replace />;
   }
 
-  return (
-    <>
-      <LicenseBanner />
-      {children}
-    </>
-  );
+  // El banner de licencia lo muestra Layout, dentro de la cabecera fija.
+  return <>{children}</>;
 };
 
 const AppRoutes: React.FC = () => {

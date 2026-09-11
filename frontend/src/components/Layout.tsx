@@ -1,14 +1,17 @@
-import React, { useState } from 'react';
+import React, { useLayoutEffect, useRef, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContext';
 import { useLanguage } from '../contexts/LanguageContext';
 import Sidebar from './Sidebar';
 import SettingsModal from './SettingsModal';
 import LangToggle from './LangToggle';
+import LicenseBanner from './LicenseBanner';
 import {
   ArrowRightOnRectangleIcon,
   Bars3Icon,
   XMarkIcon,
+  ChevronDoubleLeftIcon,
+  ChevronDoubleRightIcon,
 } from '@heroicons/react/24/outline';
 
 interface LayoutProps {
@@ -23,12 +26,27 @@ const Layout: React.FC<LayoutProps> = ({ children }) => {
   const { lang, setLang, t } = useLanguage();
   const [mobileOpen, setMobileOpen] = useState(false);
   const [settingsOpen, setSettingsOpen] = useState(false);
-  // El sidebar abre expandido por default; el estado colapsado se recuerda entre sesiones.
+  // El sidebar abre expandido por default; el estado comprimido se recuerda entre sesiones.
   const [collapsed, setCollapsed] = useState(
     () => localStorage.getItem(SIDEBAR_COLLAPSED_KEY) === '1'
   );
   // El hover de la user pill se maneja en estado porque el estilo es inline
   const [userPillHover, setUserPillHover] = useState(false);
+
+  // Alto real de la cabecera fija (topbar + banner de licencia, si hay). El
+  // sidebar se pega debajo y ocupa el resto de la pantalla; con un alto fijo
+  // de 56px, el banner empujaba "Ajustes" fuera de la vista.
+  const headerRef = useRef<HTMLElement>(null);
+  const [headerHeight, setHeaderHeight] = useState(TOPBAR_HEIGHT);
+  useLayoutEffect(() => {
+    const el = headerRef.current;
+    if (!el) return;
+    const update = () => setHeaderHeight(el.offsetHeight);
+    update();
+    const ro = new ResizeObserver(update);
+    ro.observe(el);
+    return () => ro.disconnect();
+  }, []);
 
   const toggleCollapsed = () => {
     setCollapsed(prev => {
@@ -38,16 +56,20 @@ const Layout: React.FC<LayoutProps> = ({ children }) => {
     });
   };
 
+  const collapseLabel = collapsed ? t('Expandir menú', 'Expand sidebar') : t('Comprimir menú', 'Collapse sidebar');
+
   return (
     <div className="min-h-screen" style={{ background: 'var(--surface-2)' }}>
-      {/* ── Topbar ─────────────────────────────────────── */}
+      {/* ── Cabecera fija: banner de licencia + topbar ───── */}
       <header
+        ref={headerRef}
         style={{
           background: 'var(--surface)',
           borderBottom: '1px solid var(--border)',
           position: 'sticky', top: 0, zIndex: 40,
         }}
       >
+        <LicenseBanner />
         <div className="px-4 sm:px-6 lg:px-8">
           <div className="flex items-center justify-between" style={{ height: TOPBAR_HEIGHT }}>
             {/* Mobile hamburger + Logo */}
@@ -128,14 +150,24 @@ const Layout: React.FC<LayoutProps> = ({ children }) => {
             transition: 'width .2s',
             borderRight: '1px solid var(--border)',
             background: 'var(--surface)',
-            position: 'sticky', top: TOPBAR_HEIGHT,
-            height: `calc(100vh - ${TOPBAR_HEIGHT}px)`,
+            position: 'sticky', top: headerHeight,
+            height: `calc(100vh - ${headerHeight}px)`,
             flexShrink: 0,
           }}
         >
+          {/* Comprimir / expandir: sobre el borde, siempre a la vista. */}
+          <button
+            type="button"
+            className="sidebar-toggle"
+            onClick={toggleCollapsed}
+            aria-label={collapseLabel}
+            aria-expanded={!collapsed}
+            title={collapseLabel}
+          >
+            {collapsed ? <ChevronDoubleRightIcon /> : <ChevronDoubleLeftIcon />}
+          </button>
           <Sidebar
             collapsed={collapsed}
-            onToggleCollapse={toggleCollapsed}
             onOpenSettings={() => setSettingsOpen(true)}
           />
         </aside>

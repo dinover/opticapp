@@ -253,6 +253,21 @@ input[type="text"].search-input { padding-left: 2.75rem !important; }
   transition: all .15s; text-decoration: none;
 }
 .nav-link:hover { background: var(--surface-3); color: var(--text-primary); }
+
+/* Botón para comprimir/expandir el sidebar: redondo, montado sobre su borde derecho. */
+.sidebar-toggle {
+  position: absolute; top: 14px; right: -13px; z-index: 5;
+  width: 26px; height: 26px; border-radius: 99px;
+  display: grid; place-items: center;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  color: var(--text-secondary);
+  box-shadow: var(--shadow-sm);
+  transition: color .15s, border-color .15s, box-shadow .15s;
+}
+.sidebar-toggle:hover { color: var(--brand); border-color: var(--border-focus); box-shadow: var(--shadow); }
+.sidebar-toggle svg { width: 14px; height: 14px; }
+.dark .sidebar-toggle:hover { color: #a5b4fc; }
 .nav-link.active { background: #eef2ff; color: var(--brand); }
 .dark .nav-link.active { background: #3730a320; color: #a5b4fc; }
 
