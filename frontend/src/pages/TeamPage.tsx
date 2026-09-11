@@ -3,7 +3,8 @@ import { Navigate } from 'react-router-dom';
 import Layout from '../components/Layout';
 import Modal from '../components/Modal';
 import EmptyState from '../components/EmptyState';
-import { SkeletonRows } from '../components/Skeleton';
+import PageHeader from '../components/PageHeader';
+import DataTable, { Column } from '../components/DataTable';
 import { useAuth } from '../contexts/AuthContext';
 import { useToast } from '../contexts/ToastContext';
 import { useConfirm } from '../contexts/ConfirmContext';
@@ -14,6 +15,7 @@ import {
   PlusIcon,
   TrashIcon,
   UserGroupIcon,
+  ExclamationCircleIcon,
 } from '@heroicons/react/24/outline';
 
 const TeamPage: React.FC = () => {
@@ -98,107 +100,88 @@ const TeamPage: React.FC = () => {
     }
   };
 
+  const columns: Column<User>[] = [
+    {
+      key: 'username',
+      header: t('Usuario', 'User'),
+      mobile: 'primary',
+      render: u => (
+        <div className="who">
+          <span className="avatar sm">{u.username.charAt(0).toUpperCase()}</span>
+          <span className="who-name">{u.username}</span>
+        </div>
+      ),
+    },
+    {
+      key: 'email',
+      header: 'Email',
+      mobile: 'secondary',
+      render: u => <span className="cell-secondary">{u.email}</span>,
+    },
+    {
+      key: 'since',
+      header: t('Activo desde', 'Active since'),
+      render: u => <span className="cell-secondary">{u.created_at ? new Date(u.created_at).toLocaleDateString(locale) : '—'}</span>,
+    },
+  ];
+
   return (
     <Layout>
       <div className="fade-in">
-        <div className="page-header">
-          <div>
-            <h1 className="page-title">{t('Equipo', 'Team')}</h1>
-            <p className="page-subtitle">{t(
-              `${users.length} empleado${users.length !== 1 ? 's' : ''} en tu óptica`,
-              `${users.length} employee${users.length !== 1 ? 's' : ''} in your store`,
-            )}</p>
-          </div>
-          <button className="btn btn-primary" onClick={() => setShowModal(true)}>
-            <PlusIcon className="w-4 h-4" />
-            {t('Nuevo empleado', 'New employee')}
-          </button>
-        </div>
+        <PageHeader
+          eyebrow={t('Tu óptica', 'Your store')}
+          title={t('Equipo', 'Team')}
+          subtitle={t(
+            `${users.length} empleado${users.length !== 1 ? 's' : ''} en tu óptica`,
+            `${users.length} employee${users.length !== 1 ? 's' : ''} in your store`,
+          )}
+          actions={
+            <button className="btn btn-cta" onClick={() => setShowModal(true)}>
+              <PlusIcon className="w-4 h-4" />
+              {t('Nuevo empleado', 'New employee')}
+            </button>
+          }
+        />
 
         {error && (
-          <div
-            role="alert"
-            style={{
-              background: 'var(--surface)',
-              border: '1px solid var(--border)',
-              borderLeft: '4px solid var(--danger)',
-              borderRadius: 'var(--radius)',
-              padding: '0.75rem 1rem',
-              marginBottom: '1rem',
-              color: 'var(--danger)',
-              fontSize: '.875rem',
-              fontWeight: 600,
-            }}
-          >
-            {error}
+          <div role="alert" className="alert alert-danger" style={{ marginBottom: '1rem' }}>
+            <ExclamationCircleIcon />
+            <span>{error}</span>
           </div>
         )}
 
-        <div className="card" style={{ overflow: 'hidden' }}>
-          <div className="table-scroll">
-            <table className="tbl">
-              <thead>
-                <tr>
-                  <th>{t('Usuario', 'User')}</th>
-                  <th>Email</th>
-                  <th>{t('Activo desde', 'Active since')}</th>
-                  <th style={{ textAlign: 'right' }}>{t('Acciones', 'Actions')}</th>
-                </tr>
-              </thead>
-              <tbody>
-                {loading ? (
-                  <SkeletonRows rows={4} columns={4} />
-                ) : users.length > 0 ? users.map(u => (
-                  <tr key={u.id}>
-                    <td style={{ fontWeight: 600, color: 'var(--text-primary)' }}>{u.username}</td>
-                    <td style={{ color: 'var(--text-secondary)' }}>{u.email}</td>
-                    <td style={{ color: 'var(--text-secondary)', fontSize: '.8rem' }}>
-                      {u.created_at ? new Date(u.created_at).toLocaleDateString(locale) : '—'}
-                    </td>
-                    <td>
-                      <div style={{ display: 'flex', justifyContent: 'flex-end', gap: 4 }}>
-                        <button
-                          type="button"
-                          onClick={() => handleDelete(u)}
-                          disabled={busyId === u.id}
-                          aria-label={t(`Desactivar usuario ${u.username}`, `Deactivate user ${u.username}`)}
-                          title={t(`Desactivar usuario ${u.username}`, `Deactivate user ${u.username}`)}
-                          style={{
-                            display: 'flex', alignItems: 'center',
-                            padding: '.375rem',
-                            borderRadius: 'var(--radius)',
-                            background: 'var(--surface-3)',
-                            color: 'var(--danger)',
-                            border: 'none',
-                            opacity: busyId === u.id ? .5 : 1,
-                            transition: 'all .15s',
-                          }}
-                        >
-                          <TrashIcon className="w-4 h-4" aria-hidden="true" />
-                        </button>
-                      </div>
-                    </td>
-                  </tr>
-                )) : (
-                  <tr>
-                    <td colSpan={4}>
-                      <EmptyState
-                        icon={<UserGroupIcon />}
-                        title={t('Todavía no agregaste empleados', 'You haven’t added employees yet')}
-                        description={t(
-                          'Sumá a la gente que atiende en tu óptica para que pueda usar OpticApp con su propio usuario.',
-                          'Add the people who work at your store so they can use OpticApp with their own login.',
-                        )}
-                        actionLabel={t('Agregar el primer usuario', 'Add the first user')}
-                        onAction={() => setShowModal(true)}
-                      />
-                    </td>
-                  </tr>
-                )}
-              </tbody>
-            </table>
-          </div>
-        </div>
+        <DataTable
+          rows={users}
+          columns={columns}
+          rowKey={u => u.id}
+          loading={loading}
+          skeletonRows={4}
+          actionsLabel={t('Acciones', 'Actions')}
+          actions={u => (
+            <button
+              type="button"
+              className="btn-icon sm is-danger"
+              onClick={() => handleDelete(u)}
+              disabled={busyId === u.id}
+              aria-label={t(`Desactivar usuario ${u.username}`, `Deactivate user ${u.username}`)}
+              title={t(`Desactivar usuario ${u.username}`, `Deactivate user ${u.username}`)}
+            >
+              <TrashIcon aria-hidden="true" />
+            </button>
+          )}
+          empty={
+            <EmptyState
+              icon={<UserGroupIcon />}
+              title={t('Todavía no agregaste empleados', 'You haven’t added employees yet')}
+              description={t(
+                'Sumá a la gente que atiende en tu óptica para que pueda usar OpticApp con su propio usuario.',
+                'Add the people who work at your store so they can use OpticApp with their own login.',
+              )}
+              actionLabel={t('Agregar el primer usuario', 'Add the first user')}
+              onAction={() => setShowModal(true)}
+            />
+          }
+        />
       </div>
 
       <Modal
@@ -216,8 +199,8 @@ const TeamPage: React.FC = () => {
           </>
         }
       >
-        <div>
-          <label htmlFor="team-username" style={{ display: 'block', marginBottom: '.375rem' }}>{t('Usuario *', 'Username *')}</label>
+        <div className="field">
+          <label htmlFor="team-username">{t('Usuario *', 'Username *')}</label>
           <input
             id="team-username"
             type="text"
@@ -227,8 +210,8 @@ const TeamPage: React.FC = () => {
             placeholder={t('Ej: juan.perez', 'E.g. john.smith')}
           />
         </div>
-        <div>
-          <label htmlFor="team-email" style={{ display: 'block', marginBottom: '.375rem' }}>Email *</label>
+        <div className="field">
+          <label htmlFor="team-email">Email *</label>
           <input
             id="team-email"
             type="email"
@@ -238,8 +221,8 @@ const TeamPage: React.FC = () => {
             placeholder={t('email@ejemplo.com', 'email@example.com')}
           />
         </div>
-        <div>
-          <label htmlFor="team-password" style={{ display: 'block', marginBottom: '.375rem' }}>{t('Contraseña *', 'Password *')}</label>
+        <div className="field">
+          <label htmlFor="team-password">{t('Contraseña *', 'Password *')}</label>
           <input
             id="team-password"
             type="password"

@@ -6,7 +6,8 @@ import { useLanguage } from '../contexts/LanguageContext';
 import Modal from '../components/Modal';
 import EmptyState from '../components/EmptyState';
 import LangToggle from '../components/LangToggle';
-import { SkeletonRows } from '../components/Skeleton';
+import PageHeader from '../components/PageHeader';
+import DataTable, { Column } from '../components/DataTable';
 import { adminService } from '../services/admin';
 import { UserRequest, User } from '../types';
 import {
@@ -21,6 +22,7 @@ import {
   EyeSlashIcon,
   CalendarDaysIcon,
   TrashIcon,
+  ExclamationCircleIcon,
 } from '@heroicons/react/24/outline';
 
 function daysUntil(dateStr: string | null | undefined): number | null {
@@ -191,43 +193,77 @@ const AdminRequestsPage: React.FC = () => {
   const processed = requests.filter(r => r.status !== 'pending');
   const nonAdminUsers = users.filter(u => u.role !== 'admin');
 
+  const expiryOf = (u: User) => (u.license_type === 'trial' ? u.trial_expires_at : u.license_expires_at);
+
   // Usuarios con licencia próxima a vencer (≤ 7 días) o vencida
   const expiringUsers = nonAdminUsers.filter(u => {
-    const expiry = u.license_type === 'trial' ? u.trial_expires_at : u.license_expires_at;
-    const days = daysUntil(expiry);
+    const days = daysUntil(expiryOf(u));
     return days !== null && days <= 7;
   });
-
-  const tableHead = (
-    <thead>
-      <tr>
-        <th>{t('Usuario', 'User')}</th>
-        <th>{t('Óptica', 'Store')}</th>
-        <th>{t('Solicitado', 'Requested')}</th>
-        <th>{t('Revisado por', 'Reviewed by')}</th>
-        <th>{t('Estado', 'Status')}</th>
-      </tr>
-    </thead>
-  );
-
   const expiringCount = expiringUsers.length;
 
-  return (
-    <div style={{ minHeight: '100vh', background: 'var(--surface-2)' }}>
-      {/* Topbar */}
-      <header style={{ background: 'var(--surface)', borderBottom: '1px solid var(--border)', position: 'sticky', top: 0, zIndex: 40 }}>
-        <div className="max-w-5xl mx-auto px-4 sm:px-6" style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', height: 56 }}>
-          <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
-            <img src="/logo.png" alt="OpticApp" style={{ width: 50, height: 50, objectFit: 'contain' }} />
-            <div>
-              <span style={{ fontWeight: 800, fontSize: '.95rem', color: 'var(--text-primary)' }}>OpticApp</span>
-              <span className="badge badge-blue" style={{ marginLeft: 8 }}>Admin</span>
+  const who = (name: string, email?: string | null) => (
+    <div style={{ minWidth: 0 }}>
+      <p className="who-name" style={{ fontSize: '.875rem' }}>{name}</p>
+      {email && <p className="who-sub">{email}</p>}
+    </div>
+  );
+
+  const historyColumns: Column<UserRequest>[] = [
+    { key: 'user', header: t('Usuario', 'User'), mobile: 'primary', render: r => who(r.username, r.email) },
+    { key: 'optics', header: t('Óptica', 'Store'), render: r => <span className="cell-secondary">{r.optics_name}</span> },
+    { key: 'requested', header: t('Solicitado', 'Requested'), render: r => <span className="cell-muted">{formatDate(r.requested_at, locale)}</span> },
+    { key: 'reviewer', header: t('Revisado por', 'Reviewed by'), render: r => <span className="cell-secondary">{r.reviewer_username || '—'}</span> },
+    { key: 'status', header: t('Estado', 'Status'), render: r => <StatusBadge status={r.status} /> },
+  ];
+
+  const userColumns: Column<User>[] = [
+    { key: 'user', header: t('Usuario', 'User'), mobile: 'primary', render: u => who(u.username, u.email) },
+    { key: 'license', header: t('Licencia', 'License'), render: u => <LicenseTypeBadge type={u.license_type} /> },
+    {
+      key: 'expiry',
+      header: t('Vencimiento', 'Expires'),
+      render: u => {
+        const days = daysUntil(expiryOf(u));
+        const isExpired = days !== null && days < 0;
+        const isUrgent = days !== null && days >= 0 && days <= 3;
+        const tone = isExpired ? 'var(--danger-text)' : isUrgent ? 'var(--warning-text)' : undefined;
+        return (
+          <div>
+            <div style={{ fontSize: '.85rem', fontWeight: 650, color: tone || 'var(--text-primary)' }}>
+              {formatDate(expiryOf(u), locale)}
             </div>
+            {days !== null && (
+              <div style={{ fontSize: '.72rem', color: tone || 'var(--text-muted)', fontWeight: tone ? 650 : 400 }}>
+                {isExpired
+                  ? t('Vencida', 'Expired')
+                  : days === 0 ? t('Vence hoy', 'Expires today') : t(`${days}d restantes`, `${days}d left`)}
+              </div>
+            )}
           </div>
-          <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
+        );
+      },
+    },
+  ];
+
+  return (
+    <div className="app-shell">
+      <header className="app-header">
+        <div className="topbar max-w-5xl mx-auto">
+          <div className="topbar-side">
+            <span className="brand">
+              <img src="/logo.png" alt="OpticApp" />
+              <span>OpticApp</span>
+            </span>
+            <span className="badge badge-violet">Admin</span>
+          </div>
+          <div className="topbar-side">
             <LangToggle lang={lang} onChange={setLang} label={t('Idioma', 'Language')} />
-            <span className="hidden sm:inline" style={{ fontSize: '.8rem', color: 'var(--text-secondary)' }}>{user?.username}</span>
-            <button onClick={logout} className="btn btn-ghost" style={{ fontSize: '.8rem', padding: '.4rem .75rem' }}>
+            <span className="user-pill hidden sm:inline-flex" style={{ cursor: 'default' }}>
+              <span className="avatar grad sm">{user?.username?.charAt(0).toUpperCase()}</span>
+              <span>{user?.username}</span>
+            </span>
+            <button onClick={logout} className="btn btn-ghost btn-sm">
               <ArrowRightOnRectangleIcon className="w-4 h-4" />
               {t('Salir', 'Log out')}
             </button>
@@ -235,35 +271,22 @@ const AdminRequestsPage: React.FC = () => {
         </div>
       </header>
 
-      <main className="max-w-5xl mx-auto px-4 sm:px-6 py-6 fade-in">
+      <main className="max-w-5xl mx-auto px-4 sm:px-6 py-7 fade-in">
 
         {/* Alerta de licencias por vencer */}
         {!loading && expiringCount > 0 && (
-          <div
-            role="status"
-            style={{
-              background: 'var(--surface)',
-              border: '1px solid var(--border)',
-              borderLeft: '4px solid var(--warning)',
-              borderRadius: 'var(--radius)',
-              boxShadow: 'var(--shadow-sm)',
-              padding: '.875rem 1.125rem',
-              marginBottom: '1.25rem',
-              display: 'flex', alignItems: 'flex-start', gap: 10,
-            }}
-          >
-            <ClockIcon style={{ width: 18, height: 18, flexShrink: 0, color: 'var(--warning)' }} aria-hidden="true" />
+          <div role="status" className="notice" style={{ marginBottom: '1.25rem' }}>
+            <ClockIcon aria-hidden="true" />
             <div>
-              <p style={{ margin: '0 0 4px', fontWeight: 700, fontSize: '.875rem', color: 'var(--text-primary)' }}>
+              <p className="notice-title">
                 {t(
                   `${expiringCount} usuario${expiringCount !== 1 ? 's' : ''} con licencia próxima a vencer`,
                   `${expiringCount} user${expiringCount !== 1 ? 's' : ''} with a license about to expire`,
                 )}
               </p>
-              <p style={{ margin: 0, fontSize: '.8rem', color: 'var(--text-secondary)' }}>
+              <p className="notice-text">
                 {expiringUsers.map(u => {
-                  const expiry = u.license_type === 'trial' ? u.trial_expires_at : u.license_expires_at;
-                  const days = daysUntil(expiry);
+                  const days = daysUntil(expiryOf(u));
                   const status = days !== null && days < 0
                     ? t('vencida', 'expired')
                     : days === 0 ? t('vence hoy', 'expires today') : `${days}d`;
@@ -274,57 +297,34 @@ const AdminRequestsPage: React.FC = () => {
           </div>
         )}
 
-        {/* Header */}
-        <div className="page-header">
-          <div>
-            <h1 className="page-title">{t('Solicitudes de acceso', 'Access requests')}</h1>
-            <p className="page-subtitle">
-              {t(
-                `${pending.length} pendiente${pending.length !== 1 ? 's' : ''} · ${processed.length} procesada${processed.length !== 1 ? 's' : ''}`,
-                `${pending.length} pending · ${processed.length} processed`,
-              )}
-            </p>
-          </div>
-          <button className="btn btn-ghost" onClick={loadAll} disabled={loading} style={{ fontSize: '.8rem' }}>
-            <ArrowPathIcon className="w-4 h-4" />
-            {t('Actualizar', 'Refresh')}
-          </button>
-        </div>
+        <PageHeader
+          eyebrow={t('Administración', 'Administration')}
+          title={t('Solicitudes de acceso', 'Access requests')}
+          subtitle={t(
+            `${pending.length} pendiente${pending.length !== 1 ? 's' : ''} · ${processed.length} procesada${processed.length !== 1 ? 's' : ''}`,
+            `${pending.length} pending · ${processed.length} processed`,
+          )}
+          actions={
+            <button className="btn btn-ghost" onClick={loadAll} disabled={loading}>
+              <ArrowPathIcon className="w-4 h-4" />
+              {t('Actualizar', 'Refresh')}
+            </button>
+          }
+        />
 
         {error && (
-          <div
-            role="alert"
-            style={{
-              background: 'var(--surface)',
-              border: '1px solid var(--border)',
-              borderLeft: '4px solid var(--danger)',
-              borderRadius: 'var(--radius)',
-              padding: '.75rem 1rem',
-              marginBottom: '1.25rem',
-              color: 'var(--danger)',
-              fontSize: '.875rem',
-              fontWeight: 600,
-            }}
-          >
-            {error}
+          <div role="alert" className="alert alert-danger" style={{ marginBottom: '1.25rem' }}>
+            <ExclamationCircleIcon />
+            <span>{error}</span>
           </div>
         )}
 
         {loading ? (
-          <div className="card" style={{ overflow: 'hidden' }}>
-            <div className="table-scroll">
-              <table className="tbl">
-                {tableHead}
-                <tbody>
-                  <SkeletonRows rows={4} columns={5} />
-                </tbody>
-              </table>
-            </div>
-          </div>
+          <DataTable rows={[]} columns={historyColumns} rowKey={r => r.id} loading skeletonRows={4} />
         ) : (
-          <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
+          <div style={{ display: 'flex', flexDirection: 'column', gap: '1.5rem' }}>
             {/* Pendientes */}
-            <div>
+            <section>
               <div className="section-title">{t('Pendientes', 'Pending')}</div>
               {pending.length > 0 ? (
                 <div style={{ display: 'flex', flexDirection: 'column', gap: '.625rem' }}>
@@ -351,122 +351,55 @@ const AdminRequestsPage: React.FC = () => {
                   />
                 </div>
               )}
-            </div>
+            </section>
 
             {/* Historial */}
             {processed.length > 0 && (
-              <div>
+              <section>
                 <div className="section-title">{t('Historial', 'History')}</div>
-                <div className="card" style={{ overflow: 'hidden' }}>
-                  <div className="table-scroll">
-                    <table className="tbl">
-                      {tableHead}
-                      <tbody>
-                        {processed.map(req => (
-                          <tr key={req.id}>
-                            <td>
-                              <div style={{ fontWeight: 600, fontSize: '.875rem' }}>{req.username}</div>
-                              <div style={{ fontSize: '.75rem', color: 'var(--text-muted)' }}>{req.email}</div>
-                            </td>
-                            <td style={{ fontSize: '.875rem', color: 'var(--text-secondary)' }}>{req.optics_name}</td>
-                            <td style={{ fontSize: '.8rem', color: 'var(--text-muted)' }}>
-                              {formatDate(req.requested_at, locale)}
-                            </td>
-                            <td style={{ fontSize: '.8rem', color: 'var(--text-secondary)' }}>
-                              {req.reviewer_username || '—'}
-                            </td>
-                            <td>
-                              <StatusBadge status={req.status} />
-                            </td>
-                          </tr>
-                        ))}
-                      </tbody>
-                    </table>
-                  </div>
-                </div>
-              </div>
+                <DataTable rows={processed} columns={historyColumns} rowKey={r => r.id} />
+              </section>
             )}
-          </div>
-        )}
 
-        {/* Sección usuarios con licencias */}
-        {!loading && nonAdminUsers.length > 0 && (
-          <div style={{ marginTop: '2rem' }}>
-            <div className="section-title">{t('Usuarios y licencias', 'Users and licenses')}</div>
-            <div className="card" style={{ overflow: 'hidden' }}>
-              <div className="table-scroll">
-                <table className="tbl">
-                  <thead>
-                    <tr>
-                      <th>{t('Usuario', 'User')}</th>
-                      <th>{t('Licencia', 'License')}</th>
-                      <th>{t('Vencimiento', 'Expires')}</th>
-                      <th style={{ textAlign: 'right' }}>{t('Acciones', 'Actions')}</th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {nonAdminUsers.map(u => {
-                      const expiry = u.license_type === 'trial' ? u.trial_expires_at : u.license_expires_at;
-                      const days = daysUntil(expiry);
-                      const isExpired = days !== null && days < 0;
-                      const isUrgent = days !== null && days >= 0 && days <= 3;
-                      const rowColor = isExpired ? 'var(--danger)' : isUrgent ? 'var(--warning)' : null;
-                      const busy = busyUserId === u.id;
-
-                      return (
-                        <tr key={u.id}>
-                          <td>
-                            <div style={{ fontWeight: 600, fontSize: '.875rem' }}>{u.username}</div>
-                            <div style={{ fontSize: '.75rem', color: 'var(--text-muted)' }}>{u.email}</div>
-                          </td>
-                          <td>
-                            <LicenseTypeBadge type={u.license_type} />
-                          </td>
-                          <td>
-                            <div style={{ fontSize: '.85rem', fontWeight: 600, color: rowColor || 'var(--text-primary)' }}>
-                              {formatDate(expiry, locale)}
-                            </div>
-                            {days !== null && (
-                              <div style={{ fontSize: '.72rem', color: rowColor || 'var(--text-muted)', fontWeight: rowColor ? 600 : 400 }}>
-                                {isExpired
-                                  ? t('Vencida', 'Expired')
-                                  : days === 0 ? t('Vence hoy', 'Expires today') : t(`${days}d restantes`, `${days}d left`)}
-                              </div>
-                            )}
-                          </td>
-                          <td>
-                            <div style={{ display: 'flex', gap: 6, justifyContent: 'flex-end' }}>
-                              <button
-                                type="button"
-                                className="btn btn-ghost"
-                                onClick={() => handleExtend(u)}
-                                disabled={busy}
-                                aria-label={t(`Extender un mes la licencia de ${u.username}`, `Extend ${u.username}’s license by one month`)}
-                                style={{ fontSize: '.78rem', padding: '.4rem .75rem' }}
-                              >
-                                <CalendarDaysIcon style={{ width: 13, height: 13 }} aria-hidden="true" />
-                                {busy ? t('Aplicando…', 'Applying…') : t('+1 mes', '+1 month')}
-                              </button>
-                              <button
-                                type="button"
-                                className="btn btn-ghost"
-                                onClick={() => openEdit(u)}
-                                disabled={busy}
-                                aria-label={t(`Editar usuario ${u.username}`, `Edit user ${u.username}`)}
-                                style={{ fontSize: '.78rem', padding: '.4rem .75rem' }}
-                              >
-                                <KeyIcon style={{ width: 13, height: 13 }} aria-hidden="true" />
-                                {t('Editar', 'Edit')}
-                              </button>
-                            </div>
-                          </td>
-                        </tr>
-                      );
-                    })}
-                  </tbody>
-                </table>
-              </div>
-            </div>
+            {/* Usuarios con licencias */}
+            {nonAdminUsers.length > 0 && (
+              <section>
+                <div className="section-title">{t('Usuarios y licencias', 'Users and licenses')}</div>
+                <DataTable
+                  rows={nonAdminUsers}
+                  columns={userColumns}
+                  rowKey={u => u.id}
+                  actionsLabel={t('Acciones', 'Actions')}
+                  actions={u => {
+                    const busy = busyUserId === u.id;
+                    return (
+                      <>
+                        <button
+                          type="button"
+                          className="btn btn-ghost btn-sm"
+                          onClick={() => handleExtend(u)}
+                          disabled={busy}
+                          aria-label={t(`Extender un mes la licencia de ${u.username}`, `Extend ${u.username}’s license by one month`)}
+                        >
+                          <CalendarDaysIcon style={{ width: 13, height: 13 }} aria-hidden="true" />
+                          {busy ? t('Aplicando…', 'Applying…') : t('+1 mes', '+1 month')}
+                        </button>
+                        <button
+                          type="button"
+                          className="btn btn-ghost btn-sm"
+                          onClick={() => openEdit(u)}
+                          disabled={busy}
+                          aria-label={t(`Editar usuario ${u.username}`, `Edit user ${u.username}`)}
+                        >
+                          <KeyIcon style={{ width: 13, height: 13 }} aria-hidden="true" />
+                          {t('Editar', 'Edit')}
+                        </button>
+                      </>
+                    );
+                  }}
+                />
+              </section>
+            )}
           </div>
         )}
       </main>
@@ -500,10 +433,8 @@ const AdminRequestsPage: React.FC = () => {
           </>
         }
       >
-        <div>
-          <label htmlFor="edit-username" style={{ display: 'block', marginBottom: '.375rem', fontSize: '.875rem', fontWeight: 600 }}>
-            {t('Nombre de usuario', 'Username')}
-          </label>
+        <div className="field">
+          <label htmlFor="edit-username">{t('Nombre de usuario', 'Username')}</label>
           <input
             id="edit-username"
             type="text"
@@ -513,13 +444,11 @@ const AdminRequestsPage: React.FC = () => {
             onChange={e => setEditUsername(e.target.value.replace(/\s/g, ''))}
             placeholder={t('Sin espacios', 'No spaces')}
           />
-          <p style={{ margin: '.25rem 0 0', fontSize: '.75rem', color: 'var(--text-muted)' }}>
-            {t('Los espacios se eliminan automáticamente.', 'Spaces are removed automatically.')}
-          </p>
+          <p className="hint">{t('Los espacios se eliminan automáticamente.', 'Spaces are removed automatically.')}</p>
         </div>
 
-        <div>
-          <label htmlFor="edit-password" style={{ display: 'block', marginBottom: '.375rem', fontSize: '.875rem', fontWeight: 600 }}>
+        <div className="field">
+          <label htmlFor="edit-password">
             {t('Nueva contraseña', 'New password')} <span style={{ fontWeight: 400, color: 'var(--text-muted)' }}>({t('opcional', 'optional')})</span>
           </label>
           <div style={{ position: 'relative' }}>
@@ -586,78 +515,47 @@ const RequestCard: React.FC<{
 }> = ({ req, busy, blocked, onApprove, onReject }) => {
   const { t, locale } = useLanguage();
   return (
-    <div style={{
-      background: 'var(--surface)',
-      border: '1px solid var(--border)',
-      borderRadius: 'var(--radius-lg)',
-      padding: '1.125rem 1.25rem',
-      display: 'flex', alignItems: 'center', gap: '1rem',
-      boxShadow: 'var(--shadow-sm)',
-    }}>
-      <div style={{
-        width: 42, height: 42, borderRadius: 99, flexShrink: 0,
-        background: 'linear-gradient(135deg, #e0e7ff, #c7d2fe)',
-        display: 'flex', alignItems: 'center', justifyContent: 'center',
-        fontWeight: 800, fontSize: '.9rem', color: '#4338ca',
-      }} aria-hidden="true">
-        {req.username.charAt(0).toUpperCase()}
-      </div>
+    <article className="request-card">
+      <span className="avatar grad" aria-hidden="true">{req.username.charAt(0).toUpperCase()}</span>
 
-      <div style={{ flex: 1, minWidth: 0 }}>
+      <div className="request-main">
         <div style={{ display: 'flex', alignItems: 'baseline', gap: 8, flexWrap: 'wrap' }}>
-          <span style={{ fontWeight: 700, fontSize: '.9rem', color: 'var(--text-primary)' }}>{req.username}</span>
-          <span style={{ fontSize: '.75rem', color: 'var(--text-muted)' }}>{req.email}</span>
+          <span className="who-name">{req.username}</span>
+          <span className="who-sub">{req.email}</span>
         </div>
         <div style={{ fontSize: '.8rem', color: 'var(--text-secondary)', marginTop: 2 }}>
           {t('Óptica', 'Store')}: <strong style={{ color: 'var(--text-primary)' }}>{req.optics_name}</strong>
           <span style={{ margin: '0 6px', color: 'var(--text-muted)' }}>·</span>
-          <span style={{ color: 'var(--text-muted)' }}>
-            {formatDate(req.requested_at, locale)}
-          </span>
+          <span className="cell-muted">{formatDate(req.requested_at, locale)}</span>
         </div>
       </div>
 
-      <div style={{ display: 'flex', gap: '.5rem', flexShrink: 0 }}>
+      <div className="request-actions">
         <button
           type="button"
+          className="btn btn-sm btn-reject"
           onClick={onReject}
           disabled={blocked}
           aria-label={t(`Rechazar solicitud de ${req.username}`, `Reject ${req.username}’s request`)}
-          style={{
-            padding: '.5rem .875rem',
-            background: 'var(--surface)', color: 'var(--danger)',
-            border: '1px solid var(--danger)', borderRadius: 'var(--radius)',
-            fontWeight: 600, fontSize: '.8rem',
-            transition: 'all .15s', opacity: blocked ? .6 : 1,
-            display: 'flex', alignItems: 'center', gap: 4,
-          }}
         >
           <XCircleIcon style={{ width: 14, height: 14 }} aria-hidden="true" />
           {busy === 'reject' ? t('Rechazando…', 'Rejecting…') : t('Rechazar', 'Reject')}
         </button>
         <button
           type="button"
+          className="btn btn-sm btn-approve"
           onClick={onApprove}
           disabled={blocked}
           aria-label={t(
             `Aprobar solicitud de ${req.username} y darle un mes de licencia`,
             `Approve ${req.username}’s request and grant one month of license`,
           )}
-          style={{
-            padding: '.5rem .875rem',
-            background: 'var(--success)', color: '#fff',
-            border: 'none', borderRadius: 'var(--radius)',
-            fontWeight: 600, fontSize: '.8rem',
-            transition: 'all .15s', opacity: blocked ? .6 : 1,
-            display: 'flex', alignItems: 'center', gap: 4,
-            boxShadow: blocked ? 'none' : 'var(--shadow-sm)',
-          }}
         >
           <CheckCircleIcon style={{ width: 14, height: 14 }} aria-hidden="true" />
           {busy === 'approve' ? t('Aprobando…', 'Approving…') : t('Aprobar (+1 mes)', 'Approve (+1 month)')}
         </button>
       </div>
-    </div>
+    </article>
   );
 };
 

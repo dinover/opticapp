@@ -1,13 +1,19 @@
 import React, { useState } from 'react';
 import { Link } from 'react-router-dom';
 import { authService } from '../services/auth';
-import { CheckCircleIcon, GiftIcon } from '@heroicons/react/24/outline';
+import { CheckCircleIcon, GiftIcon, ExclamationCircleIcon } from '@heroicons/react/24/outline';
 import LangToggle from '../components/LangToggle';
+import AuthBackdrop from '../components/AuthBackdrop';
 import { AUTH_COPY, type RegisterErrorKey } from '../i18n/auth';
 import { useLanguage } from '../contexts/LanguageContext';
 
 /** Error de validación propio (se traduce por clave) o mensaje del servidor (ya traducido por api.ts). */
 type FormError = { key: RegisterErrorKey } | { server: string } | null;
+
+const screenStyle: React.CSSProperties = {
+  minHeight: '100vh', display: 'flex', alignItems: 'center', justifyContent: 'center',
+  background: 'var(--canvas)', padding: '2rem', position: 'relative', overflow: 'hidden',
+};
 
 const RequestUserPage: React.FC = () => {
   const [formData, setFormData] = useState({
@@ -53,119 +59,82 @@ const RequestUserPage: React.FC = () => {
   );
 
   if (success) return (
-    <div style={{ minHeight: '100vh', display: 'flex', alignItems: 'center', justifyContent: 'center', background: 'var(--surface-2)', padding: '2rem', position: 'relative' }}>
+    <div className="auth-screen" style={screenStyle}>
+      <AuthBackdrop />
       {langToggle}
-      <div style={{ maxWidth: 420, textAlign: 'center' }}>
-        <div style={{ width: 64, height: 64, borderRadius: 99, background: 'var(--surface-3)', display: 'flex', alignItems: 'center', justifyContent: 'center', margin: '0 auto 1.25rem' }}>
-          <CheckCircleIcon style={{ width: 32, height: 32, color: 'var(--success)' }} />
+      <div className="auth-card auth-card-glass" style={{ maxWidth: 440, padding: '2.5rem', textAlign: 'center', position: 'relative', zIndex: 1 }}>
+        <div className="status-icon" style={{ background: 'color-mix(in srgb, var(--success) 12%, transparent)', color: 'var(--success-text)' }}>
+          <CheckCircleIcon style={{ width: 32, height: 32 }} />
         </div>
-        <h2 style={{ fontWeight: 800, fontSize: '1.375rem', color: 'var(--text-primary)', margin: '0 0 .75rem' }}>
-          {t.successTitle}
-        </h2>
-        <p style={{ color: 'var(--text-secondary)', lineHeight: 1.7, margin: '0 0 1.75rem', fontSize: '.9rem' }}>
+        <h2 className="auth-title">{t.successTitle}</h2>
+        <p className="auth-sub" style={{ marginBottom: '1.75rem' }}>
           {t.successBefore} <strong style={{ color: 'var(--text-primary)' }}>{t.successStrong}</strong> {t.successAfter}
         </p>
-        <Link to="/login" style={{
-          display: 'inline-flex', alignItems: 'center', justifyContent: 'center',
-          padding: '.75rem 1.5rem', background: 'var(--brand)', color: '#fff',
-          fontWeight: 700, borderRadius: 10, textDecoration: 'none', fontSize: '.9rem',
-        }}>
-          {t.successCta}
-        </Link>
+        <Link to="/login" className="btn btn-cta">{t.successCta}</Link>
       </div>
     </div>
   );
 
   return (
-    <div className="auth-screen" style={{ minHeight: '100vh', display: 'flex', alignItems: 'center', justifyContent: 'center', background: 'var(--surface-2)', padding: '2rem', position: 'relative', overflow: 'hidden' }}>
+    <div className="auth-screen" style={screenStyle}>
+      <AuthBackdrop />
       {langToggle}
 
-      {/* Fondo decorativo. Usa un token para que en modo oscuro sea un halo
-          apenas más claro que el fondo y no una mancha blanca. */}
-      <div style={{ position: 'absolute', inset: 0, pointerEvents: 'none', background: 'radial-gradient(ellipse 80% 60% at 60% -10%, var(--surface-3) 0%, transparent 70%)' }} />
-
-      <div className="auth-card" style={{ width: '100%', maxWidth: 460, background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: 20, padding: '2.5rem', boxShadow: '0 8px 32px rgba(15,23,42,.08)', position: 'relative' }}>
-        {/* Logo */}
-        <Link to="/" style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: '2rem', textDecoration: 'none', width: 'fit-content' }}>
-          <img src="/logo.png" alt="OpticApp" style={{ width: 50, height: 50, objectFit: 'contain' }} />
-          <span style={{ fontWeight: 800, color: 'var(--text-primary)' }}>OpticApp</span>
+      <div className="auth-card auth-card-glass" style={{ width: '100%', maxWidth: 470, padding: '2.5rem', position: 'relative', zIndex: 1 }}>
+        <Link to="/" className="brand" style={{ marginBottom: '1.75rem', width: 'fit-content' }}>
+          <img src="/logo.png" alt="OpticApp" />
+          <span>OpticApp</span>
         </Link>
 
-        <h2 style={{ fontWeight: 800, fontSize: '1.375rem', color: 'var(--text-primary)', margin: '0 0 .375rem' }}>{t.title}</h2>
-        <p style={{ color: 'var(--text-secondary)', fontSize: '.875rem', marginBottom: '1rem', lineHeight: 1.5 }}>
-          {t.sub}
-        </p>
+        <h2 className="auth-title">{t.title}</h2>
+        <p className="auth-sub" style={{ marginBottom: '1rem' }}>{t.sub}</p>
 
         {/* Aviso de la prueba gratis: la cuenta nace en modo trial (ver TRIAL_DAYS en el backend) */}
-        <div style={{
-          display: 'flex', alignItems: 'center', gap: 10,
-          padding: '.7rem .9rem', marginBottom: '1.5rem',
-          borderRadius: 12, fontSize: '.84rem', lineHeight: 1.45,
-          background: 'color-mix(in srgb, var(--brand) 9%, transparent)',
-          border: '1px solid color-mix(in srgb, var(--brand) 25%, transparent)',
-          color: 'var(--text-secondary)',
-        }}>
-          <GiftIcon style={{ width: 20, height: 20, color: 'var(--brand-light)', flexShrink: 0 }} />
-          <span>
-            <strong style={{ color: 'var(--text-primary)' }}>{t.trialStrong}</strong> {t.trialRest}
-          </span>
+        <div className="trial-callout">
+          <GiftIcon />
+          <span><strong>{t.trialStrong}</strong> {t.trialRest}</span>
         </div>
 
         {error && (
-          <div role="alert" style={{ background: 'var(--surface-2)', border: '1px solid var(--danger)', borderRadius: 10, padding: '.75rem 1rem', marginBottom: '1.25rem', fontSize: '.875rem', color: 'var(--danger)', display: 'flex', gap: 8 }}>
-            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" style={{ flexShrink: 0, marginTop: 1 }}>
-              <circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/>
-            </svg>
-            {errorText}
+          <div role="alert" className="alert alert-danger" style={{ marginBottom: '1.25rem' }}>
+            <ExclamationCircleIcon />
+            <span>{errorText}</span>
           </div>
         )}
 
         <form onSubmit={handleSubmit} style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
-          <div>
-            <label style={{ display: 'block', marginBottom: '.375rem' }}>{t.username}</label>
-            <input type="text" required value={formData.username} onChange={e => set('username', e.target.value)} placeholder={t.usernamePh} />
+          <div className="field">
+            <label htmlFor="register-username">{t.username}</label>
+            <input id="register-username" type="text" required autoComplete="username" value={formData.username} onChange={e => set('username', e.target.value)} placeholder={t.usernamePh} />
           </div>
-          <div>
-            <label style={{ display: 'block', marginBottom: '.375rem' }}>{t.email}</label>
-            <input type="email" required value={formData.email} onChange={e => set('email', e.target.value)} placeholder={t.emailPh} />
+          <div className="field">
+            <label htmlFor="register-email">{t.email}</label>
+            <input id="register-email" type="email" required autoComplete="email" value={formData.email} onChange={e => set('email', e.target.value)} placeholder={t.emailPh} />
           </div>
-          <div>
-            <label style={{ display: 'block', marginBottom: '.375rem' }}>{t.opticsName}</label>
-            <input type="text" required value={formData.optics_name} onChange={e => set('optics_name', e.target.value)} placeholder={t.opticsNamePh} />
+          <div className="field">
+            <label htmlFor="register-optics">{t.opticsName}</label>
+            <input id="register-optics" type="text" required value={formData.optics_name} onChange={e => set('optics_name', e.target.value)} placeholder={t.opticsNamePh} />
           </div>
           <div className="form-grid-2">
-            <div>
-              <label style={{ display: 'block', marginBottom: '.375rem' }}>{t.password}</label>
-              <input type="password" required value={formData.password} onChange={e => set('password', e.target.value)} placeholder={t.passwordPh} />
+            <div className="field">
+              <label htmlFor="register-password">{t.password}</label>
+              <input id="register-password" type="password" required autoComplete="new-password" value={formData.password} onChange={e => set('password', e.target.value)} placeholder={t.passwordPh} />
             </div>
-            <div>
-              <label style={{ display: 'block', marginBottom: '.375rem' }}>{t.confirm}</label>
-              <input type="password" required value={formData.confirmPassword} onChange={e => set('confirmPassword', e.target.value)} placeholder={t.confirmPh} />
+            <div className="field">
+              <label htmlFor="register-confirm">{t.confirm}</label>
+              <input id="register-confirm" type="password" required autoComplete="new-password" value={formData.confirmPassword} onChange={e => set('confirmPassword', e.target.value)} placeholder={t.confirmPh} />
             </div>
           </div>
 
-          <button
-            type="submit"
-            disabled={loading}
-            style={{
-              width: '100%', padding: '.75rem',
-              background: 'var(--brand)', opacity: loading ? .6 : 1,
-              color: '#fff', fontWeight: 700, fontSize: '.9rem',
-              border: 'none', borderRadius: 10,
-              cursor: loading ? 'not-allowed' : 'pointer',
-              marginTop: '.25rem', transition: 'all .15s',
-              boxShadow: loading ? 'none' : '0 4px 12px rgba(79,70,229,.3)',
-              display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8,
-            }}
-          >
-            {loading && <div className="spinner" style={{ width: 16, height: 16, borderWidth: 2 }} />}
+          <button type="submit" disabled={loading} className="btn btn-cta btn-block" style={{ marginTop: '.35rem', padding: '.82rem' }}>
+            {loading && <div className="spinner" style={{ width: 16, height: 16, borderWidth: 2, borderTopColor: '#fff' }} />}
             {loading ? t.submitting : t.submit}
           </button>
         </form>
 
-        <p style={{ textAlign: 'center', marginTop: '1.5rem', fontSize: '.875rem', color: 'var(--text-secondary)' }}>
+        <p className="auth-footnote">
           {t.haveAccount}{' '}
-          <Link to="/login" style={{ color: 'var(--brand)', fontWeight: 600, textDecoration: 'none' }}>{t.login}</Link>
+          <Link to="/login">{t.login}</Link>
         </p>
       </div>
     </div>

@@ -3,8 +3,9 @@ import Layout from '../components/Layout';
 import Pagination from '../components/Pagination';
 import Modal from '../components/Modal';
 import EmptyState from '../components/EmptyState';
-import SortableTh, { SortOrder } from '../components/SortableTh';
-import { SkeletonRows } from '../components/Skeleton';
+import PageHeader from '../components/PageHeader';
+import DataTable, { Column } from '../components/DataTable';
+import { SortOrder } from '../components/SortableTh';
 import SaleReceipt from '../components/SaleReceipt';
 import { salesService } from '../services/sales';
 import { clientsService } from '../services/clients';
@@ -24,9 +25,19 @@ import {
   ShoppingCartIcon,
   ChartBarIcon,
   PrinterIcon,
+  ExclamationCircleIcon,
 } from '@heroicons/react/24/outline';
 
-const TABLE_COLUMNS = 5;
+/**
+ * Columnas de la ficha óptica. `es` es además el sufijo del aria-label en español
+ * ("Ojo derecho esf"), que usan los tests E2E: no cambiar sin actualizarlos.
+ */
+const RX_FIELDS = [
+  { key: 'esf', es: 'esf', en: 'sph', headEs: 'Esf', headEn: 'Sph' },
+  { key: 'cil', es: 'cil', en: 'cyl', headEs: 'Cil', headEn: 'Cyl' },
+  { key: 'eje', es: 'eje', en: 'axis', headEs: 'Eje', headEn: 'Axis' },
+  { key: 'add', es: 'add', en: 'add', headEs: 'Add', headEn: 'Add' },
+] as const;
 
 const SalesPage: React.FC = () => {
   const [sales, setSales]     = useState<PaginatedResponse<Sale> | null>(null);
@@ -36,7 +47,7 @@ const SalesPage: React.FC = () => {
   const [error, setError]     = useState('');
   const [search, setSearch]   = useState('');
   const [page, setPage]       = useState(1);
-  // Sólo `sale_date` y `total_price` son ordenables: ver comentario en el <thead>.
+  // Sólo `sale_date` y `total_price` son ordenables: ver comentario en `columns`.
   const [sortBy, setSortBy]       = useState('sale_date');
   const [sortOrder, setSortOrder] = useState<SortOrder>('DESC');
   const [showModal, setShowModal]           = useState(false);
@@ -92,10 +103,6 @@ const SalesPage: React.FC = () => {
   const { fmt } = useCurrency();
   const fmtDate = (d: string) => new Date(d).toLocaleDateString(locale, { day: '2-digit', month: '2-digit', year: 'numeric' });
   const total = () => saleProducts.reduce((s, i) => s + (Number(i.quantity) || 0) * (Number(i.unit_price) || 0), 0);
-
-  const rxCols = [t('Esf', 'Sph'), t('Cil', 'Cyl'), t('Eje', 'Axis'), 'Add'];
-  const rightEye = t('Ojo derecho', 'Right eye');
-  const leftEye = t('Ojo izquierdo', 'Left eye');
 
   const handleSort = (column: string, order: SortOrder) => {
     setSortBy(column);
@@ -265,165 +272,174 @@ const SalesPage: React.FC = () => {
     setSelProductId(''); setSelQty('1'); setSelPrice('');
   };
 
-  const iconBtn = (color: string): React.CSSProperties => ({
-    padding: '.375rem',
-    borderRadius: 'var(--radius)',
-    background: 'var(--surface-3)',
-    color,
-    border: 'none',
-    cursor: 'pointer',
-    display: 'flex',
-  });
-
   const receiptClient = receiptSale ? clients.find(c => c.id === receiptSale.client_id) : undefined;
   const totalSales = sales?.pagination.total ?? 0;
+
+  // Ordenables sólo las columnas que el backend acepta sin ambigüedad: la lista
+  // blanca de pagination.ts no lleva prefijo de tabla y la query hace JOIN con
+  // clients y optics, que tienen ambas una columna `name`. Por eso "Cliente" no
+  // es ordenable: `ORDER BY name` reventaría la consulta.
+  const columns: Column<Sale>[] = [
+    {
+      key: 'date',
+      header: t('Fecha', 'Date'),
+      sortKey: 'sale_date',
+      mobile: 'secondary',
+      render: s => <span className="mono cell-secondary" style={{ fontSize: '.8rem', whiteSpace: 'nowrap' }}>{fmtDate(s.sale_date)}</span>,
+    },
+    {
+      key: 'client',
+      header: t('Cliente', 'Client'),
+      mobile: 'primary',
+      render: s => (
+        <div className="who">
+          <span className="avatar sm" aria-hidden="true">{(s.client_name || 'C').charAt(0).toUpperCase()}</span>
+          <span className="who-name">{s.client_name || t('Cliente', 'Client')}</span>
+        </div>
+      ),
+    },
+    {
+      key: 'products',
+      header: t('Productos', 'Products'),
+      render: s => {
+        const count = s.products?.length ?? 0;
+        return count > 0 ? (
+          <span className="badge badge-violet">
+            {t(`${count} producto${count > 1 ? 's' : ''}`, `${count} product${count > 1 ? 's' : ''}`)}
+          </span>
+        ) : <span className="cell-muted">—</span>;
+      },
+    },
+    {
+      key: 'total',
+      header: 'Total',
+      sortKey: 'total_price',
+      align: 'right',
+      render: s => <span className="amount is-success">{fmt(Number(s.total_price) || 0)}</span>,
+    },
+  ];
+
+  const eyeRow = (side: 'od' | 'oi') => {
+    const eye = side === 'od' ? t('Ojo derecho', 'Right eye') : t('Ojo izquierdo', 'Left eye');
+    return (
+      <div className="optic-grid">
+        <div className="eye-label">
+          <span className={`eye-tag${side === 'od' ? ' od' : ''}`}>{side === 'od' ? 'OD' : t('OI', 'OS')}</span>
+        </div>
+        {RX_FIELDS.map(f => {
+          const key = `${side}_${f.key}` as keyof typeof formData;
+          return (
+            <input
+              key={key}
+              type="number"
+              step="0.01"
+              value={formData[key]}
+              onChange={e => setFormData({ ...formData, [key]: e.target.value })}
+              placeholder="—"
+              aria-label={t(`${eye} ${f.es}`, `${eye} ${f.en}`)}
+            />
+          );
+        })}
+      </div>
+    );
+  };
 
   return (
     <Layout>
       <div className="fade-in">
-        <div className="page-header">
-          <div>
-            <h1 className="page-title">{t('Ventas', 'Sales')}</h1>
-            <p className="page-subtitle">{t(
-              `${totalSales} venta${totalSales !== 1 ? 's' : ''} registrada${totalSales !== 1 ? 's' : ''}`,
-              `${totalSales} recorded sale${totalSales !== 1 ? 's' : ''}`,
-            )}</p>
-          </div>
-          <button className="btn btn-primary" onClick={openNewSale}>
-            <PlusIcon className="w-4 h-4" />
-            {t('Nueva venta', 'New sale')}
-          </button>
-        </div>
+        <PageHeader
+          eyebrow={t('Mostrador', 'Front desk')}
+          title={t('Ventas', 'Sales')}
+          subtitle={t(
+            `${totalSales} venta${totalSales !== 1 ? 's' : ''} registrada${totalSales !== 1 ? 's' : ''}`,
+            `${totalSales} recorded sale${totalSales !== 1 ? 's' : ''}`,
+          )}
+          actions={
+            <button className="btn btn-cta" onClick={openNewSale}>
+              <PlusIcon className="w-4 h-4" />
+              {t('Nueva venta', 'New sale')}
+            </button>
+          }
+        />
 
-        <div className="search-wrap" style={{ maxWidth: 360, marginBottom: '1.25rem' }}>
-          <MagnifyingGlassIcon className="w-4 h-4" />
-          <input
-            type="text"
-            className="search-input"
-            placeholder={t('Buscar por cliente…', 'Search by client…')}
-            aria-label={t('Buscar ventas por cliente', 'Search sales by client')}
-            value={search}
-            onChange={e => { setSearch(e.target.value); setPage(1); }}
-          />
+        <div className="toolbar">
+          <div className="search-wrap" style={{ maxWidth: 360, flex: 1 }}>
+            <MagnifyingGlassIcon className="w-4 h-4" />
+            <input
+              type="text"
+              className="search-input"
+              placeholder={t('Buscar por cliente…', 'Search by client…')}
+              aria-label={t('Buscar ventas por cliente', 'Search sales by client')}
+              value={search}
+              onChange={e => { setSearch(e.target.value); setPage(1); }}
+            />
+          </div>
         </div>
 
         {error && (
-          <div role="alert" style={{
-            background: 'var(--surface-2)', border: '1px solid var(--danger)',
-            borderRadius: 'var(--radius)', padding: '.75rem 1rem', marginBottom: '1rem',
-            color: 'var(--danger)', fontSize: '.875rem',
-          }}>
-            {error}
+          <div role="alert" className="alert alert-danger" style={{ marginBottom: '1rem' }}>
+            <ExclamationCircleIcon />
+            <span>{error}</span>
           </div>
         )}
 
-        <div className="card" style={{ overflow: 'hidden' }}>
-          <div className="table-scroll">
-            <table className="tbl">
-              <thead>
-                <tr>
-                  {/* Ordenables sólo las columnas que el backend acepta sin
-                      ambigüedad: la lista blanca de pagination.ts no lleva
-                      prefijo de tabla y la query hace JOIN con clients y optics,
-                      que tienen ambas una columna `name`. Por eso "Cliente" no
-                      es ordenable: `ORDER BY name` reventaría la consulta. */}
-                  <SortableTh column="sale_date" sortBy={sortBy} sortOrder={sortOrder} onSort={handleSort}>
-                    {t('Fecha', 'Date')}
-                  </SortableTh>
-                  <th>{t('Cliente', 'Client')}</th>
-                  <th>{t('Productos', 'Products')}</th>
-                  <SortableTh column="total_price" sortBy={sortBy} sortOrder={sortOrder} onSort={handleSort} align="right">
-                    Total
-                  </SortableTh>
-                  <th style={{ textAlign: 'right' }}>{t('Acciones', 'Actions')}</th>
-                </tr>
-              </thead>
-              <tbody>
-                {loading ? (
-                  <SkeletonRows rows={5} columns={TABLE_COLUMNS} />
-                ) : sales?.data && sales.data.length > 0 ? sales.data.map(sale => {
-                  const who = sale.client_name || t('cliente', 'client');
-                  const count = sale.products?.length ?? 0;
-                  return (
-                    <tr key={sale.id}>
-                      <td className="mono" style={{ color: 'var(--text-secondary)', fontSize: '.8rem', whiteSpace: 'nowrap' }}>
-                        {fmtDate(sale.sale_date)}
-                      </td>
-                      <td>
-                        <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-                          <div aria-hidden="true" style={{
-                            width: 30, height: 30, borderRadius: 99,
-                            background: 'var(--surface-3)',
-                            display: 'flex', alignItems: 'center', justifyContent: 'center',
-                            fontWeight: 700, fontSize: '.75rem', color: 'var(--brand)', flexShrink: 0,
-                          }}>
-                            {(sale.client_name || 'C').charAt(0).toUpperCase()}
-                          </div>
-                          <span style={{ fontWeight: 600, fontSize: '.875rem' }}>{sale.client_name || t('Cliente', 'Client')}</span>
-                        </div>
-                      </td>
-                      <td>
-                        {count > 0 ? (
-                          <span className="badge badge-blue">
-                            {t(`${count} producto${count > 1 ? 's' : ''}`, `${count} product${count > 1 ? 's' : ''}`)}
-                          </span>
-                        ) : <span style={{ color: 'var(--text-muted)', fontSize: '.8rem' }}>—</span>}
-                      </td>
-                      <td className="mono" style={{ textAlign: 'right', fontWeight: 700, color: 'var(--success)' }}>
-                        {fmt(Number(sale.total_price) || 0)}
-                      </td>
-                      <td>
-                        <div style={{ display: 'flex', justifyContent: 'flex-end', gap: 4 }}>
-                          <button
-                            onClick={() => setReceiptSale(sale)}
-                            style={iconBtn('var(--text-secondary)')}
-                            aria-label={t(`Ver comprobante de la venta de ${who}`, `View receipt for the sale to ${who}`)}
-                            title={t('Comprobante', 'Receipt')}
-                          >
-                            <PrinterIcon className="w-4 h-4" />
-                          </button>
-                          <button
-                            onClick={() => handleEdit(sale)}
-                            style={iconBtn('var(--brand)')}
-                            aria-label={t(`Editar la venta de ${who}`, `Edit the sale to ${who}`)}
-                            title={t('Editar', 'Edit')}
-                          >
-                            <PencilIcon className="w-4 h-4" />
-                          </button>
-                          <button
-                            onClick={() => handleDelete(sale)}
-                            style={iconBtn('var(--danger)')}
-                            aria-label={t(`Eliminar la venta de ${who}`, `Delete the sale to ${who}`)}
-                            title={t('Eliminar', 'Delete')}
-                          >
-                            <TrashIcon className="w-4 h-4" />
-                          </button>
-                        </div>
-                      </td>
-                    </tr>
-                  );
-                }) : (
-                  <tr><td colSpan={TABLE_COLUMNS}>
-                    <EmptyState
-                      icon={<ChartBarIcon />}
-                      title={t('Todavía no hay ventas', 'No sales yet')}
-                      description={t(
-                        'Registrá la primera venta para empezar a llevar el historial de tus pacientes.',
-                        'Record your first sale to start building your patients’ history.',
-                      )}
-                      actionLabel={t('Nueva venta', 'New sale')}
-                      onAction={openNewSale}
-                      searchTerm={debouncedSearch}
-                    />
-                  </td></tr>
-                )}
-              </tbody>
-            </table>
-          </div>
-          {!loading && sales && sales.pagination.totalPages > 1 && (
+        <DataTable
+          rows={sales?.data ?? []}
+          columns={columns}
+          rowKey={s => s.id}
+          loading={loading}
+          sortBy={sortBy}
+          sortOrder={sortOrder}
+          onSort={handleSort}
+          actionsLabel={t('Acciones', 'Actions')}
+          actions={sale => {
+            const who = sale.client_name || t('cliente', 'client');
+            return (
+              <>
+                <button
+                  className="btn-icon sm"
+                  onClick={() => setReceiptSale(sale)}
+                  aria-label={t(`Ver comprobante de la venta de ${who}`, `View receipt for the sale to ${who}`)}
+                  title={t('Comprobante', 'Receipt')}
+                >
+                  <PrinterIcon />
+                </button>
+                <button
+                  className="btn-icon sm"
+                  onClick={() => handleEdit(sale)}
+                  aria-label={t(`Editar la venta de ${who}`, `Edit the sale to ${who}`)}
+                  title={t('Editar', 'Edit')}
+                >
+                  <PencilIcon />
+                </button>
+                <button
+                  className="btn-icon sm is-danger"
+                  onClick={() => handleDelete(sale)}
+                  aria-label={t(`Eliminar la venta de ${who}`, `Delete the sale to ${who}`)}
+                  title={t('Eliminar', 'Delete')}
+                >
+                  <TrashIcon />
+                </button>
+              </>
+            );
+          }}
+          empty={
+            <EmptyState
+              icon={<ChartBarIcon />}
+              title={t('Todavía no hay ventas', 'No sales yet')}
+              description={t(
+                'Registrá la primera venta para empezar a llevar el historial de tus pacientes.',
+                'Record your first sale to start building your patients’ history.',
+              )}
+              actionLabel={t('Nueva venta', 'New sale')}
+              onAction={openNewSale}
+              searchTerm={debouncedSearch}
+            />
+          }
+          footer={!loading && sales && sales.pagination.totalPages > 1 && (
             <Pagination page={sales.pagination.page} totalPages={sales.pagination.totalPages} onPageChange={setPage} />
           )}
-        </div>
+        />
       </div>
 
       {/* ── Sale Modal ─────────────────────────────────── */}
@@ -438,38 +454,30 @@ const SalesPage: React.FC = () => {
             <button type="button" className="btn btn-ghost" onClick={() => closeModal({ force: true })} disabled={saving}>
               {t('Cancelar', 'Cancel')}
             </button>
-            <button type="submit" className="btn btn-primary" disabled={saving}>
+            <button type="submit" className="btn btn-cta" disabled={saving}>
               {saving ? t('Guardando…', 'Saving…') : editingSale ? t('Guardar cambios', 'Save changes') : t('Crear venta', 'Create sale')}
             </button>
           </>
         }
       >
-        <div style={{ display: 'flex', flexDirection: 'column', gap: '1.25rem' }}>
+        <div style={{ display: 'flex', flexDirection: 'column', gap: '1.35rem' }}>
 
           {/* Cliente + Fecha */}
           <div className="sale-head-grid">
-            <div>
-              <label htmlFor="sale-client" style={{ display: 'block', marginBottom: '.375rem' }}>{t('Cliente *', 'Client *')}</label>
+            <div className="field">
+              <label htmlFor="sale-client">{t('Cliente *', 'Client *')}</label>
               <div style={{ display: 'flex', gap: '.5rem' }}>
                 <select id="sale-client" required value={formData.client_id} onChange={e => setFormData({ ...formData, client_id: e.target.value })} style={{ flex: 1 }}>
                   <option value="">{t('Seleccionar cliente…', 'Select client…')}</option>
                   {clients.map(c => <option key={c.id} value={c.id}>{c.name}</option>)}
                 </select>
-                <button
-                  type="button"
-                  onClick={() => setShowClientModal(true)}
-                  style={{
-                    padding: '.5rem .75rem', background: 'var(--surface-3)', color: 'var(--success)',
-                    border: 'none', borderRadius: 'var(--radius)', cursor: 'pointer', fontWeight: 600,
-                    fontSize: '.8rem', whiteSpace: 'nowrap', display: 'flex', alignItems: 'center', gap: 4,
-                  }}
-                >
+                <button type="button" className="quick-add" onClick={() => setShowClientModal(true)}>
                   <PlusIcon className="w-3.5 h-3.5" /> {t('Nuevo', 'New')}
                 </button>
               </div>
             </div>
-            <div>
-              <label htmlFor="sale-date" style={{ display: 'block', marginBottom: '.375rem' }}>{t('Fecha', 'Date')}</label>
+            <div className="field">
+              <label htmlFor="sale-date">{t('Fecha', 'Date')}</label>
               <input id="sale-date" type="date" required value={formData.sale_date} onChange={e => setFormData({ ...formData, sale_date: e.target.value })} style={{ width: 160 }} />
             </div>
           </div>
@@ -477,45 +485,15 @@ const SalesPage: React.FC = () => {
           {/* ── Ficha óptica ─────────────────────── */}
           <div>
             <div className="section-title">{t('Ficha óptica (opcional)', 'Prescription (optional)')}</div>
-            <div style={{
-              background: 'var(--surface-2)', borderRadius: 'var(--radius)',
-              padding: '1rem', border: '1px solid var(--border)',
-            }}>
-              {/* Header row */}
-              <div className="optic-grid" style={{ marginBottom: '.5rem' }}>
-                <div />
-                {rxCols.map(h => (
-                  <div key={h} className="col-header">{h}</div>
-                ))}
-              </div>
-              {/* OD row */}
-              <div className="optic-grid" style={{ marginBottom: '.5rem' }}>
-                <div className="eye-label" style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
-                  <span style={{ background: 'var(--surface-3)', color: 'var(--brand)', borderRadius: 4, padding: '2px 6px', fontSize: '.65rem', fontWeight: 700 }}>OD</span>
-                </div>
-                {(['od_esf', 'od_cil', 'od_eje', 'od_add'] as const).map((f, i) => (
-                  <input key={f} type="number" step="0.01" value={formData[f]}
-                    onChange={e => setFormData({ ...formData, [f]: e.target.value })}
-                    placeholder="—"
-                    aria-label={`${rightEye} ${rxCols[i]}`}
-                    style={{ textAlign: 'center', padding: '.45rem .25rem', fontSize: '.8rem', minHeight: '2.1rem' }}
-                  />
-                ))}
-              </div>
-              {/* OI row */}
+            <div className="rx-box">
               <div className="optic-grid">
-                <div className="eye-label" style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
-                  <span style={{ background: 'var(--surface-3)', color: 'var(--text-secondary)', borderRadius: 4, padding: '2px 6px', fontSize: '.65rem', fontWeight: 700 }}>{t('OI', 'OS')}</span>
-                </div>
-                {(['oi_esf', 'oi_cil', 'oi_eje', 'oi_add'] as const).map((f, i) => (
-                  <input key={f} type="number" step="0.01" value={formData[f]}
-                    onChange={e => setFormData({ ...formData, [f]: e.target.value })}
-                    placeholder="—"
-                    aria-label={`${leftEye} ${rxCols[i]}`}
-                    style={{ textAlign: 'center', padding: '.45rem .25rem', fontSize: '.8rem', minHeight: '2.1rem' }}
-                  />
+                <div />
+                {RX_FIELDS.map(f => (
+                  <div key={f.key} className="col-header">{t(f.headEs, f.headEn)}</div>
                 ))}
               </div>
+              {eyeRow('od')}
+              {eyeRow('oi')}
             </div>
           </div>
 
@@ -523,10 +501,9 @@ const SalesPage: React.FC = () => {
           <div>
             <div className="section-title">{t('Productos *', 'Products *')}</div>
 
-            {/* Add product row */}
-            <div className="sale-add-row" style={{ background: 'var(--surface-2)', borderRadius: 'var(--radius)', padding: '1rem', border: '1px solid var(--border)', marginBottom: '.75rem' }}>
-              <div>
-                <label htmlFor="sale-product" style={{ display: 'block', marginBottom: '.25rem', fontSize: '.7rem' }}>{t('Producto', 'Product')}</label>
+            <div className="sale-add-row add-row-box">
+              <div className="field">
+                <label htmlFor="sale-product">{t('Producto', 'Product')}</label>
                 <select id="sale-product" value={selProductId} onChange={e => handleProductSelect(e.target.value)}>
                   <option value="">{t('Seleccionar…', 'Select…')}</option>
                   {products.map(p => (
@@ -536,76 +513,65 @@ const SalesPage: React.FC = () => {
                   ))}
                 </select>
               </div>
-              <div>
-                <label htmlFor="sale-qty" style={{ display: 'block', marginBottom: '.25rem', fontSize: '.7rem' }}>{t('Cantidad', 'Quantity')}</label>
+              <div className="field">
+                <label htmlFor="sale-qty">{t('Cantidad', 'Quantity')}</label>
                 <input id="sale-qty" type="number" min="1" value={selQty} onChange={e => setSelQty(e.target.value)} placeholder="1" />
               </div>
-              <div>
-                <label htmlFor="sale-unit-price" style={{ display: 'block', marginBottom: '.25rem', fontSize: '.7rem' }}>{t('Precio unit.', 'Unit price')}</label>
+              <div className="field">
+                <label htmlFor="sale-unit-price">{t('Precio unit.', 'Unit price')}</label>
                 <input id="sale-unit-price" type="number" step="0.01" min="0" value={selPrice} onChange={e => setSelPrice(e.target.value)} placeholder="0.00" />
               </div>
               <button
                 type="button"
+                className="quick-add"
                 onClick={() => setShowProductModal(true)}
-                style={{ height: 40, padding: '0 .625rem', background: 'var(--surface-3)', color: 'var(--success)', border: 'none', borderRadius: 'var(--radius)', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 4, fontWeight: 600, fontSize: '.8rem', marginTop: 'auto' }}
                 aria-label={t('Crear un producto nuevo', 'Create a new product')}
                 title={t('Crear producto', 'Create product')}
+                style={{ marginTop: 'auto', height: 40 }}
               >
                 <PlusIcon className="w-4 h-4" />
               </button>
-              <button
-                type="button"
-                onClick={handleAddProduct}
-                style={{ height: 40, padding: '0 .75rem', background: 'var(--brand)', color: '#fff', border: 'none', borderRadius: 'var(--radius)', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 4, fontWeight: 600, fontSize: '.8rem', marginTop: 'auto' }}
-              >
+              <button type="button" className="btn btn-primary btn-add" onClick={handleAddProduct}>
                 <ShoppingCartIcon className="w-4 h-4" /> {t('Agregar', 'Add')}
               </button>
             </div>
 
-            {/* Product list */}
             {saleProducts.length > 0 && (
-              <div style={{ display: 'flex', flexDirection: 'column', gap: '.375rem', marginBottom: '.75rem' }}>
+              <div className="line-items">
                 {saleProducts.map((item, i) => (
-                  <div key={i} style={{ display: 'flex', alignItems: 'center', gap: 10, background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: 'var(--radius)', padding: '.625rem .875rem' }}>
-                    <div style={{ flex: 1 }}>
-                      <div style={{ fontWeight: 600, fontSize: '.875rem', color: 'var(--text-primary)' }}>
+                  <div key={i} className="line-item">
+                    <div className="line-item-main">
+                      <div className="line-item-name">
                         {item.product?.name || t(`Producto #${item.product_id}`, `Product #${item.product_id}`)}
                       </div>
-                      <div style={{ fontSize: '.75rem', color: 'var(--text-muted)' }}>
-                        {item.quantity} × {fmt(item.unit_price)}
-                      </div>
+                      <div className="line-item-sub">{item.quantity} × {fmt(item.unit_price)}</div>
                     </div>
-                    <div className="mono" style={{ fontWeight: 700, fontSize: '.875rem', color: 'var(--brand)' }}>
-                      {fmt(item.quantity * item.unit_price)}
-                    </div>
+                    <div className="amount is-brand">{fmt(item.quantity * item.unit_price)}</div>
                     <button
                       type="button"
+                      className="btn-icon sm is-danger"
                       onClick={() => setSaleProducts(saleProducts.filter((_, j) => j !== i))}
-                      style={{ padding: '.25rem', background: 'var(--surface-3)', color: 'var(--danger)', border: 'none', borderRadius: 6, cursor: 'pointer', display: 'flex' }}
                       aria-label={t(
                         `Quitar ${item.product?.name || 'producto'} de la venta`,
                         `Remove ${item.product?.name || 'product'} from the sale`,
                       )}
                     >
-                      <XMarkIcon className="w-4 h-4" />
+                      <XMarkIcon />
                     </button>
                   </div>
                 ))}
               </div>
             )}
 
-            {/* Total */}
-            <div style={{ display: 'flex', justifyContent: 'flex-end', alignItems: 'center', gap: 12, padding: '.75rem 0', borderTop: '2px solid var(--border)' }}>
-              <span style={{ fontWeight: 600, color: 'var(--text-secondary)', fontSize: '.9rem' }}>Total:</span>
-              <span className="mono" style={{ fontWeight: 800, fontSize: '1.375rem', color: 'var(--success)' }}>
-                {fmt(total())}
-              </span>
+            <div className="sale-total">
+              <span className="sale-total-label">Total:</span>
+              <span className="sale-total-value">{fmt(total())}</span>
             </div>
           </div>
 
           {/* Notas */}
-          <div>
-            <label htmlFor="sale-notes" style={{ display: 'block', marginBottom: '.375rem' }}>{t('Notas', 'Notes')}</label>
+          <div className="field">
+            <label htmlFor="sale-notes">{t('Notas', 'Notes')}</label>
             <textarea id="sale-notes" value={formData.notes} onChange={e => setFormData({ ...formData, notes: e.target.value })} placeholder={t('Observaciones de la venta…', 'Notes about the sale…')} rows={2} />
           </div>
         </div>
@@ -625,24 +591,22 @@ const SalesPage: React.FC = () => {
           </>
         }
       >
-        <div style={{ display: 'flex', flexDirection: 'column', gap: '.875rem' }}>
-          <div>
-            <label htmlFor="qc-name" style={{ display: 'block', marginBottom: '.25rem' }}>{t('Nombre *', 'Name *')}</label>
-            <input id="qc-name" type="text" required value={newClient.name} onChange={e => setNewClient({ ...newClient, name: e.target.value })} placeholder={t('Nombre completo', 'Full name')} />
+        <div className="field">
+          <label htmlFor="qc-name">{t('Nombre *', 'Name *')}</label>
+          <input id="qc-name" type="text" required value={newClient.name} onChange={e => setNewClient({ ...newClient, name: e.target.value })} placeholder={t('Nombre completo', 'Full name')} />
+        </div>
+        <div className="field">
+          <label htmlFor="qc-doc">{t('Documento', 'ID number')}</label>
+          <input id="qc-doc" type="text" value={newClient.document_id} onChange={e => setNewClient({ ...newClient, document_id: e.target.value })} placeholder={t('CI / DNI', 'ID / Passport')} />
+        </div>
+        <div className="form-grid-2 tight">
+          <div className="field">
+            <label htmlFor="qc-email">Email</label>
+            <input id="qc-email" type="email" value={newClient.email} onChange={e => setNewClient({ ...newClient, email: e.target.value })} />
           </div>
-          <div>
-            <label htmlFor="qc-doc" style={{ display: 'block', marginBottom: '.25rem' }}>{t('Documento', 'ID number')}</label>
-            <input id="qc-doc" type="text" value={newClient.document_id} onChange={e => setNewClient({ ...newClient, document_id: e.target.value })} placeholder={t('CI / DNI', 'ID / Passport')} />
-          </div>
-          <div className="form-grid-2 tight">
-            <div>
-              <label htmlFor="qc-email" style={{ display: 'block', marginBottom: '.25rem' }}>Email</label>
-              <input id="qc-email" type="email" value={newClient.email} onChange={e => setNewClient({ ...newClient, email: e.target.value })} />
-            </div>
-            <div>
-              <label htmlFor="qc-phone" style={{ display: 'block', marginBottom: '.25rem' }}>{t('Teléfono', 'Phone')}</label>
-              <input id="qc-phone" type="text" value={newClient.phone} onChange={e => setNewClient({ ...newClient, phone: e.target.value })} />
-            </div>
+          <div className="field">
+            <label htmlFor="qc-phone">{t('Teléfono', 'Phone')}</label>
+            <input id="qc-phone" type="text" value={newClient.phone} onChange={e => setNewClient({ ...newClient, phone: e.target.value })} />
           </div>
         </div>
       </Modal>
@@ -661,25 +625,23 @@ const SalesPage: React.FC = () => {
           </>
         }
       >
-        <div style={{ display: 'flex', flexDirection: 'column', gap: '.875rem' }}>
-          <div>
-            <label htmlFor="qp-name" style={{ display: 'block', marginBottom: '.25rem' }}>{t('Nombre *', 'Name *')}</label>
-            <input id="qp-name" type="text" required value={newProduct.name} onChange={e => setNewProduct({ ...newProduct, name: e.target.value })} placeholder={t('Nombre del producto', 'Product name')} />
+        <div className="field">
+          <label htmlFor="qp-name">{t('Nombre *', 'Name *')}</label>
+          <input id="qp-name" type="text" required value={newProduct.name} onChange={e => setNewProduct({ ...newProduct, name: e.target.value })} placeholder={t('Nombre del producto', 'Product name')} />
+        </div>
+        <div className="form-grid-2 tight">
+          <div className="field">
+            <label htmlFor="qp-price">{t('Precio', 'Price')}</label>
+            <input id="qp-price" type="number" step="0.01" min="0" value={newProduct.price} onChange={e => setNewProduct({ ...newProduct, price: e.target.value })} placeholder="0.00" />
           </div>
-          <div className="form-grid-2 tight">
-            <div>
-              <label htmlFor="qp-price" style={{ display: 'block', marginBottom: '.25rem' }}>{t('Precio', 'Price')}</label>
-              <input id="qp-price" type="number" step="0.01" min="0" value={newProduct.price} onChange={e => setNewProduct({ ...newProduct, price: e.target.value })} placeholder="0.00" />
-            </div>
-            <div>
-              <label htmlFor="qp-stock" style={{ display: 'block', marginBottom: '.25rem' }}>Stock</label>
-              <input id="qp-stock" type="number" min="0" value={newProduct.quantity} onChange={e => setNewProduct({ ...newProduct, quantity: e.target.value })} placeholder="0" />
-            </div>
+          <div className="field">
+            <label htmlFor="qp-stock">Stock</label>
+            <input id="qp-stock" type="number" min="0" value={newProduct.quantity} onChange={e => setNewProduct({ ...newProduct, quantity: e.target.value })} placeholder="0" />
           </div>
-          <div>
-            <label htmlFor="qp-desc" style={{ display: 'block', marginBottom: '.25rem' }}>{t('Descripción', 'Description')}</label>
-            <textarea id="qp-desc" value={newProduct.description} onChange={e => setNewProduct({ ...newProduct, description: e.target.value })} rows={2} />
-          </div>
+        </div>
+        <div className="field">
+          <label htmlFor="qp-desc">{t('Descripción', 'Description')}</label>
+          <textarea id="qp-desc" value={newProduct.description} onChange={e => setNewProduct({ ...newProduct, description: e.target.value })} rows={2} />
         </div>
       </Modal>
 

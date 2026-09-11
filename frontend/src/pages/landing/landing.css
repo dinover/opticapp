@@ -4,21 +4,23 @@
    (--surface, --border…) para verse igual que la UI real en cada tema.
    ══════════════════════════════════════════════════════════════ */
 
+/* Los valores salen de styles/theme.css (Proyecto Foco), el mismo sistema de
+   la app: cambiar un token ahí actualiza la landing y la app a la vez. */
 .lp {
-  --lp-bg: #fcfbff;
-  --lp-bg-soft: #f4f1ff;
-  --lp-ink: #120d2b;
-  --lp-ink-2: #4a4468;
-  --lp-ink-3: #8b86a6;
-  --lp-line: rgba(76, 58, 180, 0.12);
-  --lp-card: rgba(255, 255, 255, 0.72);
-  --lp-card-solid: #ffffff;
+  --lp-bg: var(--canvas);
+  --lp-bg-soft: var(--canvas-soft);
+  --lp-ink: var(--text-primary);
+  --lp-ink-2: var(--text-secondary);
+  --lp-ink-3: var(--text-muted);
+  --lp-line: var(--line);
+  --lp-card: var(--glass);
+  --lp-card-solid: var(--surface);
   --lp-violet: #7c3aed;
-  --lp-accent-text: #6d28d9;
-  --lp-grad: linear-gradient(120deg, #b98cff 0%, #8b5cf6 42%, #4f46e5 100%);
-  --lp-grad-text: linear-gradient(100deg, #9d5cff 0%, #7c3aed 30%, #4f46e5 62%, #9d5cff 100%);
-  --lp-glow: rgba(124, 58, 237, 0.3);
-  --lp-shadow: 0 30px 80px -24px rgba(49, 27, 146, 0.3), 0 12px 28px -14px rgba(49, 27, 146, 0.2);
+  --lp-accent-text: var(--accent-text);
+  --lp-grad: var(--grad);
+  --lp-grad-text: var(--grad-text);
+  --lp-glow: var(--glow);
+  --lp-shadow: var(--shadow-xl);
   --lp-grid: rgba(79, 70, 229, 0.07);
 
   background: var(--lp-bg);
@@ -28,17 +30,6 @@
 }
 
 .dark .lp {
-  --lp-bg: #07051a;
-  --lp-bg-soft: #0d0a27;
-  --lp-ink: #f4f1ff;
-  --lp-ink-2: #b9b3da;
-  --lp-ink-3: #7e78a3;
-  --lp-line: rgba(199, 166, 255, 0.13);
-  --lp-card: rgba(22, 17, 56, 0.6);
-  --lp-card-solid: #120e30;
-  --lp-accent-text: #c4a5ff;
-  --lp-glow: rgba(139, 92, 246, 0.45);
-  --lp-shadow: 0 30px 90px -20px rgba(0, 0, 0, 0.75), 0 0 0 1px rgba(199, 166, 255, 0.07);
   --lp-grid: rgba(199, 166, 255, 0.055);
 }
 

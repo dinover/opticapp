@@ -2,8 +2,9 @@ import React, { useState, useEffect, useMemo } from 'react';
 import Layout from '../components/Layout';
 import Modal from '../components/Modal';
 import EmptyState from '../components/EmptyState';
-import SortableTh, { SortOrder } from '../components/SortableTh';
-import { SkeletonRows } from '../components/Skeleton';
+import PageHeader from '../components/PageHeader';
+import DataTable, { Column } from '../components/DataTable';
+import { SortOrder } from '../components/SortableTh';
 import { useToast } from '../contexts/ToastContext';
 import { useConfirm } from '../contexts/ConfirmContext';
 import { useLanguage } from '../contexts/LanguageContext';
@@ -22,10 +23,11 @@ import {
 
 const emptyForm = { name: '', contact_name: '', phone: '', email: '', notes: '' };
 
-const COLUMN_COUNT = 6;
-
 /** Campos del proveedor por los que se puede ordenar en cliente. */
 type SortField = 'name' | 'contact_name' | 'email';
+
+const dash = <span className="cell-muted">—</span>;
+const withIcon: React.CSSProperties = { display: 'inline-flex', alignItems: 'center', gap: 5 };
 
 const SuppliersPage: React.FC = () => {
   const toast = useToast();
@@ -138,142 +140,132 @@ const SuppliersPage: React.FC = () => {
     }
   };
 
-  const rowActionBtn: React.CSSProperties = {
-    padding: '.35rem',
-    borderRadius: 'var(--radius)',
-    background: 'var(--surface-3)',
-    border: 'none',
-    cursor: 'pointer',
-    transition: 'all .15s',
-    display: 'flex',
-  };
-
   const n = suppliers.length;
+
+  const columns: Column<Supplier>[] = [
+    {
+      key: 'name',
+      header: t('Nombre', 'Name'),
+      sortKey: 'name',
+      mobile: 'primary',
+      render: s => (
+        <div className="who">
+          <span className="avatar sm" style={{ '--tone': 'var(--warning)' } as React.CSSProperties}>
+            <TruckIcon style={{ width: 15, height: 15 }} />
+          </span>
+          <span className="who-name">{s.name}</span>
+        </div>
+      ),
+    },
+    {
+      key: 'contact',
+      header: t('Contacto', 'Contact'),
+      sortKey: 'contact_name',
+      mobile: 'secondary',
+      render: s => (s.contact_name ? <span className="cell-secondary">{s.contact_name}</span> : dash),
+    },
+    {
+      key: 'phone',
+      header: t('Teléfono', 'Phone'),
+      render: s => (s.phone
+        ? <span className="cell-secondary" style={withIcon}><PhoneIcon className="w-3.5 h-3.5" />{s.phone}</span>
+        : dash),
+    },
+    {
+      key: 'email',
+      header: 'Email',
+      sortKey: 'email',
+      render: s => (s.email
+        ? <span className="cell-secondary" style={withIcon}><EnvelopeIcon className="w-3.5 h-3.5" />{s.email}</span>
+        : dash),
+    },
+    {
+      key: 'notes',
+      header: t('Notas', 'Notes'),
+      render: s => (
+        <span className="cell-muted" style={{ fontSize: '.8rem', maxWidth: 200, overflow: 'hidden', display: '-webkit-box', WebkitLineClamp: 1, WebkitBoxOrient: 'vertical' }}>
+          {s.notes || '—'}
+        </span>
+      ),
+    },
+  ];
 
   return (
     <Layout>
       <div className="fade-in">
-        <div className="page-header">
-          <div>
-            <h1 className="page-title">{t('Proveedores', 'Suppliers')}</h1>
-            <p className="page-subtitle">
-              {t(
-                `${n} proveedor${n !== 1 ? 'es' : ''} registrado${n !== 1 ? 's' : ''}`,
-                `${n} registered supplier${n !== 1 ? 's' : ''}`,
+        <PageHeader
+          eyebrow={t('Compras', 'Purchasing')}
+          title={t('Proveedores', 'Suppliers')}
+          subtitle={t(
+            `${n} proveedor${n !== 1 ? 'es' : ''} registrado${n !== 1 ? 's' : ''}`,
+            `${n} registered supplier${n !== 1 ? 's' : ''}`,
+          )}
+          actions={
+            <button className="btn btn-cta" onClick={openCreate}>
+              <PlusIcon className="w-4 h-4" />
+              {t('Nuevo proveedor', 'New supplier')}
+            </button>
+          }
+        />
+
+        <div className="toolbar">
+          <div className="search-wrap" style={{ maxWidth: 360, flex: 1 }}>
+            <MagnifyingGlassIcon className="w-4 h-4" />
+            <input
+              type="text"
+              className="search-input"
+              placeholder={t('Buscar proveedores…', 'Search suppliers…')}
+              aria-label={t('Buscar proveedores', 'Search suppliers')}
+              value={search}
+              onChange={e => setSearch(e.target.value)}
+            />
+          </div>
+        </div>
+
+        <DataTable
+          rows={visible}
+          columns={columns}
+          rowKey={s => s.id}
+          loading={loading}
+          sortBy={sortBy}
+          sortOrder={sortOrder}
+          onSort={handleSort}
+          actionsLabel={t('Acciones', 'Actions')}
+          actions={s => (
+            <>
+              <button
+                className="btn-icon sm"
+                onClick={() => openEdit(s)}
+                title={t('Editar', 'Edit')}
+                aria-label={t(`Editar ${s.name}`, `Edit ${s.name}`)}
+              >
+                <PencilIcon />
+              </button>
+              <button
+                className="btn-icon sm is-danger"
+                onClick={() => handleDelete(s)}
+                disabled={deletingId === s.id}
+                title={t('Eliminar', 'Delete')}
+                aria-label={t(`Eliminar ${s.name}`, `Delete ${s.name}`)}
+              >
+                <TrashIcon />
+              </button>
+            </>
+          )}
+          empty={
+            <EmptyState
+              icon={<TruckIcon />}
+              title={t('No hay proveedores registrados', 'No registered suppliers')}
+              description={t(
+                'Cargá tus proveedores para poder asociarlos a los armazones.',
+                'Add your suppliers so you can link them to your frames.',
               )}
-            </p>
-          </div>
-          <button className="btn btn-primary" onClick={openCreate}>
-            <PlusIcon className="w-4 h-4" />
-            {t('Nuevo proveedor', 'New supplier')}
-          </button>
-        </div>
-
-        <div className="search-wrap" style={{ maxWidth: 360, marginBottom: '1.25rem' }}>
-          <MagnifyingGlassIcon className="w-4 h-4" />
-          <input
-            type="text"
-            className="search-input"
-            placeholder={t('Buscar proveedores…', 'Search suppliers…')}
-            aria-label={t('Buscar proveedores', 'Search suppliers')}
-            value={search}
-            onChange={e => setSearch(e.target.value)}
-          />
-        </div>
-
-        <div className="card" style={{ overflow: 'hidden' }}>
-          <div className="table-scroll">
-            <table className="tbl">
-              <thead>
-                <tr>
-                  <SortableTh column="name" sortBy={sortBy} sortOrder={sortOrder} onSort={handleSort}>
-                    {t('Nombre', 'Name')}
-                  </SortableTh>
-                  <SortableTh column="contact_name" sortBy={sortBy} sortOrder={sortOrder} onSort={handleSort}>
-                    {t('Contacto', 'Contact')}
-                  </SortableTh>
-                  <th>{t('Teléfono', 'Phone')}</th>
-                  <SortableTh column="email" sortBy={sortBy} sortOrder={sortOrder} onSort={handleSort}>
-                    Email
-                  </SortableTh>
-                  <th>{t('Notas', 'Notes')}</th>
-                  <th style={{ textAlign: 'right' }}>{t('Acciones', 'Actions')}</th>
-                </tr>
-              </thead>
-              <tbody>
-                {loading ? (
-                  <SkeletonRows rows={5} columns={COLUMN_COUNT} />
-                ) : visible.length > 0 ? visible.map(s => (
-                  <tr key={s.id}>
-                    <td>
-                      <div style={{ fontWeight: 600, color: 'var(--text-primary)', fontSize: '.9rem' }}>{s.name}</div>
-                    </td>
-                    <td style={{ color: 'var(--text-secondary)' }}>
-                      {s.contact_name || <span style={{ color: 'var(--text-muted)' }}>—</span>}
-                    </td>
-                    <td>
-                      {s.phone
-                        ? <span style={{ display: 'flex', alignItems: 'center', gap: 4, color: 'var(--text-secondary)' }}><PhoneIcon className="w-3.5 h-3.5" />{s.phone}</span>
-                        : <span style={{ color: 'var(--text-muted)' }}>—</span>}
-                    </td>
-                    <td>
-                      {s.email
-                        ? <span style={{ display: 'flex', alignItems: 'center', gap: 4, color: 'var(--text-secondary)' }}><EnvelopeIcon className="w-3.5 h-3.5" />{s.email}</span>
-                        : <span style={{ color: 'var(--text-muted)' }}>—</span>}
-                    </td>
-                    <td style={{ color: 'var(--text-muted)', fontSize: '.8rem', maxWidth: 180 }}>
-                      <span style={{ overflow: 'hidden', display: '-webkit-box', WebkitLineClamp: 1, WebkitBoxOrient: 'vertical' }}>
-                        {s.notes || '—'}
-                      </span>
-                    </td>
-                    <td>
-                      <div style={{ display: 'flex', gap: 4, justifyContent: 'flex-end' }}>
-                        <button
-                          onClick={() => openEdit(s)}
-                          style={{ ...rowActionBtn, color: 'var(--text-secondary)' }}
-                          title={t('Editar', 'Edit')}
-                          aria-label={t(`Editar ${s.name}`, `Edit ${s.name}`)}
-                        >
-                          <PencilIcon className="w-3.5 h-3.5" />
-                        </button>
-                        <button
-                          onClick={() => handleDelete(s)}
-                          disabled={deletingId === s.id}
-                          style={{
-                            ...rowActionBtn,
-                            color: 'var(--danger)',
-                            opacity: deletingId === s.id ? 0.5 : 1,
-                            cursor: deletingId === s.id ? 'default' : 'pointer',
-                          }}
-                          title={t('Eliminar', 'Delete')}
-                          aria-label={t(`Eliminar ${s.name}`, `Delete ${s.name}`)}
-                        >
-                          <TrashIcon className="w-3.5 h-3.5" />
-                        </button>
-                      </div>
-                    </td>
-                  </tr>
-                )) : (
-                  <tr>
-                    <td colSpan={COLUMN_COUNT}>
-                      <EmptyState
-                        icon={<TruckIcon />}
-                        title={t('No hay proveedores registrados', 'No registered suppliers')}
-                        description={t(
-                          'Cargá tus proveedores para poder asociarlos a los armazones.',
-                          'Add your suppliers so you can link them to your frames.',
-                        )}
-                        actionLabel={t('Agregar primer proveedor', 'Add your first supplier')}
-                        onAction={openCreate}
-                        searchTerm={debouncedSearch}
-                      />
-                    </td>
-                  </tr>
-                )}
-              </tbody>
-            </table>
-          </div>
-        </div>
+              actionLabel={t('Agregar primer proveedor', 'Add your first supplier')}
+              onAction={openCreate}
+              searchTerm={debouncedSearch}
+            />
+          }
+        />
       </div>
 
       <Modal
@@ -289,26 +281,26 @@ const SuppliersPage: React.FC = () => {
           </button>
         </>}
       >
-        <div>
-          <label htmlFor="supplier-name" style={{ display: 'block', marginBottom: '.375rem' }}>{t('Nombre *', 'Name *')}</label>
+        <div className="field">
+          <label htmlFor="supplier-name">{t('Nombre *', 'Name *')}</label>
           <input id="supplier-name" type="text" required value={form.name} onChange={e => setForm({ ...form, name: e.target.value })} placeholder={t('Nombre del proveedor', 'Supplier name')} />
         </div>
-        <div>
-          <label htmlFor="supplier-contact" style={{ display: 'block', marginBottom: '.375rem' }}>{t('Contacto', 'Contact')}</label>
+        <div className="field">
+          <label htmlFor="supplier-contact">{t('Contacto', 'Contact')}</label>
           <input id="supplier-contact" type="text" value={form.contact_name} onChange={e => setForm({ ...form, contact_name: e.target.value })} placeholder={t('Nombre del contacto', 'Contact name')} />
         </div>
         <div className="form-grid-2">
-          <div>
-            <label htmlFor="supplier-phone" style={{ display: 'block', marginBottom: '.375rem' }}>{t('Teléfono', 'Phone')}</label>
+          <div className="field">
+            <label htmlFor="supplier-phone">{t('Teléfono', 'Phone')}</label>
             <input id="supplier-phone" type="tel" value={form.phone} onChange={e => setForm({ ...form, phone: e.target.value })} placeholder="+598 99..." />
           </div>
-          <div>
-            <label htmlFor="supplier-email" style={{ display: 'block', marginBottom: '.375rem' }}>Email</label>
+          <div className="field">
+            <label htmlFor="supplier-email">Email</label>
             <input id="supplier-email" type="email" value={form.email} onChange={e => setForm({ ...form, email: e.target.value })} placeholder={t('proveedor@...', 'supplier@...')} />
           </div>
         </div>
-        <div>
-          <label htmlFor="supplier-notes" style={{ display: 'block', marginBottom: '.375rem' }}>{t('Notas', 'Notes')}</label>
+        <div className="field">
+          <label htmlFor="supplier-notes">{t('Notas', 'Notes')}</label>
           <textarea id="supplier-notes" value={form.notes} onChange={e => setForm({ ...form, notes: e.target.value })} placeholder={t('Notas opcionales…', 'Optional notes…')} rows={2} />
         </div>
       </Modal>

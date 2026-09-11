@@ -14,59 +14,42 @@ const Pagination: React.FC<PaginationProps> = ({ page, totalPages, onPageChange 
 
   const maxVisible = 5;
   let start = Math.max(1, page - Math.floor(maxVisible / 2));
-  let end   = Math.min(totalPages, start + maxVisible - 1);
+  const end = Math.min(totalPages, start + maxVisible - 1);
   if (end - start < maxVisible - 1) start = Math.max(1, end - maxVisible + 1);
 
   const pages = Array.from({ length: end - start + 1 }, (_, i) => start + i);
 
-  const btnBase: React.CSSProperties = {
-    display: 'inline-flex', alignItems: 'center', justifyContent: 'center',
-    width: 32, height: 32, borderRadius: 8,
-    border: '1px solid var(--border)',
-    background: 'var(--surface)',
-    color: 'var(--text-secondary)',
-    fontWeight: 600, fontSize: '.8rem',
-    cursor: 'pointer', transition: 'all .15s',
-  };
-
   return (
-    <div style={{
-      display: 'flex', alignItems: 'center', justifyContent: 'space-between',
-      padding: '.875rem 1rem',
-      borderTop: '1px solid var(--border)',
-    }}>
-      <span style={{ fontSize: '.8rem', color: 'var(--text-muted)' }}>
-        {t('Página', 'Page')} <strong style={{ color: 'var(--text-primary)' }}>{page}</strong> {t('de', 'of')} <strong style={{ color: 'var(--text-primary)' }}>{totalPages}</strong>
+    <nav className="pagination" aria-label={t('Paginación', 'Pagination')}>
+      <span className="pagination-info">
+        {t('Página', 'Page')} <strong>{page}</strong> {t('de', 'of')} <strong>{totalPages}</strong>
       </span>
 
-      <div style={{ display: 'flex', alignItems: 'center', gap: '.25rem' }}>
+      <div className="pagination-pages">
         <button
+          type="button"
+          className="page-btn"
           onClick={() => onPageChange(page - 1)}
           disabled={page === 1}
           aria-label={t('Página anterior', 'Previous page')}
-          style={{ ...btnBase, opacity: page === 1 ? .4 : 1, cursor: page === 1 ? 'not-allowed' : 'pointer' }}
         >
           <ChevronLeftIcon className="w-4 h-4" />
         </button>
 
         {start > 1 && (
           <>
-            <button onClick={() => onPageChange(1)} style={btnBase}>1</button>
-            {start > 2 && <span style={{ color: 'var(--text-muted)', padding: '0 .25rem', fontSize: '.8rem' }}>…</span>}
+            <button type="button" className="page-btn" onClick={() => onPageChange(1)}>1</button>
+            {start > 2 && <span className="page-gap">…</span>}
           </>
         )}
 
         {pages.map(p => (
           <button
             key={p}
+            type="button"
+            className={`page-btn${p === page ? ' is-current' : ''}`}
+            aria-current={p === page ? 'page' : undefined}
             onClick={() => onPageChange(p)}
-            style={{
-              ...btnBase,
-              background: p === page ? '#4f46e5' : 'var(--surface)',
-              color: p === page ? '#fff' : 'var(--text-secondary)',
-              borderColor: p === page ? '#4f46e5' : 'var(--border)',
-              boxShadow: p === page ? '0 2px 8px rgba(79,70,229,.3)' : 'none',
-            }}
           >
             {p}
           </button>
@@ -74,21 +57,22 @@ const Pagination: React.FC<PaginationProps> = ({ page, totalPages, onPageChange 
 
         {end < totalPages && (
           <>
-            {end < totalPages - 1 && <span style={{ color: 'var(--text-muted)', padding: '0 .25rem', fontSize: '.8rem' }}>…</span>}
-            <button onClick={() => onPageChange(totalPages)} style={btnBase}>{totalPages}</button>
+            {end < totalPages - 1 && <span className="page-gap">…</span>}
+            <button type="button" className="page-btn" onClick={() => onPageChange(totalPages)}>{totalPages}</button>
           </>
         )}
 
         <button
+          type="button"
+          className="page-btn"
           onClick={() => onPageChange(page + 1)}
           disabled={page === totalPages}
           aria-label={t('Página siguiente', 'Next page')}
-          style={{ ...btnBase, opacity: page === totalPages ? .4 : 1, cursor: page === totalPages ? 'not-allowed' : 'pointer' }}
         >
           <ChevronRightIcon className="w-4 h-4" />
         </button>
       </div>
-    </div>
+    </nav>
   );
 };
 

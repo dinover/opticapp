@@ -39,10 +39,10 @@ class ErrorBoundary extends Component<Props, State> {
           <div className="status-icon status-icon-danger">
             <ExclamationTriangleIcon style={{ width: 30, height: 30 }} />
           </div>
-          <h1 style={{ fontWeight: 800, fontSize: '1.35rem', color: 'var(--text-primary)', margin: '0 0 .625rem' }}>
+          <h1 className="status-title">
             {en ? 'Something broke on this screen' : 'Algo se rompió en esta pantalla'}
           </h1>
-          <p style={{ color: 'var(--text-secondary)', fontSize: '.9rem', lineHeight: 1.65, margin: '0 0 1.5rem' }}>
+          <p className="status-text">
             {en
               ? 'The error was logged. You can go back home and keep working; if it happens again, contact the administrator and tell them what you were doing.'
               : 'El error quedó registrado. Podés volver al inicio y seguir trabajando; si vuelve a pasar, contactá al administrador contándole qué estabas haciendo.'}
@@ -51,7 +51,7 @@ class ErrorBoundary extends Component<Props, State> {
             <button className="btn btn-ghost" onClick={() => this.setState({ error: null })}>
               {en ? 'Try again' : 'Reintentar'}
             </button>
-            <button className="btn btn-primary" onClick={() => { window.location.href = '/'; }}>
+            <button className="btn btn-cta" onClick={() => { window.location.href = '/'; }}>
               {en ? 'Back to home' : 'Volver al inicio'}
             </button>
           </div>

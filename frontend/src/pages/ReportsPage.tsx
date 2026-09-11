@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import Layout from '../components/Layout';
 import EmptyState from '../components/EmptyState';
+import PageHeader from '../components/PageHeader';
 import { SkeletonLine } from '../components/Skeleton';
 import { useToast } from '../contexts/ToastContext';
 import { useCurrency } from '../contexts/CurrencyContext';
@@ -11,6 +12,7 @@ import { reportsService, SalesReport, TopProductsReport } from '../services/repo
 import { Supplier } from '../types';
 import {
   ArrowDownTrayIcon,
+  CheckIcon,
   EyeIcon,
   TableCellsIcon,
   TruckIcon,
@@ -22,10 +24,6 @@ import {
 const toDateInput = (d: Date) => d.toISOString().slice(0, 10);
 const today = () => toDateInput(new Date());
 const daysAgo = (n: number) => toDateInput(new Date(Date.now() - n * 24 * 60 * 60 * 1000));
-
-const fieldLabelStyle: React.CSSProperties = {
-  display: 'block', textAlign: 'left', fontWeight: 600, marginBottom: '.375rem', fontSize: '.8rem', color: 'var(--text-primary)',
-};
 
 /** Card base para cada reporte: ícono, título, descripción, filtros y acciones (ver / descargar). */
 const ReportCard: React.FC<{
@@ -72,37 +70,24 @@ const ReportCard: React.FC<{
   };
 
   return (
-    <div className="card" style={{ padding: '1.75rem' }}>
-      <div style={{ display: 'flex', gap: '1rem', alignItems: 'flex-start' }}>
-        <div style={{
-          width: 44, height: 44, borderRadius: 12, flexShrink: 0,
-          background: 'linear-gradient(135deg, #eef2ff, #ddd6fe)',
-          display: 'flex', alignItems: 'center', justifyContent: 'center',
-        }}>
-          {icon}
-        </div>
+    <section className="card" style={{ padding: '1.6rem' }}>
+      <div className="report-head">
+        <div className="report-icon">{icon}</div>
         <div style={{ flex: 1, minWidth: 0 }}>
-          <h2 style={{ margin: '0 0 .25rem', fontWeight: 700, fontSize: '1rem', color: 'var(--text-primary)' }}>
-            {title}
-          </h2>
-          <p style={{ margin: 0, fontSize: '.85rem', color: 'var(--text-secondary)' }}>
-            {description}
-          </p>
+          <h2 className="report-title">{title}</h2>
+          <p className="report-desc">{description}</p>
         </div>
       </div>
 
-      {children && (
-        <div style={{ marginTop: '1.25rem' }}>{children}</div>
-      )}
+      {children && <div className="report-filters">{children}</div>}
 
-      <div style={{ display: 'flex', gap: '.625rem', marginTop: '1.25rem' }}>
+      <div className="report-actions">
         {onPreview && (
           <button
             className="btn btn-ghost"
             onClick={handlePreview}
             disabled={previewing}
             aria-busy={previewing}
-            style={{ flex: 1, justifyContent: 'center', padding: '.625rem 1rem', fontSize: '.9rem' }}
           >
             {previewing ? (
               <div className="spinner" style={{ width: 16, height: 16, borderWidth: 2 }} aria-hidden="true" />
@@ -117,15 +102,17 @@ const ReportCard: React.FC<{
           onClick={handleDownload}
           disabled={downloading}
           aria-busy={downloading}
-          style={{ flex: 1, justifyContent: 'center', padding: '.625rem 1rem', fontSize: '.9rem' }}
         >
           {downloading ? (
             <>
-              <div className="spinner" style={{ width: 16, height: 16, borderWidth: 2 }} aria-hidden="true" />
+              <div className="spinner" style={{ width: 16, height: 16, borderWidth: 2, borderTopColor: '#fff' }} aria-hidden="true" />
               {t('Generando…', 'Generating…')}
             </>
           ) : downloaded ? (
-            t('✓ Descargado', '✓ Downloaded')
+            <>
+              <CheckIcon className="w-4 h-4" aria-hidden="true" />
+              {t('Descargado', 'Downloaded')}
+            </>
           ) : (
             <>
               <ArrowDownTrayIcon className="w-4 h-4" aria-hidden="true" />
@@ -135,23 +122,15 @@ const ReportCard: React.FC<{
         </button>
       </div>
 
-      {preview && (
-        <div style={{ marginTop: '1.25rem', paddingTop: '1.25rem', borderTop: '1px solid var(--border)' }}>
-          {preview}
-        </div>
-      )}
-    </div>
+      {preview && <div className="report-preview">{preview}</div>}
+    </section>
   );
 };
 
 const StatTile: React.FC<{ label: string; value: string }> = ({ label, value }) => (
-  <div style={{ flex: 1, background: 'var(--surface-2)', borderRadius: 10, padding: '.75rem .875rem', minWidth: 0 }}>
-    <p style={{ margin: 0, fontSize: '.7rem', fontWeight: 700, letterSpacing: '.03em', textTransform: 'uppercase', color: 'var(--text-muted)' }}>
-      {label}
-    </p>
-    <p style={{ margin: '.25rem 0 0', fontSize: '1.05rem', fontWeight: 800, color: 'var(--text-primary)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
-      {value}
-    </p>
+  <div className="stat-tile">
+    <p className="stat-tile-label">{label}</p>
+    <p className="stat-tile-value">{value}</p>
   </div>
 );
 
@@ -201,23 +180,26 @@ const ReportsPage: React.FC = () => {
       : suppliers.find(s => String(s.id) === supplierId)?.name || '';
 
   const maxPeriodRevenue = salesReport ? Math.max(1, ...salesReport.periods.map(p => p.revenue)) : 1;
-  const noSalesInRange = t('No hay ventas en ese rango de fechas.', 'There are no sales in that date range.');
+  const noSalesInRange = (
+    <p className="cell-muted" style={{ margin: 0, fontSize: '.85rem', textAlign: 'center' }}>
+      {t('No hay ventas en ese rango de fechas.', 'There are no sales in that date range.')}
+    </p>
+  );
 
   return (
     <Layout>
-      <div className="fade-in" style={{ maxWidth: 640, margin: '0 auto' }}>
-        <div className="page-header">
-          <div>
-            <h1 className="page-title">{t('Reportes', 'Reports')}</h1>
-            <p className="page-subtitle">{t('Mirá o descargá información de tu óptica en Excel', 'View or download your store’s data in Excel')}</p>
-          </div>
-        </div>
+      <div className="fade-in" style={{ maxWidth: 680, margin: '0 auto' }}>
+        <PageHeader
+          eyebrow={t('Análisis', 'Insights')}
+          title={t('Reportes', 'Reports')}
+          subtitle={t('Mirá o descargá información de tu óptica en Excel', 'View or download your store’s data in Excel')}
+        />
 
         <div style={{ display: 'flex', flexDirection: 'column', gap: '1.25rem' }}>
 
           {/* Ventas por período */}
           <ReportCard
-            icon={<ChartBarIcon style={{ width: 22, height: 22, color: 'var(--brand)' }} />}
+            icon={<ChartBarIcon />}
             title={t('Ventas por período', 'Sales by period')}
             description={t(
               'Facturación y cantidad de ventas agrupadas por día, semana o mes.',
@@ -226,32 +208,21 @@ const ReportsPage: React.FC = () => {
             onPreview={async () => setSalesReport(await reportsService.getSales(salesFrom, salesTo, groupBy))}
             onDownload={() => reportsService.downloadSales(salesFrom, salesTo, groupBy)}
             preview={salesReport && (
-              salesReport.periods.length === 0 ? (
-                <p style={{ margin: 0, fontSize: '.85rem', color: 'var(--text-muted)', textAlign: 'center' }}>
-                  {noSalesInRange}
-                </p>
-              ) : (
+              salesReport.periods.length === 0 ? noSalesInRange : (
                 <>
-                  <div style={{ display: 'flex', gap: '.625rem', marginBottom: '1rem' }}>
+                  <div className="stat-tiles">
                     <StatTile label={t('Facturado', 'Revenue')} value={fmt(salesReport.totalRevenue)} />
                     <StatTile label={t('Ventas', 'Sales')} value={String(salesReport.totalSales)} />
                     <StatTile label={t('Ticket prom.', 'Avg. ticket')} value={fmt(salesReport.avgTicket)} />
                   </div>
-                  <div style={{ display: 'flex', flexDirection: 'column', gap: '.5rem' }}>
+                  <div className="period-list">
                     {salesReport.periods.map(p => (
-                      <div key={p.label} style={{ display: 'flex', alignItems: 'center', gap: '.75rem' }}>
-                        <span style={{ width: 110, flexShrink: 0, fontSize: '.78rem', color: 'var(--text-secondary)' }}>
-                          {p.label}
-                        </span>
-                        <div style={{ flex: 1, background: 'var(--surface-2)', borderRadius: 6, overflow: 'hidden', height: 20 }}>
-                          <div style={{
-                            width: `${Math.max(4, (p.revenue / maxPeriodRevenue) * 100)}%`, height: '100%',
-                            background: 'var(--brand)', opacity: .8, borderRadius: 6,
-                          }} />
+                      <div key={p.label} className="period-row">
+                        <span className="period-label">{p.label}</span>
+                        <div className="period-track">
+                          <div className="period-fill" style={{ width: `${Math.max(4, (p.revenue / maxPeriodRevenue) * 100)}%` }} />
                         </div>
-                        <span style={{ width: 90, flexShrink: 0, textAlign: 'right', fontSize: '.8rem', fontWeight: 700, color: 'var(--text-primary)', fontFamily: 'DM Mono, monospace' }}>
-                          {fmt(p.revenue)}
-                        </span>
+                        <span className="period-value">{fmt(p.revenue)}</span>
                       </div>
                     ))}
                   </div>
@@ -259,17 +230,17 @@ const ReportsPage: React.FC = () => {
               )
             )}
           >
-            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '.75rem' }}>
-              <div>
-                <label htmlFor="sales-from" style={fieldLabelStyle}>{t('Desde', 'From')}</label>
+            <div className="form-grid-2">
+              <div className="field">
+                <label htmlFor="sales-from">{t('Desde', 'From')}</label>
                 <input id="sales-from" type="date" value={salesFrom} max={salesTo} onChange={e => { setSalesFrom(e.target.value); setSalesReport(null); }} />
               </div>
-              <div>
-                <label htmlFor="sales-to" style={fieldLabelStyle}>{t('Hasta', 'To')}</label>
+              <div className="field">
+                <label htmlFor="sales-to">{t('Hasta', 'To')}</label>
                 <input id="sales-to" type="date" value={salesTo} min={salesFrom} max={today()} onChange={e => { setSalesTo(e.target.value); setSalesReport(null); }} />
               </div>
-              <div style={{ gridColumn: '1 / -1' }}>
-                <label htmlFor="sales-group" style={fieldLabelStyle}>{t('Agrupar por', 'Group by')}</label>
+              <div className="field" style={{ gridColumn: '1 / -1' }}>
+                <label htmlFor="sales-group">{t('Agrupar por', 'Group by')}</label>
                 <select
                   id="sales-group"
                   value={groupBy}
@@ -285,7 +256,7 @@ const ReportsPage: React.FC = () => {
 
           {/* Ranking de productos */}
           <ReportCard
-            icon={<TrophyIcon style={{ width: 22, height: 22, color: 'var(--brand)' }} />}
+            icon={<TrophyIcon />}
             title={t('Ranking de productos vendidos', 'Best-selling products ranking')}
             description={t(
               'Los armazones más vendidos en el período, con unidades y % de la facturación.',
@@ -294,11 +265,7 @@ const ReportsPage: React.FC = () => {
             onPreview={async () => setTopReport(await reportsService.getTopProducts(topFrom, topTo))}
             onDownload={() => reportsService.downloadTopProducts(topFrom, topTo)}
             preview={topReport && (
-              topReport.products.length === 0 ? (
-                <p style={{ margin: 0, fontSize: '.85rem', color: 'var(--text-muted)', textAlign: 'center' }}>
-                  {noSalesInRange}
-                </p>
-              ) : (
+              topReport.products.length === 0 ? noSalesInRange : (
                 <div className="table-scroll">
                   <table className="tbl">
                     <thead>
@@ -314,12 +281,12 @@ const ReportsPage: React.FC = () => {
                     <tbody>
                       {topReport.products.map(p => (
                         <tr key={p.id}>
-                          <td style={{ color: 'var(--text-muted)' }}>{p.rank}</td>
-                          <td style={{ fontWeight: 600 }}>{p.name}</td>
-                          <td style={{ color: 'var(--text-secondary)' }}>{p.supplierName}</td>
+                          <td><span className="rank">{p.rank}</span></td>
+                          <td className="cell-strong">{p.name}</td>
+                          <td className="cell-secondary">{p.supplierName}</td>
                           <td style={{ textAlign: 'right' }}>{p.quantitySold}</td>
-                          <td style={{ textAlign: 'right', fontFamily: 'DM Mono, monospace' }}>{fmt(p.revenue)}</td>
-                          <td style={{ textAlign: 'right', color: 'var(--text-muted)' }}>{(p.revenueShare * 100).toFixed(1)}%</td>
+                          <td style={{ textAlign: 'right' }}><span className="amount">{fmt(p.revenue)}</span></td>
+                          <td className="cell-muted" style={{ textAlign: 'right' }}>{(p.revenueShare * 100).toFixed(1)}%</td>
                         </tr>
                       ))}
                     </tbody>
@@ -328,13 +295,13 @@ const ReportsPage: React.FC = () => {
               )
             )}
           >
-            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '.75rem' }}>
-              <div>
-                <label htmlFor="top-from" style={fieldLabelStyle}>{t('Desde', 'From')}</label>
+            <div className="form-grid-2">
+              <div className="field">
+                <label htmlFor="top-from">{t('Desde', 'From')}</label>
                 <input id="top-from" type="date" value={topFrom} max={topTo} onChange={e => { setTopFrom(e.target.value); setTopReport(null); }} />
               </div>
-              <div>
-                <label htmlFor="top-to" style={fieldLabelStyle}>{t('Hasta', 'To')}</label>
+              <div className="field">
+                <label htmlFor="top-to">{t('Hasta', 'To')}</label>
                 <input id="top-to" type="date" value={topTo} min={topFrom} max={today()} onChange={e => { setTopTo(e.target.value); setTopReport(null); }} />
               </div>
             </div>
@@ -342,7 +309,7 @@ const ReportsPage: React.FC = () => {
 
           {/* Armazones disponibles */}
           <ReportCard
-            icon={<TableCellsIcon style={{ width: 22, height: 22, color: 'var(--brand)' }} />}
+            icon={<TableCellsIcon />}
             title={t('Armazones disponibles', 'Available frames')}
             description={t('Stock actual con precio, cantidad y proveedor.', 'Current stock with price, quantity and supplier.')}
             onDownload={() => reportsService.downloadProducts(supplierId)}
@@ -365,10 +332,8 @@ const ReportsPage: React.FC = () => {
                 onAction={() => navigate('/suppliers')}
               />
             ) : (
-              <div>
-                <label htmlFor="report-supplier" style={fieldLabelStyle}>
-                  {t('Filtrar por proveedor', 'Filter by supplier')}
-                </label>
+              <div className="field">
+                <label htmlFor="report-supplier">{t('Filtrar por proveedor', 'Filter by supplier')}</label>
                 <select
                   id="report-supplier"
                   value={supplierId}
@@ -380,9 +345,7 @@ const ReportsPage: React.FC = () => {
                     <option key={s.id} value={String(s.id)}>{s.name}</option>
                   ))}
                 </select>
-                <p style={{ margin: '.5rem 0 0', fontSize: '.75rem', color: 'var(--text-muted)' }}>
-                  {selectedSupplierLabel}
-                </p>
+                <p className="hint">{selectedSupplierLabel}</p>
               </div>
             )}
           </ReportCard>

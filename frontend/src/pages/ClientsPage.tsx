@@ -3,8 +3,9 @@ import Layout from '../components/Layout';
 import Pagination from '../components/Pagination';
 import Modal from '../components/Modal';
 import EmptyState from '../components/EmptyState';
-import SortableTh, { SortOrder } from '../components/SortableTh';
-import { SkeletonRows } from '../components/Skeleton';
+import PageHeader from '../components/PageHeader';
+import DataTable, { Column } from '../components/DataTable';
+import { SortOrder } from '../components/SortableTh';
 import { useToast } from '../contexts/ToastContext';
 import { useConfirm } from '../contexts/ConfirmContext';
 import { useLanguage } from '../contexts/LanguageContext';
@@ -24,7 +25,11 @@ const emptyForm = {
   address: '', birth_date: '', notes: '',
 };
 
-const COLUMN_COUNT = 6;
+/** Tonos de avatar derivados del nombre: mismo cliente, mismo color siempre. */
+const AVATAR_TONES = ['var(--violet)', '#3b82f6', 'var(--success)', 'var(--warning)', '#ec4899'];
+const avatarTone = (name: string) => AVATAR_TONES[name.charCodeAt(0) % AVATAR_TONES.length];
+
+const dash = <span className="cell-muted">—</span>;
 
 const ClientsPage: React.FC = () => {
   const toast = useToast();
@@ -136,172 +141,136 @@ const ClientsPage: React.FC = () => {
     setFormData(emptyForm);
   };
 
-  const avatarColor = (name: string) => {
-    const colors = [
-      ['#ede9fe', '#6d28d9'], ['#dbeafe', '#1d4ed8'], ['#dcfce7', '#15803d'],
-      ['#fef3c7', '#b45309'], ['#fce7f3', '#be185d'],
-    ];
-    return colors[name.charCodeAt(0) % colors.length];
-  };
-
-  const rowActionBtn: React.CSSProperties = {
-    padding: '.375rem',
-    borderRadius: 'var(--radius)',
-    background: 'var(--surface-3)',
-    border: 'none',
-    cursor: 'pointer',
-    transition: 'all .15s',
-    display: 'flex',
-  };
-
-  const hasRows = Boolean(clients?.data && clients.data.length > 0);
+  const fmtDate = (d?: string | null) => (d ? new Date(d).toLocaleDateString(locale) : dash);
   const total = clients?.pagination.total ?? 0;
+
+  const columns: Column<Client>[] = [
+    {
+      key: 'name',
+      header: t('Cliente', 'Client'),
+      sortKey: 'name',
+      mobile: 'primary',
+      render: c => (
+        <div className="who">
+          <span className="avatar" style={{ '--tone': avatarTone(c.name) } as React.CSSProperties}>
+            {c.name.charAt(0).toUpperCase()}
+          </span>
+          <div style={{ minWidth: 0 }}>
+            <p className="who-name">{c.name}</p>
+            {c.address && <p className="who-sub">{c.address}</p>}
+          </div>
+        </div>
+      ),
+    },
+    {
+      key: 'document',
+      header: t('Documento', 'ID'),
+      render: c => (c.document_id ? <span className="mono cell-secondary">{c.document_id}</span> : dash),
+    },
+    {
+      key: 'contact',
+      header: t('Contacto', 'Contact'),
+      sortKey: 'email',
+      render: c => (
+        <div style={{ fontSize: '.8rem' }}>
+          {c.email && <div className="cell-secondary">{c.email}</div>}
+          {c.phone && <div className="cell-muted">{c.phone}</div>}
+          {!c.email && !c.phone && dash}
+        </div>
+      ),
+    },
+    {
+      key: 'birth',
+      header: t('Nacimiento', 'Birthday'),
+      render: c => <span className="cell-secondary">{fmtDate(c.birth_date)}</span>,
+    },
+    {
+      key: 'created',
+      header: t('Alta', 'Added'),
+      sortKey: 'created_at',
+      render: c => <span className="cell-muted">{fmtDate(c.created_at)}</span>,
+    },
+  ];
 
   return (
     <Layout>
       <div className="fade-in">
-        <div className="page-header">
-          <div>
-            <h1 className="page-title">{t('Clientes', 'Clients')}</h1>
-            <p className="page-subtitle">{t(
-              `${total} cliente${total !== 1 ? 's' : ''} registrado${total !== 1 ? 's' : ''}`,
-              `${total} registered client${total !== 1 ? 's' : ''}`,
-            )}</p>
+        <PageHeader
+          eyebrow={t('Tu cartera', 'Your clients')}
+          title={t('Clientes', 'Clients')}
+          subtitle={t(
+            `${total} cliente${total !== 1 ? 's' : ''} registrado${total !== 1 ? 's' : ''}`,
+            `${total} registered client${total !== 1 ? 's' : ''}`,
+          )}
+          actions={
+            <button className="btn btn-cta" onClick={openCreate}>
+              <PlusIcon className="w-4 h-4" />
+              {t('Nuevo cliente', 'New client')}
+            </button>
+          }
+        />
+
+        <div className="toolbar">
+          <div className="search-wrap" style={{ maxWidth: 360, flex: 1 }}>
+            <MagnifyingGlassIcon className="w-4 h-4" />
+            <input
+              type="text"
+              className="search-input"
+              placeholder={t('Buscar por nombre, email, teléfono…', 'Search by name, email, phone…')}
+              aria-label={t('Buscar clientes', 'Search clients')}
+              value={search}
+              onChange={e => { setSearch(e.target.value); setPage(1); }}
+            />
           </div>
-          <button className="btn btn-primary" onClick={openCreate}>
-            <PlusIcon className="w-4 h-4" />
-            {t('Nuevo cliente', 'New client')}
-          </button>
         </div>
 
-        {/* Search */}
-        <div className="search-wrap" style={{ maxWidth: 360, marginBottom: '1.25rem' }}>
-          <MagnifyingGlassIcon className="w-4 h-4" />
-          <input
-            type="text"
-            className="search-input"
-            placeholder={t('Buscar por nombre, email, teléfono…', 'Search by name, email, phone…')}
-            aria-label={t('Buscar clientes', 'Search clients')}
-            value={search}
-            onChange={e => { setSearch(e.target.value); setPage(1); }}
-          />
-        </div>
-
-        <div className="card" style={{ overflow: 'hidden' }}>
-          <div className="table-scroll">
-            <table className="tbl">
-              <thead>
-                <tr>
-                  <SortableTh column="name" sortBy={sortBy} sortOrder={sortOrder} onSort={handleSort}>
-                    {t('Cliente', 'Client')}
-                  </SortableTh>
-                  <th>{t('Documento', 'ID')}</th>
-                  <SortableTh column="email" sortBy={sortBy} sortOrder={sortOrder} onSort={handleSort}>
-                    {t('Contacto', 'Contact')}
-                  </SortableTh>
-                  <th>{t('Nacimiento', 'Birthday')}</th>
-                  <SortableTh column="created_at" sortBy={sortBy} sortOrder={sortOrder} onSort={handleSort}>
-                    {t('Alta', 'Added')}
-                  </SortableTh>
-                  <th style={{ textAlign: 'right' }}>{t('Acciones', 'Actions')}</th>
-                </tr>
-              </thead>
-              <tbody>
-                {loading ? (
-                  <SkeletonRows rows={5} columns={COLUMN_COUNT} />
-                ) : hasRows ? clients!.data.map(client => {
-                  const [bg, fg] = avatarColor(client.name);
-                  return (
-                    <tr key={client.id}>
-                      <td>
-                        <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
-                          <div style={{
-                            width: 34, height: 34, borderRadius: 99, background: bg,
-                            display: 'flex', alignItems: 'center', justifyContent: 'center',
-                            fontWeight: 700, fontSize: '.8rem', color: fg, flexShrink: 0,
-                          }}>
-                            {client.name.charAt(0).toUpperCase()}
-                          </div>
-                          <div>
-                            <p style={{ fontWeight: 600, margin: 0, color: 'var(--text-primary)' }}>{client.name}</p>
-                            {client.address && (
-                              <p style={{ fontSize: '.75rem', color: 'var(--text-muted)', margin: 0 }}>{client.address}</p>
-                            )}
-                          </div>
-                        </div>
-                      </td>
-                      <td style={{ color: 'var(--text-secondary)', fontFamily: 'DM Mono, monospace', fontSize: '.8rem' }}>
-                        {client.document_id || <span style={{ color: 'var(--text-muted)' }}>—</span>}
-                      </td>
-                      <td>
-                        <div style={{ fontSize: '.8rem' }}>
-                          {client.email && <div style={{ color: 'var(--text-secondary)' }}>{client.email}</div>}
-                          {client.phone && <div style={{ color: 'var(--text-muted)' }}>{client.phone}</div>}
-                          {!client.email && !client.phone && <span style={{ color: 'var(--text-muted)' }}>—</span>}
-                        </div>
-                      </td>
-                      <td style={{ color: 'var(--text-secondary)', fontSize: '.8rem' }}>
-                        {client.birth_date
-                          ? new Date(client.birth_date).toLocaleDateString(locale)
-                          : <span style={{ color: 'var(--text-muted)' }}>—</span>}
-                      </td>
-                      <td style={{ color: 'var(--text-muted)', fontSize: '.8rem' }}>
-                        {client.created_at
-                          ? new Date(client.created_at).toLocaleDateString(locale)
-                          : <span style={{ color: 'var(--text-muted)' }}>—</span>}
-                      </td>
-                      <td>
-                        <div style={{ display: 'flex', justifyContent: 'flex-end', gap: 4 }}>
-                          <button
-                            onClick={() => handleEdit(client)}
-                            style={{ ...rowActionBtn, color: 'var(--text-secondary)' }}
-                            title={t('Editar', 'Edit')}
-                            aria-label={t(`Editar ${client.name}`, `Edit ${client.name}`)}
-                          >
-                            <PencilIcon className="w-4 h-4" />
-                          </button>
-                          <button
-                            onClick={() => handleDelete(client)}
-                            disabled={deletingId === client.id}
-                            style={{
-                              ...rowActionBtn,
-                              color: 'var(--danger)',
-                              opacity: deletingId === client.id ? 0.5 : 1,
-                              cursor: deletingId === client.id ? 'default' : 'pointer',
-                            }}
-                            title={t('Eliminar', 'Delete')}
-                            aria-label={t(`Eliminar ${client.name}`, `Delete ${client.name}`)}
-                          >
-                            <TrashIcon className="w-4 h-4" />
-                          </button>
-                        </div>
-                      </td>
-                    </tr>
-                  );
-                }) : (
-                  <tr>
-                    <td colSpan={COLUMN_COUNT}>
-                      <EmptyState
-                        icon={<UserCircleIcon />}
-                        title={t('No hay clientes registrados', 'No registered clients')}
-                        description={t(
-                          'Cargá tu primer cliente para empezar a asociarle ventas y recetas.',
-                          'Add your first client to start linking sales and prescriptions to them.',
-                        )}
-                        actionLabel={t('Nuevo cliente', 'New client')}
-                        onAction={openCreate}
-                        searchTerm={debouncedSearch}
-                      />
-                    </td>
-                  </tr>
-                )}
-              </tbody>
-            </table>
-          </div>
-          {!loading && clients && clients.pagination.totalPages > 1 && (
+        <DataTable
+          rows={clients?.data ?? []}
+          columns={columns}
+          rowKey={c => c.id}
+          loading={loading}
+          sortBy={sortBy}
+          sortOrder={sortOrder}
+          onSort={handleSort}
+          actionsLabel={t('Acciones', 'Actions')}
+          actions={client => (
+            <>
+              <button
+                className="btn-icon sm"
+                onClick={() => handleEdit(client)}
+                title={t('Editar', 'Edit')}
+                aria-label={t(`Editar ${client.name}`, `Edit ${client.name}`)}
+              >
+                <PencilIcon />
+              </button>
+              <button
+                className="btn-icon sm is-danger"
+                onClick={() => handleDelete(client)}
+                disabled={deletingId === client.id}
+                title={t('Eliminar', 'Delete')}
+                aria-label={t(`Eliminar ${client.name}`, `Delete ${client.name}`)}
+              >
+                <TrashIcon />
+              </button>
+            </>
+          )}
+          empty={
+            <EmptyState
+              icon={<UserCircleIcon />}
+              title={t('No hay clientes registrados', 'No registered clients')}
+              description={t(
+                'Cargá tu primer cliente para empezar a asociarle ventas y recetas.',
+                'Add your first client to start linking sales and prescriptions to them.',
+              )}
+              actionLabel={t('Nuevo cliente', 'New client')}
+              onAction={openCreate}
+              searchTerm={debouncedSearch}
+            />
+          }
+          footer={!loading && clients && clients.pagination.totalPages > 1 && (
             <Pagination page={clients.pagination.page} totalPages={clients.pagination.totalPages} onPageChange={setPage} />
           )}
-        </div>
+        />
       </div>
 
       <Modal
@@ -316,34 +285,34 @@ const ClientsPage: React.FC = () => {
           </button>
         </>}
       >
-        <div>
-          <label htmlFor="client-name" style={{ display: 'block', marginBottom: '.375rem' }}>{t('Nombre completo *', 'Full name *')}</label>
+        <div className="field">
+          <label htmlFor="client-name">{t('Nombre completo *', 'Full name *')}</label>
           <input id="client-name" type="text" required value={formData.name} onChange={e => setFormData({ ...formData, name: e.target.value })} placeholder={t('Ej: María García', 'E.g. Mary Johnson')} />
         </div>
         <div className="form-grid-2">
-          <div>
-            <label htmlFor="client-document" style={{ display: 'block', marginBottom: '.375rem' }}>{t('Documento', 'ID number')}</label>
+          <div className="field">
+            <label htmlFor="client-document">{t('Documento', 'ID number')}</label>
             <input id="client-document" type="text" value={formData.document_id} onChange={e => setFormData({ ...formData, document_id: e.target.value })} placeholder={t('CI / DNI', 'ID / Passport')} />
           </div>
-          <div>
-            <label htmlFor="client-birth" style={{ display: 'block', marginBottom: '.375rem' }}>{t('Fecha de nac.', 'Date of birth')}</label>
+          <div className="field">
+            <label htmlFor="client-birth">{t('Fecha de nac.', 'Date of birth')}</label>
             <input id="client-birth" type="date" value={formData.birth_date} onChange={e => setFormData({ ...formData, birth_date: e.target.value })} />
           </div>
-          <div>
-            <label htmlFor="client-email" style={{ display: 'block', marginBottom: '.375rem' }}>Email</label>
+          <div className="field">
+            <label htmlFor="client-email">Email</label>
             <input id="client-email" type="email" value={formData.email} onChange={e => setFormData({ ...formData, email: e.target.value })} placeholder={t('email@ejemplo.com', 'email@example.com')} />
           </div>
-          <div>
-            <label htmlFor="client-phone" style={{ display: 'block', marginBottom: '.375rem' }}>{t('Teléfono', 'Phone')}</label>
+          <div className="field">
+            <label htmlFor="client-phone">{t('Teléfono', 'Phone')}</label>
             <input id="client-phone" type="text" value={formData.phone} onChange={e => setFormData({ ...formData, phone: e.target.value })} placeholder="+598 99 123 456" />
           </div>
         </div>
-        <div>
-          <label htmlFor="client-address" style={{ display: 'block', marginBottom: '.375rem' }}>{t('Dirección', 'Address')}</label>
+        <div className="field">
+          <label htmlFor="client-address">{t('Dirección', 'Address')}</label>
           <input id="client-address" type="text" value={formData.address} onChange={e => setFormData({ ...formData, address: e.target.value })} placeholder={t('Calle 123, Ciudad', '123 Main St, City')} />
         </div>
-        <div>
-          <label htmlFor="client-notes" style={{ display: 'block', marginBottom: '.375rem' }}>{t('Notas', 'Notes')}</label>
+        <div className="field">
+          <label htmlFor="client-notes">{t('Notas', 'Notes')}</label>
           <textarea id="client-notes" value={formData.notes} onChange={e => setFormData({ ...formData, notes: e.target.value })} placeholder={t('Observaciones del cliente…', 'Notes about the client…')} rows={3} />
         </div>
       </Modal>

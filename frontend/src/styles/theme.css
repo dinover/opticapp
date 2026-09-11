@@ -1,0 +1,112 @@
+/* ══════════════════════════════════════════════════════════════
+   Proyecto Foco · tokens de diseño compartidos por la landing y la app.
+   La app los consume desde index.css; la landing, desde landing.css.
+   El tema oscuro se activa con la clase .dark en <html> (ThemeContext).
+   ══════════════════════════════════════════════════════════════ */
+
+:root {
+  /* Fondos */
+  --canvas: #fcfbff;
+  --canvas-soft: #f4f1ff;
+  --surface: #ffffff;
+  --surface-2: #f7f5fe;
+  --surface-3: #efebfb;
+  --glass: rgba(255, 255, 255, .72);
+
+  /* Líneas */
+  --border: #e8e4f6;
+  --border-strong: #d6cff0;
+  --line: rgba(76, 58, 180, .12);
+
+  /* Texto */
+  --text-primary: #120d2b;
+  --text-secondary: #4a4468;
+  --text-muted: #736e93;
+
+  /* Marca: el violeta del logo y el índigo de acción */
+  --violet: #8b5cf6;
+  --mist: #c7a6ff;
+  --brand: #4f46e5;          /* fondo de acciones sólidas */
+  --brand-light: #8b5cf6;
+  --brand-dark: #4338ca;
+  --brand-text: #4f46e5;     /* la marca usada como color de texto */
+  --accent-text: #6d28d9;    /* etiquetas y eyebrows */
+  --grad: linear-gradient(120deg, #b98cff 0%, #8b5cf6 42%, #4f46e5 100%);
+  --grad-text: linear-gradient(100deg, #9d5cff 0%, #7c3aed 30%, #4f46e5 62%, #9d5cff 100%);
+  --glow: rgba(124, 58, 237, .3);
+  --tint: rgba(139, 92, 246, .1);
+  --tint-strong: rgba(139, 92, 246, .18);
+
+  /* Estados (independientes del acento) */
+  --success: #16a34a;
+  --success-text: #15803d;
+  --warning: #d97706;
+  --warning-text: #b45309;
+  --danger: #dc2626;
+  --danger-text: #b91c1c;
+
+  /* Forma */
+  --radius-sm: 8px;
+  --radius: 12px;
+  --radius-lg: 18px;
+  --radius-xl: 24px;
+  --radius-pill: 999px;
+
+  /* Profundidad: sombras teñidas de violeta, como en la landing */
+  --shadow-sm: 0 1px 2px rgba(49, 27, 146, .05), 0 1px 3px rgba(49, 27, 146, .05);
+  --shadow: 0 12px 28px -16px rgba(49, 27, 146, .28), 0 2px 6px -2px rgba(49, 27, 146, .06);
+  --shadow-lg: 0 24px 60px -24px rgba(49, 27, 146, .35), 0 8px 20px -12px rgba(49, 27, 146, .12);
+  --shadow-xl: 0 30px 80px -24px rgba(49, 27, 146, .3), 0 12px 28px -14px rgba(49, 27, 146, .2);
+
+  /* Foco */
+  --border-focus: #8b5cf6;
+  --focus-ring: 0 0 0 4px rgba(139, 92, 246, .18);
+
+  /* Movimiento */
+  --ease: cubic-bezier(.2, .8, .2, 1);
+  --dur-fast: 150ms;
+  --dur: 250ms;
+
+  /* Tipografía */
+  --font-sans: 'Plus Jakarta Sans', system-ui, -apple-system, 'Segoe UI', sans-serif;
+  --font-mono: 'DM Mono', ui-monospace, 'Cascadia Mono', Consolas, monospace;
+}
+
+.dark {
+  --canvas: #07051a;
+  --canvas-soft: #0d0a27;
+  --surface: #110d2b;
+  --surface-2: #161136;
+  --surface-3: #201a46;
+  --glass: rgba(22, 17, 56, .6);
+
+  --border: #282252;
+  --border-strong: #3a3270;
+  --line: rgba(199, 166, 255, .13);
+
+  --text-primary: #f4f1ff;
+  --text-secondary: #b9b3da;
+  --text-muted: #8a84ad;
+
+  --brand: #6366f1;
+  --brand-dark: #4f46e5;
+  --brand-text: #a5b4fc;
+  --accent-text: #c4a5ff;
+  --glow: rgba(139, 92, 246, .45);
+  --tint: rgba(139, 92, 246, .16);
+  --tint-strong: rgba(139, 92, 246, .26);
+
+  --success: #22c55e;
+  --success-text: #4ade80;
+  --warning: #f59e0b;
+  --warning-text: #fbbf24;
+  --danger: #ef4444;
+  --danger-text: #fca5a5;
+
+  --shadow-sm: 0 1px 2px rgba(0, 0, 0, .4);
+  --shadow: 0 12px 28px -14px rgba(0, 0, 0, .6);
+  --shadow-lg: 0 24px 60px -20px rgba(0, 0, 0, .7);
+  --shadow-xl: 0 30px 90px -20px rgba(0, 0, 0, .75), 0 0 0 1px rgba(199, 166, 255, .07);
+
+  --focus-ring: 0 0 0 4px rgba(139, 92, 246, .3);
+}
